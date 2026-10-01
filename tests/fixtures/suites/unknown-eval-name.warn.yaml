@@ -1,0 +1,9 @@
+# The catalogue is open: a name it does not hold is a warning, and the Suite still runs.
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: cancel-order
+    title: Cancel an order
+    turns: ["Cancel NB-1042, please."]
+    evals:
+      - eval: tone_of_voice

@@ -1,0 +1,14 @@
+# The Suite of the reference HTTP Manifest (http-echo.yaml): one Turn, one text Eval, one
+# latency Eval over the observed first frame, and one identity Fixture.
+schema_version: 1
+target: http-echo
+fixtures:
+  a-caller: {kind: identity, phone: "+1 555 0100"}
+scenarios:
+  - id: greet
+    title: Say hello
+    turns: ["Hello"]
+    fixtures: [a-caller]
+    evals:
+      - must_not_say: ["as an AI"]
+      - first_token_latency: {max_ms: 10000}

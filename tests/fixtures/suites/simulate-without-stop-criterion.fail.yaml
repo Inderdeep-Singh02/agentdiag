@@ -1,0 +1,11 @@
+# A simulate Turn with no way to end (ADR-0002 §5).
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: cancel-adaptively
+    title: Cancel an order, the customer improvising
+    turns:
+      - "Hi, I want to cancel something."
+      - simulate:
+          goal: Get order NB-1042 cancelled.
+    max_turns: 4

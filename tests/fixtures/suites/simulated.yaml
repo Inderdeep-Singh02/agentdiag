@@ -1,0 +1,137 @@
+# Written by scripts/record_fixtures.py --scripted; never edited by hand.
+schema_version: 1
+target: toy-order-desk
+description: 'Test-only (tests/fixtures/README.md): the worked Simulated User, stop-criterion and reviewer
+  fixtures, written by scripts/record_fixtures.py --scripted.'
+scenarios:
+- id: leaks-the-order-status
+  title: The Simulated User states the status it was told it does not know
+  turns:
+  - I want to cancel an order.
+  - simulate:
+      goal: Get order NB-1042 cancelled.
+      known_facts:
+        order_id: NB-1042
+      unknown_facts:
+        order_status: processing
+      hints:
+      - Give the order number only when asked for it.
+      stop_when:
+        tool_called: cancel_order
+  max_turns: 3
+  evals:
+  - expect_tools_order:
+    - lookup_order
+    - cancel_order
+  - expect_tools:
+    - cancel_order
+- id: stops-before-the-cancel
+  title: The Simulated User answers the stop token before its goal is reached
+  turns:
+  - Hi, I need to cancel order NB-1042.
+  - simulate:
+      goal: Get order NB-1042 cancelled.
+      known_facts:
+        order_id: NB-1042
+      stop_token: '[DONE]'
+  max_turns: 3
+  evals:
+  - expect_tools:
+    - cancel_order
+- id: promises-a-refund-date
+  title: The Target promises a refund date on its own, whatever the user said
+  turns:
+  - Please cancel my order.
+  - simulate:
+      goal: Get order NB-1042 cancelled.
+      known_facts:
+        order_id: NB-1042
+      stop_when:
+        tool_called: cancel_order
+  max_turns: 3
+  evals:
+  - must_not_say:
+    - business days
+- id: judged-stop
+  title: A judged stop criterion is checked after each Turn; the second holds
+  turns:
+  - Hi, I need to cancel an order.
+  - simulate:
+      goal: Get order NB-1042 cancelled.
+      known_facts:
+        order_id: NB-1042
+      stop_when:
+        judged: The customer has been told that NB-1042 is cancelled.
+  max_turns: 3
+  evals:
+  - expect_tools:
+    - cancel_order
+- id: judged-stop-survives-a-failed-check
+  title: A stop check that fails does not stop the conversation
+  turns:
+  - Hi, I need to cancel an order.
+  - simulate:
+      goal: Get order NB-1042 cancelled.
+      known_facts:
+        order_id: NB-1042
+      stop_when:
+        judged: The customer has been told that NB-1042 is cancelled.
+  max_turns: 3
+  evals:
+  - expect_tools:
+    - cancel_order
+- id: cancel-then-done
+  title: The Simulated User answers the stop token once its goal is reached
+  turns:
+  - Please cancel order NB-1042.
+  - simulate:
+      goal: Get order NB-1042 cancelled.
+      known_facts:
+        order_id: NB-1042
+      stop_token: '[DONE]'
+  max_turns: 3
+  evals:
+  - expect_tools:
+    - cancel_order
+- id: keeps-asking
+  title: A criterion that never holds ends the Trial at max_turns
+  turns:
+  - Where is order NB-0917?
+  - simulate:
+      goal: Find out when order NB-0917 arrives.
+      known_facts:
+        order_id: NB-0917
+      stop_when:
+        target_says_any:
+        - arrives on
+  max_turns: 2
+  evals:
+  - expect_tools:
+    - lookup_order
+- id: says-cancelled
+  title: A criterion the opener already met ends the Trial before any simulated Turn
+  turns:
+  - Please cancel order NB-1042.
+  - simulate:
+      goal: Get order NB-1042 cancelled.
+      stop_when:
+        target_says_any:
+        - cancelled
+  max_turns: 3
+  evals:
+  - expect_tools:
+    - cancel_order
+- id: refuses-to-play
+  title: A Simulated User that refuses ends the Trial simulated_user_error
+  turns:
+  - Hi, I need to cancel an order.
+  - simulate:
+      goal: Get order NB-1042 cancelled.
+      known_facts:
+        order_id: NB-1042
+      stop_when:
+        tool_called: cancel_order
+  max_turns: 3
+  evals:
+  - expect_tools:
+    - cancel_order

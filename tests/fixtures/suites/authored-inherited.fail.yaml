@@ -1,0 +1,9 @@
+# `inherited` is the loader's to set; authored, it would claim a Suite put it there.
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: cancel-order
+    title: Cancel an order
+    turns: ["Cancel NB-1042, please."]
+    evals:
+      - {eval: prompt_adherence, inherited: true}

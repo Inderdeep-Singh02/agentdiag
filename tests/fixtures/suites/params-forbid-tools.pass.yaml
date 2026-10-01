@@ -1,0 +1,9 @@
+# The same forbid_tools declaration, written as its params_model allows.
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: cancel-order
+    title: Cancel an order
+    turns: ["Cancel NB-1042, please."]
+    evals:
+      - forbid_tools: [cancel_order]

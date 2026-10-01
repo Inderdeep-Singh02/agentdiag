@@ -1,0 +1,280 @@
+{
+  "scenario": "where-is-shipped-order",
+  "scores": [
+    {
+      "cites_read": [],
+      "direction": null,
+      "eval": "expect_tools",
+      "eval_id": null,
+      "evidence": [
+        "retrieval-1"
+      ],
+      "fault_direction": null,
+      "fault_source": null,
+      "fidelity": "instrumented",
+      "rationale": "Every expected tool was called in the Trace: retrieval-1",
+      "reason": null,
+      "shared_model": null,
+      "source": {
+        "code": "agentdiag.eval.tools:expect_tools",
+        "judge_fingerprint": null,
+        "kind": "mechanical",
+        "prompt_version": null,
+        "requested_model": null,
+        "resolved_model": null,
+        "suppressions_in_force": []
+      },
+      "threshold": null,
+      "value": null,
+      "verdict": "pass"
+    },
+    {
+      "cites_read": [],
+      "direction": null,
+      "eval": "expect_tools_any",
+      "eval_id": null,
+      "evidence": [
+        "retrieval-1"
+      ],
+      "fault_direction": null,
+      "fault_source": null,
+      "fidelity": "instrumented",
+      "rationale": "the Trace called lookup_order: retrieval-1",
+      "reason": null,
+      "shared_model": null,
+      "source": {
+        "code": "agentdiag.eval.tools:expect_tools_any",
+        "judge_fingerprint": null,
+        "kind": "mechanical",
+        "prompt_version": null,
+        "requested_model": null,
+        "resolved_model": null,
+        "suppressions_in_force": []
+      },
+      "threshold": null,
+      "value": null,
+      "verdict": "pass"
+    },
+    {
+      "cites_read": [],
+      "direction": null,
+      "eval": "forbid_tools",
+      "eval_id": null,
+      "evidence": [
+        "retrieval-1"
+      ],
+      "fault_direction": null,
+      "fault_source": null,
+      "fidelity": "instrumented",
+      "rationale": "the Trace called none of cancel_order; the tools it called were lookup_order",
+      "reason": null,
+      "shared_model": null,
+      "source": {
+        "code": "agentdiag.eval.tools:forbid_tools",
+        "judge_fingerprint": null,
+        "kind": "mechanical",
+        "prompt_version": null,
+        "requested_model": null,
+        "resolved_model": null,
+        "suppressions_in_force": []
+      },
+      "threshold": null,
+      "value": null,
+      "verdict": "pass"
+    },
+    {
+      "cites_read": [],
+      "direction": null,
+      "eval": "tool_count_max",
+      "eval_id": null,
+      "evidence": [
+        "retrieval-1"
+      ],
+      "fault_direction": null,
+      "fault_source": null,
+      "fidelity": "instrumented",
+      "rationale": "Every capped tool is within its cap: lookup_order 1 of 1",
+      "reason": null,
+      "shared_model": null,
+      "source": {
+        "code": "agentdiag.eval.tools:tool_count_max",
+        "judge_fingerprint": null,
+        "kind": "mechanical",
+        "prompt_version": null,
+        "requested_model": null,
+        "resolved_model": null,
+        "suppressions_in_force": []
+      },
+      "threshold": null,
+      "value": null,
+      "verdict": "pass"
+    },
+    {
+      "cites_read": [],
+      "direction": null,
+      "eval": "expect_tool_args",
+      "eval_id": null,
+      "evidence": [
+        "retrieval-1"
+      ],
+      "fault_direction": null,
+      "fault_source": null,
+      "fidelity": "instrumented",
+      "rationale": "Every call that supplied order_id held: retrieval-1",
+      "reason": null,
+      "shared_model": null,
+      "source": {
+        "code": "agentdiag.eval.tools:expect_tool_args",
+        "judge_fingerprint": null,
+        "kind": "mechanical",
+        "prompt_version": null,
+        "requested_model": null,
+        "resolved_model": null,
+        "suppressions_in_force": []
+      },
+      "threshold": null,
+      "value": null,
+      "verdict": "pass"
+    },
+    {
+      "cites_read": [],
+      "direction": null,
+      "eval": "must_say_any",
+      "eval_id": null,
+      "evidence": [
+        "turn-1"
+      ],
+      "fault_direction": null,
+      "fault_source": null,
+      "fidelity": "instrumented",
+      "rationale": "The Target said Turn 1: 'shipped'",
+      "reason": null,
+      "shared_model": null,
+      "source": {
+        "code": "agentdiag.eval.text:must_say_any",
+        "judge_fingerprint": null,
+        "kind": "mechanical",
+        "prompt_version": null,
+        "requested_model": null,
+        "resolved_model": null,
+        "suppressions_in_force": []
+      },
+      "threshold": null,
+      "value": null,
+      "verdict": "pass"
+    },
+    {
+      "cites_read": [],
+      "direction": null,
+      "eval": "must_not_say",
+      "eval_id": null,
+      "evidence": [
+        "turn-1"
+      ],
+      "fault_direction": null,
+      "fault_source": null,
+      "fidelity": "instrumented",
+      "rationale": "The Target said none of 'refund' in the Trace",
+      "reason": null,
+      "shared_model": null,
+      "source": {
+        "code": "agentdiag.eval.text:must_not_say",
+        "judge_fingerprint": null,
+        "kind": "mechanical",
+        "prompt_version": null,
+        "requested_model": null,
+        "resolved_model": null,
+        "suppressions_in_force": []
+      },
+      "threshold": null,
+      "value": null,
+      "verdict": "pass"
+    },
+    {
+      "cites_read": [],
+      "direction": null,
+      "eval": "forbidden_phrases",
+      "eval_id": null,
+      "evidence": [
+        "turn-1"
+      ],
+      "fault_direction": null,
+      "fault_source": null,
+      "fidelity": "instrumented",
+      "rationale": "The Target said none of 'as an AI', 'language model' (the Scenario's) in the Trace",
+      "reason": null,
+      "shared_model": null,
+      "source": {
+        "code": "agentdiag.eval.text:forbidden_phrases",
+        "judge_fingerprint": null,
+        "kind": "mechanical",
+        "prompt_version": null,
+        "requested_model": null,
+        "resolved_model": null,
+        "suppressions_in_force": []
+      },
+      "threshold": null,
+      "value": null,
+      "verdict": "pass"
+    },
+    {
+      "cites_read": [],
+      "direction": "minimize",
+      "eval": "tool_latency",
+      "eval_id": null,
+      "evidence": [
+        "retrieval-1"
+      ],
+      "fault_direction": null,
+      "fault_source": null,
+      "fidelity": "instrumented",
+      "rationale": "The slowest of 1 tool Spans (retrieval-1) was retrieval-1 at 3 ms, against a maximum of 1000 ms",
+      "reason": null,
+      "shared_model": null,
+      "source": {
+        "code": "agentdiag.eval.latency:tool_latency",
+        "judge_fingerprint": null,
+        "kind": "mechanical",
+        "prompt_version": null,
+        "requested_model": null,
+        "resolved_model": null,
+        "suppressions_in_force": []
+      },
+      "threshold": {
+        "max_ms": 1000
+      },
+      "value": 3.0,
+      "verdict": "pass"
+    },
+    {
+      "cites_read": [],
+      "direction": "minimize",
+      "eval": "response_latency",
+      "eval_id": null,
+      "evidence": [
+        "turn-1"
+      ],
+      "fault_direction": null,
+      "fault_source": null,
+      "fidelity": "instrumented",
+      "rationale": "The slowest Turn was turn-1 at 16 ms, against a maximum of 1 ms",
+      "reason": null,
+      "shared_model": null,
+      "source": {
+        "code": "agentdiag.eval.latency:response_latency",
+        "judge_fingerprint": null,
+        "kind": "mechanical",
+        "prompt_version": null,
+        "requested_model": null,
+        "resolved_model": null,
+        "suppressions_in_force": []
+      },
+      "threshold": {
+        "max_ms": 1
+      },
+      "value": 16.0,
+      "verdict": "fail"
+    }
+  ],
+  "trial": 1
+}

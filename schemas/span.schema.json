@@ -1,0 +1,117 @@
+{
+  "description": "One timed unit inside a Trace, derived from its opening and closing Events.",
+  "properties": {
+    "actor": {
+      "enum": [
+        "target",
+        "simulated_user",
+        "adapter",
+        "agentdiag",
+        "judge",
+        "operator"
+      ],
+      "title": "Actor",
+      "type": "string"
+    },
+    "attributes": {
+      "additionalProperties": true,
+      "title": "Attributes",
+      "type": "object"
+    },
+    "dotted_order": {
+      "title": "Dotted Order",
+      "type": "string"
+    },
+    "end_ms": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "End Ms"
+    },
+    "events": {
+      "items": {
+        "type": "integer"
+      },
+      "title": "Events",
+      "type": "array"
+    },
+    "fidelity": {
+      "enum": [
+        "instrumented",
+        "reconstructed",
+        "observed"
+      ],
+      "title": "Fidelity",
+      "type": "string"
+    },
+    "kind": {
+      "title": "Kind",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "parent_span_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Parent Span Id"
+    },
+    "span_id": {
+      "title": "Span Id",
+      "type": "string"
+    },
+    "start_ms": {
+      "title": "Start Ms",
+      "type": "integer"
+    },
+    "status": {
+      "enum": [
+        "ok",
+        "error",
+        "open"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "turn": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Turn"
+    }
+  },
+  "required": [
+    "span_id",
+    "parent_span_id",
+    "kind",
+    "name",
+    "actor",
+    "fidelity",
+    "turn",
+    "dotted_order",
+    "start_ms",
+    "end_ms",
+    "status",
+    "attributes",
+    "events"
+  ],
+  "title": "Span",
+  "type": "object"
+}

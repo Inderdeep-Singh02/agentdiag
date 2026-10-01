@@ -1,0 +1,335 @@
+{
+  "displayTimeUnit": "ms",
+  "otherData": {
+    "agentdiag": "0.1.0",
+    "run": "20260922T101500Z-k7pq",
+    "scenario": "cancel-processing-order",
+    "trace_id": "20260922T101500Z-k7pq/cancel-processing-order/1",
+    "trial": 1
+  },
+  "traceEvents": [
+    {
+      "args": {
+        "name": "agentdiag"
+      },
+      "name": "process_name",
+      "ph": "M",
+      "pid": 0,
+      "tid": 0
+    },
+    {
+      "args": {
+        "name": "lane 0"
+      },
+      "name": "thread_name",
+      "ph": "M",
+      "pid": 0,
+      "tid": 0
+    },
+    {
+      "args": {
+        "name": "target"
+      },
+      "name": "process_name",
+      "ph": "M",
+      "pid": 1,
+      "tid": 0
+    },
+    {
+      "args": {
+        "name": "lane 0"
+      },
+      "name": "thread_name",
+      "ph": "M",
+      "pid": 1,
+      "tid": 0
+    },
+    {
+      "args": {
+        "actor": "agentdiag",
+        "dotted_order": "175853610000200001-turn-1",
+        "duration_ms": 2396,
+        "fidelity": "instrumented",
+        "kind": "turn",
+        "model_latency_ms": null,
+        "parent_span_id": null,
+        "span_id": "turn-1",
+        "status": "ok",
+        "turn": 1
+      },
+      "cat": "turn",
+      "dur": 2396000,
+      "name": "turn 1",
+      "ph": "X",
+      "pid": 0,
+      "tid": 0,
+      "ts": 1758536100002000
+    },
+    {
+      "args": {
+        "actor": "target",
+        "dotted_order": "175853610000200001-turn-1.175853610000600003-llm_call-1",
+        "duration_ms": 945,
+        "fidelity": "instrumented",
+        "gen_ai.operation.name": "chat",
+        "gen_ai.provider.name": "anthropic",
+        "gen_ai.request.max_tokens": 1024,
+        "gen_ai.request.model": "claude-sonnet-5",
+        "gen_ai.response.finish_reasons": [
+          "tool_use"
+        ],
+        "gen_ai.response.id": "msg_01NwbOrderDesk1",
+        "gen_ai.response.model": "claude-sonnet-5-20260815",
+        "gen_ai.usage.input_tokens": 742,
+        "gen_ai.usage.output_tokens": 61,
+        "kind": "llm_call",
+        "llm.cost.completion": 0.00061,
+        "llm.cost.prompt": 0.001484,
+        "llm.cost.prompt_details.input": 0.001484,
+        "llm.cost.total": 0.002094,
+        "model_latency_ms": 903,
+        "parent_span_id": "turn-1",
+        "span_id": "llm_call-1",
+        "status": "ok",
+        "tokens.input": 742,
+        "tokens.output": 61,
+        "tokens.total": 803,
+        "turn": 1
+      },
+      "cat": "llm_call",
+      "dur": 945000,
+      "name": "chat claude-sonnet-5",
+      "ph": "X",
+      "pid": 1,
+      "tid": 0,
+      "ts": 1758536100006000
+    },
+    {
+      "args": {
+        "actor": "target",
+        "dotted_order": "175853610000200001-turn-1.175853610000600003-llm_call-1.175853610091800007-retrieval-1",
+        "duration_ms": 30,
+        "fidelity": "instrumented",
+        "gen_ai.operation.name": "execute_tool",
+        "gen_ai.tool.call.id": "toolu_01LookupNB1042",
+        "gen_ai.tool.name": "lookup_order",
+        "kind": "retrieval",
+        "model_latency_ms": null,
+        "parent_span_id": "llm_call-1",
+        "span_id": "retrieval-1",
+        "status": "ok",
+        "turn": 1
+      },
+      "cat": "retrieval",
+      "dur": 30000,
+      "name": "execute_tool lookup_order",
+      "ph": "X",
+      "pid": 1,
+      "tid": 0,
+      "ts": 1758536100918000
+    },
+    {
+      "args": {
+        "actor": "target",
+        "dotted_order": "175853610000200001-turn-1.175853610095500012-llm_call-2",
+        "duration_ms": 800,
+        "fidelity": "instrumented",
+        "gen_ai.operation.name": "chat",
+        "gen_ai.provider.name": "anthropic",
+        "gen_ai.request.max_tokens": 1024,
+        "gen_ai.request.model": "claude-sonnet-5",
+        "gen_ai.response.finish_reasons": [
+          "tool_use"
+        ],
+        "gen_ai.response.id": "msg_01NwbOrderDesk2",
+        "gen_ai.response.model": "claude-sonnet-5-20260815",
+        "gen_ai.usage.input_tokens": 889,
+        "gen_ai.usage.output_tokens": 58,
+        "kind": "llm_call",
+        "llm.cost.completion": 0.00058,
+        "llm.cost.prompt": 0.001778,
+        "llm.cost.prompt_details.input": 0.001778,
+        "llm.cost.total": 0.002358,
+        "model_latency_ms": 746,
+        "parent_span_id": "turn-1",
+        "span_id": "llm_call-2",
+        "status": "ok",
+        "tokens.input": 889,
+        "tokens.output": 58,
+        "tokens.total": 947,
+        "turn": 1
+      },
+      "cat": "llm_call",
+      "dur": 800000,
+      "name": "chat claude-sonnet-5",
+      "ph": "X",
+      "pid": 1,
+      "tid": 0,
+      "ts": 1758536100955000
+    },
+    {
+      "args": {
+        "actor": "target",
+        "dotted_order": "175853610000200001-turn-1.175853610095500012-llm_call-2.175853610170900015-tool_call-1",
+        "duration_ms": 43,
+        "fidelity": "instrumented",
+        "gen_ai.operation.name": "execute_tool",
+        "gen_ai.tool.call.id": "toolu_02CancelNB1042",
+        "gen_ai.tool.name": "cancel_order",
+        "kind": "tool_call",
+        "model_latency_ms": null,
+        "parent_span_id": "llm_call-2",
+        "span_id": "tool_call-1",
+        "status": "ok",
+        "turn": 1
+      },
+      "cat": "tool_call",
+      "dur": 43000,
+      "name": "execute_tool cancel_order",
+      "ph": "X",
+      "pid": 1,
+      "tid": 0,
+      "ts": 1758536101709000
+    },
+    {
+      "args": {
+        "actor": "target",
+        "dotted_order": "175853610000200001-turn-1.175853610175900020-llm_call-3",
+        "duration_ms": 633,
+        "fidelity": "instrumented",
+        "gen_ai.operation.name": "chat",
+        "gen_ai.provider.name": "anthropic",
+        "gen_ai.request.max_tokens": 1024,
+        "gen_ai.request.model": "claude-sonnet-5",
+        "gen_ai.response.finish_reasons": [
+          "end_turn"
+        ],
+        "gen_ai.response.id": "msg_01NwbOrderDesk3",
+        "gen_ai.response.model": "claude-sonnet-5-20260815",
+        "gen_ai.usage.input_tokens": 1004,
+        "gen_ai.usage.output_tokens": 44,
+        "kind": "llm_call",
+        "llm.cost.completion": 0.00044,
+        "llm.cost.prompt": 0.002008,
+        "llm.cost.prompt_details.input": 0.002008,
+        "llm.cost.total": 0.002448,
+        "model_latency_ms": 627,
+        "parent_span_id": "turn-1",
+        "span_id": "llm_call-3",
+        "status": "ok",
+        "tokens.input": 1004,
+        "tokens.output": 44,
+        "tokens.total": 1048,
+        "turn": 1
+      },
+      "cat": "llm_call",
+      "dur": 633000,
+      "name": "chat claude-sonnet-5",
+      "ph": "X",
+      "pid": 1,
+      "tid": 0,
+      "ts": 1758536101759000
+    },
+    {
+      "args": {
+        "content": "Hi, I'd like to cancel order NB-1042.",
+        "role": "user"
+      },
+      "cat": "message",
+      "name": "message user",
+      "ph": "i",
+      "pid": 0,
+      "s": "t",
+      "tid": 0,
+      "ts": 1758536100004000
+    },
+    {
+      "args": {
+        "arguments": {
+          "order_id": "NB-1042"
+        },
+        "call_id": "toolu_01LookupNB1042",
+        "not_observed": [],
+        "tool": "lookup_order"
+      },
+      "cat": "tool/call",
+      "name": "tool/call lookup_order",
+      "ph": "i",
+      "pid": 1,
+      "s": "t",
+      "tid": 0,
+      "ts": 1758536100920000
+    },
+    {
+      "args": {
+        "call_id": "toolu_01LookupNB1042",
+        "is_error": false,
+        "result": {
+          "item": "Northwind Trailhead gravel bike, 54cm, slate",
+          "order_id": "NB-1042",
+          "placed_at": "2026-09-20T14:22:00Z",
+          "status": "processing",
+          "total_usd": 2149.0
+        },
+        "tool": "lookup_order"
+      },
+      "cat": "tool/result",
+      "name": "tool/result lookup_order",
+      "ph": "i",
+      "pid": 1,
+      "s": "t",
+      "tid": 0,
+      "ts": 1758536100944000
+    },
+    {
+      "args": {
+        "arguments": {
+          "order_id": "NB-1042"
+        },
+        "call_id": "toolu_02CancelNB1042",
+        "not_observed": [],
+        "tool": "cancel_order"
+      },
+      "cat": "tool/call",
+      "name": "tool/call cancel_order",
+      "ph": "i",
+      "pid": 1,
+      "s": "t",
+      "tid": 0,
+      "ts": 1758536101711000
+    },
+    {
+      "args": {
+        "call_id": "toolu_02CancelNB1042",
+        "is_error": false,
+        "result": {
+          "cancelled_at": "2026-09-22T10:15:01Z",
+          "order_id": "NB-1042",
+          "refund_usd": 2149.0,
+          "status": "cancelled"
+        },
+        "tool": "cancel_order"
+      },
+      "cat": "tool/result",
+      "name": "tool/result cancel_order",
+      "ph": "i",
+      "pid": 1,
+      "s": "t",
+      "tid": 0,
+      "ts": 1758536101748000
+    },
+    {
+      "args": {
+        "content": "I found order NB-1042 for a Northwind Trailhead gravel bike, still processing. I've cancelled it, and the charge will drop off within a few days.",
+        "role": "assistant"
+      },
+      "cat": "message",
+      "name": "message assistant",
+      "ph": "i",
+      "pid": 0,
+      "s": "t",
+      "tid": 0,
+      "ts": 1758536102395000
+    }
+  ]
+}

@@ -1,0 +1,880 @@
+{
+  "$defs": {
+    "CalibrationNotesSummary": {
+      "description": "The Calibration Notes as `target show` reports them: what the Judge would read.",
+      "properties": {
+        "fingerprint": {
+          "title": "Fingerprint",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "words": {
+          "title": "Words",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "words",
+        "fingerprint"
+      ],
+      "title": "CalibrationNotesSummary",
+      "type": "object"
+    },
+    "ChangeRecordSummary": {
+      "description": "One Change record as `target show` lists it (phase-7 decision 5).",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "opened_at": {
+          "title": "Opened At",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "proposed",
+            "pushed",
+            "verified",
+            "refuted",
+            "wontfix",
+            "superseded"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "title",
+        "opened_at"
+      ],
+      "title": "ChangeRecordSummary",
+      "type": "object"
+    },
+    "Fingerprint": {
+      "description": "The whole of `fingerprint.json`, and what `run.json.fingerprint` records.",
+      "properties": {
+        "built_at": {
+          "title": "Built At",
+          "type": "string"
+        },
+        "environment": {
+          "title": "Environment",
+          "type": "string"
+        },
+        "manifest_sha256": {
+          "title": "Manifest Sha256",
+          "type": "string"
+        },
+        "not_covered": {
+          "items": {
+            "$ref": "#/$defs/NotCovered"
+          },
+          "title": "Not Covered",
+          "type": "array"
+        },
+        "pushed_from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pushed From"
+        },
+        "resynced_from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resynced From"
+        },
+        "schema_version": {
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "sections": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Section"
+          },
+          "title": "Sections",
+          "type": "object"
+        }
+      },
+      "required": [
+        "built_at",
+        "environment",
+        "manifest_sha256"
+      ],
+      "title": "Fingerprint",
+      "type": "object"
+    },
+    "NotCovered": {
+      "description": "A section the Manifest names that nothing observed, and why (ADR-0007 §1).",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "prompt",
+            "tool",
+            "data_source",
+            "model",
+            "provider",
+            "flow",
+            "tier"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "reason"
+      ],
+      "title": "NotCovered",
+      "type": "object"
+    },
+    "OpenSyncBreak": {
+      "description": "One open Sync break as `target show` lists it: its file and what it recorded.",
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "sync_break": {
+          "$ref": "#/$defs/SyncBreak"
+        }
+      },
+      "required": [
+        "path",
+        "sync_break"
+      ],
+      "title": "OpenSyncBreak",
+      "type": "object"
+    },
+    "PushRecord": {
+      "additionalProperties": false,
+      "description": "One push, as committed under `pushes/` (CONTEXT.md **Push record**).",
+      "properties": {
+        "agent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Agent"
+        },
+        "by": {
+          "title": "By",
+          "type": "string"
+        },
+        "change_record": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Change Record"
+        },
+        "confirmed_by": {
+          "enum": [
+            "--push",
+            "typed_name",
+            "ui_confirm"
+          ],
+          "title": "Confirmed By",
+          "type": "string"
+        },
+        "diff_sha256": {
+          "title": "Diff Sha256",
+          "type": "string"
+        },
+        "effective_side_effects": {
+          "enum": [
+            "none",
+            "sandboxed",
+            "live"
+          ],
+          "title": "Effective Side Effects",
+          "type": "string"
+        },
+        "environment": {
+          "title": "Environment",
+          "type": "string"
+        },
+        "fingerprint_after": {
+          "title": "Fingerprint After",
+          "type": "string"
+        },
+        "fingerprint_before": {
+          "title": "Fingerprint Before",
+          "type": "string"
+        },
+        "os_user": {
+          "title": "Os User",
+          "type": "string"
+        },
+        "problems": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Problems",
+          "type": "array"
+        },
+        "pushed_at": {
+          "title": "Pushed At",
+          "type": "string"
+        },
+        "receipt": {
+          "$ref": "#/$defs/WriteReceipt"
+        },
+        "restore_point": {
+          "title": "Restore Point",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "sections": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Sections",
+          "type": "array"
+        },
+        "target": {
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pushed_at",
+        "target",
+        "environment",
+        "by",
+        "os_user",
+        "effective_side_effects",
+        "confirmed_by",
+        "sections",
+        "fingerprint_before",
+        "fingerprint_after",
+        "restore_point",
+        "diff_sha256",
+        "receipt"
+      ],
+      "title": "PushRecord",
+      "type": "object"
+    },
+    "PushSummary": {
+      "description": "One Push record as `target show` lists it.",
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "push": {
+          "$ref": "#/$defs/PushRecord"
+        }
+      },
+      "required": [
+        "path",
+        "push"
+      ],
+      "title": "PushSummary",
+      "type": "object"
+    },
+    "RegistryEntry": {
+      "description": "One Target of the Workspace, as its Manifest describes it (decision 5).",
+      "properties": {
+        "channel": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Channel"
+        },
+        "connector": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Connector"
+        },
+        "environments": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Environments",
+          "type": "array"
+        },
+        "family": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Family"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "problems": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Problems",
+          "type": "array"
+        },
+        "protected": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Protected",
+          "type": "array"
+        },
+        "slug": {
+          "title": "Slug",
+          "type": "string"
+        },
+        "suites": {
+          "items": {
+            "$ref": "#/$defs/SuiteEntry"
+          },
+          "title": "Suites",
+          "type": "array"
+        },
+        "sync": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SyncSummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "slug"
+      ],
+      "title": "RegistryEntry",
+      "type": "object"
+    },
+    "Section": {
+      "description": "One section of the deployed set as the Fingerprint recorded it.",
+      "properties": {
+        "covered_by": {
+          "enum": [
+            "local",
+            "adapter",
+            "connector"
+          ],
+          "title": "Covered By",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "prompt",
+            "tool",
+            "data_source",
+            "model",
+            "provider",
+            "flow",
+            "tier"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "sha256": {
+          "title": "Sha256",
+          "type": "string"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "sha256",
+        "covered_by"
+      ],
+      "title": "Section",
+      "type": "object"
+    },
+    "SectionState": {
+      "description": "One section's three hashes and what they say.",
+      "properties": {
+        "change": {
+          "anyOf": [
+            {
+              "enum": [
+                "changed",
+                "added",
+                "removed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Change"
+        },
+        "deployed": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Deployed"
+        },
+        "deployed_by": {
+          "anyOf": [
+            {
+              "enum": [
+                "local",
+                "adapter",
+                "connector"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Deployed By"
+        },
+        "direction": {
+          "enum": [
+            "identical",
+            "local_ahead",
+            "deployed_ahead",
+            "diverged",
+            "not_covered"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "prompt",
+            "tool",
+            "data_source",
+            "model",
+            "provider",
+            "flow",
+            "tier"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "local": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Local"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "recorded": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recorded"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "direction"
+      ],
+      "title": "SectionState",
+      "type": "object"
+    },
+    "SuiteEntry": {
+      "additionalProperties": false,
+      "description": "One Suite the Manifest names (phase-6 decision 8): its path and its status.",
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "status": {
+          "default": "runnable",
+          "enum": [
+            "runnable",
+            "draft",
+            "retired"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "SuiteEntry",
+      "type": "object"
+    },
+    "SyncBreak": {
+      "description": "One recorded Sync break (decision 26).",
+      "properties": {
+        "covered_by": {
+          "anyOf": [
+            {
+              "enum": [
+                "local",
+                "adapter",
+                "connector"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Covered By"
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Environment"
+        },
+        "fingerprint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fingerprint"
+        },
+        "opened_at": {
+          "title": "Opened At",
+          "type": "string"
+        },
+        "opened_by": {
+          "enum": [
+            "sync",
+            "watch"
+          ],
+          "title": "Opened By",
+          "type": "string"
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/SectionState"
+          },
+          "title": "Sections",
+          "type": "array"
+        }
+      },
+      "required": [
+        "opened_at",
+        "opened_by"
+      ],
+      "title": "SyncBreak",
+      "type": "object"
+    },
+    "SyncSummary": {
+      "description": "A Target's Sync state as the Registry shows it (phase-6 decision 26): the status of\nthe last check as the files record it, how many Sync breaks are open, and the current\nFingerprint's id and when it was built.",
+      "properties": {
+        "built_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Built At"
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Environment"
+        },
+        "fingerprint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fingerprint"
+        },
+        "last_push": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Push"
+        },
+        "open_breaks": {
+          "default": 0,
+          "title": "Open Breaks",
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "held",
+            "broken",
+            "not_checked"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "SyncSummary",
+      "type": "object"
+    },
+    "WriteReceipt": {
+      "description": "What a push wrote, and the deployed Fingerprints on either side of it (ticket 27).",
+      "properties": {
+        "environment": {
+          "title": "Environment",
+          "type": "string"
+        },
+        "fingerprint_after": {
+          "title": "Fingerprint After",
+          "type": "string"
+        },
+        "fingerprint_before": {
+          "title": "Fingerprint Before",
+          "type": "string"
+        },
+        "sections": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Sections",
+          "type": "array"
+        },
+        "written_at": {
+          "title": "Written At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "environment",
+        "written_at",
+        "sections",
+        "fingerprint_before",
+        "fingerprint_after"
+      ],
+      "title": "WriteReceipt",
+      "type": "object"
+    }
+  },
+  "description": "One Target in full, as `agentdiag target show` prints it (decision 5).",
+  "properties": {
+    "calibration_notes": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CalibrationNotesSummary"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "change_records": {
+      "items": {
+        "$ref": "#/$defs/ChangeRecordSummary"
+      },
+      "title": "Change Records",
+      "type": "array"
+    },
+    "directory": {
+      "title": "Directory",
+      "type": "string"
+    },
+    "entry": {
+      "$ref": "#/$defs/RegistryEntry"
+    },
+    "fingerprint": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Fingerprint"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "manifest": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Manifest"
+    },
+    "pushes": {
+      "items": {
+        "$ref": "#/$defs/PushSummary"
+      },
+      "title": "Pushes",
+      "type": "array"
+    },
+    "sync_breaks": {
+      "items": {
+        "$ref": "#/$defs/OpenSyncBreak"
+      },
+      "title": "Sync Breaks",
+      "type": "array"
+    }
+  },
+  "required": [
+    "entry",
+    "directory"
+  ],
+  "title": "TargetView",
+  "type": "object"
+}

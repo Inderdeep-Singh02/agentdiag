@@ -1,0 +1,16 @@
+# A Suppression naming a mechanical Eval, which ignores Suppressions: a warning.
+schema_version: 1
+target: {name: toy-order-desk}
+adapter:
+  kind: inprocess
+  environments:
+    default: local
+    local:
+      factory: agentdiag.examples.toy:make_target
+      tools: agentdiag.examples.toy:make_tools
+      model: claude-sonnet-5
+judge_notes: judge_notes.md
+suites:
+  - suites/orders.yaml
+suppressions:
+  - {id: sup-002, eval: must_not_say, from: 2026-09-01, until: 2026-09-30, pattern: "refund", why: "the word is quoted back from the customer"}

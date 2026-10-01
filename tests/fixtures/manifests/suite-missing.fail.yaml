@@ -1,0 +1,15 @@
+# A runnable Suite whose file is absent: an error.
+schema_version: 1
+target: {name: toy-order-desk}
+adapter:
+  kind: inprocess
+  environments:
+    default: local
+    local:
+      factory: agentdiag.examples.toy:make_target
+      tools: agentdiag.examples.toy:make_tools
+      model: claude-sonnet-5
+judge_notes: judge_notes.md
+suites:
+  - suites/orders.yaml
+  - suites/nowhere.yaml

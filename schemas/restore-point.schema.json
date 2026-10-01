@@ -1,0 +1,119 @@
+{
+  "$defs": {
+    "DeployedSet": {
+      "description": "The deployed set of one environment, as the Connector read it at `read_at`.",
+      "properties": {
+        "environment": {
+          "title": "Environment",
+          "type": "string"
+        },
+        "flows": {
+          "additionalProperties": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Flows",
+          "type": "object"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "prompts": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Prompts",
+          "type": "object"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider"
+        },
+        "read_at": {
+          "title": "Read At",
+          "type": "string"
+        },
+        "tier": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tier"
+        },
+        "tools": {
+          "additionalProperties": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Tools",
+          "type": "object"
+        }
+      },
+      "required": [
+        "read_at",
+        "environment"
+      ],
+      "title": "DeployedSet",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The deployed set as the Connector read it immediately before a push (CONTEXT.md\n**Restore point**).",
+  "properties": {
+    "deployed": {
+      "$ref": "#/$defs/DeployedSet"
+    },
+    "environment": {
+      "title": "Environment",
+      "type": "string"
+    },
+    "fingerprint": {
+      "title": "Fingerprint",
+      "type": "string"
+    },
+    "saved_at": {
+      "title": "Saved At",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "target": {
+      "title": "Target",
+      "type": "string"
+    }
+  },
+  "required": [
+    "target",
+    "environment",
+    "saved_at",
+    "fingerprint",
+    "deployed"
+  ],
+  "title": "RestorePoint",
+  "type": "object"
+}

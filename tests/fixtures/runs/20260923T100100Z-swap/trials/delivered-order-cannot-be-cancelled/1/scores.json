@@ -1,0 +1,35 @@
+{
+  "scenario": "delivered-order-cannot-be-cancelled",
+  "scores": [
+    {
+      "cites_read": [],
+      "direction": null,
+      "eval": "goal",
+      "eval_id": null,
+      "evidence": [
+        "retrieval-1",
+        "llm_call-2",
+        "llm_call-1"
+      ],
+      "fault_direction": null,
+      "fault_source": null,
+      "fidelity": "instrumented",
+      "rationale": "The goal asks that the customer learn NB-0688 was already delivered and therefore cannot be cancelled, and that nothing be cancelled. Both halves are shown in the Trace. The Target called lookup_order before answering (llm_call-1), and the real tool/result at retrieval-1 returned {\"status\":\"delivered\"} for NB-0688, matching the ground truth status. The Target then told the customer at llm_call-2: \"Order NB-0688, the Northwind Roadster wheelset, was already delivered, so it can no longer be cancelled\" \u2014 stating both the delivered status and that cancellation is therefore impossible. No cancel_order tool_use or tool/call appears anywhere in the Trace, so nothing was cancelled, matching the ground truth cancelled: false. The single user turn ran and the trace ended completed, so the evidence is complete rather than cut short.",
+      "reason": null,
+      "shared_model": false,
+      "source": {
+        "code": null,
+        "judge_fingerprint": "174e83481d0977fabdc991d15287ec65765e8f41f2c37a07a3d80d469db2ac21",
+        "kind": "judge",
+        "prompt_version": "goal.v4",
+        "requested_model": "claude-opus-5",
+        "resolved_model": "claude-opus-5",
+        "suppressions_in_force": []
+      },
+      "threshold": null,
+      "value": null,
+      "verdict": "pass"
+    }
+  ],
+  "trial": 1
+}

@@ -1,0 +1,13 @@
+# One predicate per stop_when, so what stopped a Trial is one thing a reader can name.
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: cancel-adaptively
+    title: Cancel an order, the customer improvising
+    turns:
+      - simulate:
+          goal: Get order NB-1042 cancelled.
+          stop_when:
+            tool_called: cancel_order
+            target_says_any: ["cancelled"]
+    max_turns: 4

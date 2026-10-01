@@ -1,0 +1,26 @@
+# One Suite: an authored collection of Scenarios for one Target (CONTEXT.md).
+schema_version: 1
+
+# The Target these Scenarios are written against, by the name in the Manifest.
+target: toy-order-desk
+description: What the order desk must do when a customer asks to cancel.
+
+scenarios:
+  # The id is how `--scenario` selects this Scenario and how a comparison joins it across
+  # Runs, so it is stable even when the title is reworded.
+  - id: cancel-processing-order
+    title: Cancel an order that is still processing
+    # Tags select without naming ids (`--tag orders`), and appear in the Run record.
+    tags: [orders, cancel]
+    # Literal user messages, in order. One Turn is one user message and the Target's
+    # complete response to it. A `- simulate: {goal, stop_when}` Turn, with `max_turns` on
+    # the Scenario, would hand the rest of the conversation to a Simulated User. Every
+    # field and every Eval's parameters: .claude/skills/agentdiag-generate/scenario-reference.md,
+    # which `agentdiag init --skills` installs.
+    turns:
+      - "Hi, I'd like to cancel order NB-1042."
+    # The judgements applied to this Trace. `- prompt_adherence` is the same declaration
+    # written short; the long form takes an `id` and `params` as well. Check the file
+    # offline with `agentdiag validate`.
+    evals:
+      - eval: prompt_adherence

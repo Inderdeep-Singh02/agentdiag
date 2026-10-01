@@ -1,0 +1,18 @@
+{
+  "built_at": "2026-09-27T10:00:00Z",
+  "environment": "local",
+  "id": "754191e77d32e5065280eac9c8c13f18893e024a701ba9ea5b537d21ae1c6e00",
+  "manifest_sha256": "7021e610a5f62eefd01830fea68e5fa180e8cf017c08ea0890c326b2854ebc96",
+  "not_covered": [],
+  "resynced_from": null,
+  "schema_version": 1,
+  "sections": {
+    "data_source.orders": {
+      "covered_by": "local",
+      "id": "data_source.orders",
+      "kind": "data_source",
+      "sha256": "2c8b08da5ce60398e1f19af0e5dccc744df274b826abe585eaba68c525434806",
+      "summary": null
+    }
+  }
+}

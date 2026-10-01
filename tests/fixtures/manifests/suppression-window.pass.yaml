@@ -1,0 +1,16 @@
+# The same Suppression with its window the right way round.
+schema_version: 1
+target: {name: toy-order-desk}
+adapter:
+  kind: inprocess
+  environments:
+    default: local
+    local:
+      factory: agentdiag.examples.toy:make_target
+      tools: agentdiag.examples.toy:make_tools
+      model: claude-sonnet-5
+judge_notes: judge_notes.md
+suites:
+  - suites/orders.yaml
+suppressions:
+  - {id: sup-001, eval: prompt_adherence, from: 2026-09-01, until: 2026-09-30, pattern: "a refund window quoted from the policy page", why: "the policy page is a tool result the toy cannot see"}

@@ -1,0 +1,14 @@
+# A bare Scenario-level `guardrails` would replace every inherited rule with none; opting
+# out is `inherit_suite_evals: false` (decision 16).
+schema_version: 1
+target: toy-order-desk
+evals:
+  - guardrails:
+      rules:
+        - {id: G1, rule: Never cancel an order that has shipped.}
+scenarios:
+  - id: cancel-order
+    title: Cancel an order
+    turns: ["Cancel NB-1042, please."]
+    evals:
+      - guardrails

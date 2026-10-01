@@ -1,0 +1,514 @@
+{
+  "$defs": {
+    "EvalDeclaration": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "not": {
+            "enum": [
+              "expect_tool",
+              "expect_tool_any",
+              "expect_tool_order",
+              "expect_tool_first",
+              "must_not_call",
+              "expect_no_tool"
+            ]
+          },
+          "type": "string"
+        },
+        {
+          "maxProperties": 1,
+          "minProperties": 1,
+          "propertyNames": {
+            "not": {
+              "enum": [
+                "eval",
+                "expect_tool",
+                "expect_tool_any",
+                "expect_tool_order",
+                "expect_tool_first",
+                "must_not_call",
+                "expect_no_tool"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        {
+          "description": "One Eval a Scenario or a Suite asks for (D19).",
+          "not": {
+            "required": [
+              "inherited"
+            ]
+          },
+          "properties": {
+            "eval": {
+              "not": {
+                "enum": [
+                  "expect_tool",
+                  "expect_tool_any",
+                  "expect_tool_order",
+                  "expect_tool_first",
+                  "must_not_call",
+                  "expect_no_tool"
+                ]
+              },
+              "title": "Eval",
+              "type": "string"
+            },
+            "id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Id"
+            },
+            "judge": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/JudgeOverride"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "params": {
+              "additionalProperties": true,
+              "title": "Params",
+              "type": "object"
+            },
+            "threshold": {
+              "anyOf": [
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Threshold"
+            }
+          },
+          "required": [
+            "eval"
+          ],
+          "type": "object"
+        }
+      ],
+      "description": "An Eval declaration: `- name`, `- name: <value>` (the value binds to the Eval's primary parameter), or the long form with an `eval` key.",
+      "title": "EvalDeclaration"
+    },
+    "FixtureSpec": {
+      "additionalProperties": true,
+      "description": "A named Fixture: `kind` (default `data`) and any further keys, which are its data, handed to the Adapter as written.",
+      "properties": {
+        "kind": {
+          "type": "string"
+        }
+      },
+      "title": "FixtureSpec",
+      "type": "object"
+    },
+    "JudgeOverride": {
+      "additionalProperties": false,
+      "description": "A judged Eval's own model and effort, overriding the Run's default (D19, D14).",
+      "properties": {
+        "effort": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effort"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        }
+      },
+      "title": "JudgeOverride",
+      "type": "object"
+    },
+    "Scenario": {
+      "additionalProperties": false,
+      "description": "One test definition: the Turns the user produces, the Fixtures that must exist, and\nthe Evals that judge the result (CONTEXT.md).",
+      "if": {
+        "properties": {
+          "turns": {
+            "contains": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "turns"
+        ]
+      },
+      "properties": {
+        "continues": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Continues"
+        },
+        "evals": {
+          "items": {
+            "$ref": "#/$defs/EvalDeclaration"
+          },
+          "title": "Evals",
+          "type": "array"
+        },
+        "extras": {
+          "additionalProperties": true,
+          "title": "Extras",
+          "type": "object"
+        },
+        "fixtures": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Fixtures",
+          "type": "array"
+        },
+        "focus": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Focus"
+        },
+        "ground_truth": {
+          "default": null,
+          "title": "Ground Truth"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "inherit_suite_evals": {
+          "default": true,
+          "title": "Inherit Suite Evals",
+          "type": "boolean"
+        },
+        "max_turns": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Turns"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        },
+        "provenance": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provenance"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "turns": {
+          "items": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/SimulateTurn"
+              }
+            ]
+          },
+          "minItems": 1,
+          "title": "Turns",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "turns"
+      ],
+      "then": {
+        "required": [
+          "max_turns"
+        ]
+      },
+      "title": "Scenario",
+      "type": "object"
+    },
+    "SimulateSpec": {
+      "additionalProperties": false,
+      "description": "What the Simulated User is told when it takes over the conversation (D18, D27).",
+      "oneOf": [
+        {
+          "required": [
+            "stop_when"
+          ]
+        },
+        {
+          "required": [
+            "stop_token"
+          ]
+        }
+      ],
+      "properties": {
+        "goal": {
+          "title": "Goal",
+          "type": "string"
+        },
+        "hints": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Hints",
+          "type": "array"
+        },
+        "known_facts": {
+          "additionalProperties": true,
+          "title": "Known Facts",
+          "type": "object"
+        },
+        "persona": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Persona"
+        },
+        "stop_token": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stop Token"
+        },
+        "stop_when": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StopWhen"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "unknown_facts": {
+          "additionalProperties": true,
+          "title": "Unknown Facts",
+          "type": "object"
+        }
+      },
+      "required": [
+        "goal"
+      ],
+      "title": "SimulateSpec",
+      "type": "object"
+    },
+    "SimulateTurn": {
+      "additionalProperties": false,
+      "description": "The marker `- simulate: {...}` in a Scenario's `turns`.",
+      "properties": {
+        "simulate": {
+          "$ref": "#/$defs/SimulateSpec"
+        }
+      },
+      "required": [
+        "simulate"
+      ],
+      "title": "SimulateTurn",
+      "type": "object"
+    },
+    "StopWhen": {
+      "additionalProperties": false,
+      "description": "One predicate over the Trace that ends an adaptive conversation (ADR-0002 §5).\n\nOne predicate per object, so what stopped a Trial is always one thing a reader can\nname. agentdiag evaluates it over the Trace after each Turn (`agentdiag.simulate.stop`,\nticket 06). An empty name, an empty phrase list or an empty phrase is refused (phase-5\ndecision 55): each would be a predicate that can never hold, or one that always does.",
+      "maxProperties": 1,
+      "minProperties": 1,
+      "properties": {
+        "judged": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Judged"
+        },
+        "target_says_any": {
+          "anyOf": [
+            {
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Says Any"
+        },
+        "tool_called": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tool Called"
+        }
+      },
+      "title": "StopWhen",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "A named, authored collection of Scenarios for one Target (CONTEXT.md, D17).",
+  "properties": {
+    "description": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "evals": {
+      "items": {
+        "$ref": "#/$defs/EvalDeclaration"
+      },
+      "title": "Evals",
+      "type": "array"
+    },
+    "extras": {
+      "additionalProperties": true,
+      "title": "Extras",
+      "type": "object"
+    },
+    "fixtures": {
+      "additionalProperties": {
+        "$ref": "#/$defs/FixtureSpec"
+      },
+      "title": "Fixtures",
+      "type": "object"
+    },
+    "not_run": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Not Run",
+      "type": "object"
+    },
+    "scenarios": {
+      "items": {
+        "$ref": "#/$defs/Scenario"
+      },
+      "minItems": 1,
+      "title": "Scenarios",
+      "type": "array"
+    },
+    "schema_version": {
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "target": {
+      "title": "Target",
+      "type": "string"
+    }
+  },
+  "required": [
+    "target",
+    "scenarios"
+  ],
+  "title": "Suite",
+  "type": "object"
+}

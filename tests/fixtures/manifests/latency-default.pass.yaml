@@ -1,0 +1,16 @@
+# The same Suite, the Manifest supplying the default threshold.
+schema_version: 1
+target: {name: toy-order-desk}
+adapter:
+  kind: inprocess
+  environments:
+    default: local
+    local:
+      factory: agentdiag.examples.toy:make_target
+      tools: agentdiag.examples.toy:make_tools
+      model: claude-sonnet-5
+judge_notes: judge_notes.md
+eval_parameters:
+  latency: {response_max_ms: 30000}
+suites:
+  - suites/latency-without-threshold.yaml

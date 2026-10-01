@@ -1,0 +1,13 @@
+# A target_says_any predicate names at least one phrase (phase-5 decision 55): an empty
+# list could never hold, so the Trial would always run to max_turns.
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: cancel-adaptively
+    title: Cancel an order, the customer improvising
+    turns:
+      - simulate:
+          goal: Get order NB-1042 cancelled.
+          stop_when:
+            target_says_any: []
+    max_turns: 4

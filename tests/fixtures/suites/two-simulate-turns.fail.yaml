@@ -1,0 +1,15 @@
+# One simulate Turn per Scenario (phase-5 decision 55): two goals in one Trial is not a
+# Scenario anyone has written.
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: cancel-then-reorder
+    title: Cancel an order, then place another, the customer improvising both
+    turns:
+      - simulate:
+          goal: Get order NB-1042 cancelled.
+          stop_when: {tool_called: cancel_order}
+      - simulate:
+          goal: Order the same bike in blue.
+          stop_token: "[DONE]"
+    max_turns: 6

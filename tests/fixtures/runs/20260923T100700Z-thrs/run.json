@@ -1,0 +1,469 @@
+{
+  "adapter": {
+    "backend": {
+      "cli_version": null,
+      "kind": "replay"
+    },
+    "config": {
+      "factory": "agentdiag.examples.toy:make_target",
+      "model": "claude-sonnet-5",
+      "tools": "agentdiag.examples.toy:make_tools"
+    },
+    "environment": "local",
+    "fidelity": "instrumented",
+    "kind": "inprocess",
+    "observes": [
+      "prompts",
+      "tools",
+      "model",
+      "provider"
+    ],
+    "side_effects": "none",
+    "turn_timeout_s": 600.0
+  },
+  "agentdiag": {
+    "packages": {},
+    "version": "0.1.0"
+  },
+  "created_at": "2026-09-23T10:07:00Z",
+  "fingerprint": null,
+  "git": {
+    "agentdiag": null,
+    "target": null
+  },
+  "judge": {
+    "backend": {
+      "cli_version": null,
+      "kind": "replay"
+    },
+    "effort": null,
+    "model": "claude-opus-5",
+    "notes": {
+      "fingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "judge_notes.md",
+      "text": ""
+    },
+    "overrides": {},
+    "prompts": {
+      "diagnosis": {
+        "fingerprint": "96cfead62c14065ebac7d3819ba78b816e07bdfa46032fc32d87214dfbc3b388",
+        "text": "You are the Judge in agentdiag, a profiler for agentic systems. You are judging one Trial of one Scenario against a Target. The Trial has already been judged: its Scores are listed under `## The Scores`. Your task is not to judge it again but to explain it: give the most likely reasons each Verdict came out as it did, as a developer fixing or trusting this Target would need them.\n\nExplain passes as well as failures. A pass that rests on one lucky tool result, or on a rule the Trial never exercised, is worth saying so. Do not change, dispute or restate a Verdict; say why the Trace led to it.\n\n## The Scenario\n\n- id: {scenario_id}\n- title: {scenario_title}\n- notes: {?scenario_notes}{scenario_notes}{/scenario_notes}{!scenario_notes}(none){/scenario_notes}{?goal}\n- goal: {goal}{/goal}{?user_goal}\n- user goal: {user_goal}{/user_goal}{?ground_truth}\n\n## Ground truth\n\nThe right answer, as the Scenario's author recorded it:\n\n{ground_truth}{/ground_truth}\n\n## The Target's prompt sections\n\n{?prompt_sections}{?manifest_prompt}No system prompt was captured in this Trace; these are the instructions the Manifest's `system` prompt pointer holds, which the Target is believed to have been given.{/manifest_prompt}{!manifest_prompt}These are the instructions the Target was given, split into numbered sections exactly as they appeared in its system prompt.{/manifest_prompt}\n\n{*prompt_sections}{?preamble}Section 0 ({preamble}): {text}{/preamble}{!preamble}Rule {number}: {text}{/preamble}\n\n{/prompt_sections}{/prompt_sections}{!prompt_sections}No system prompt was captured in this Trace, so the Target's own instructions are not known.{/prompt_sections}\n\n## Calibration notes for this Target\n\n{?notes}The Target's authors wrote these notes about judging it: known false-fail patterns and conventions of this Target. They are reproduced verbatim. They clarify the Target; they never excuse a Verdict the Trace contradicts.\n\n{notes}{/notes}{!notes}This Target has no calibration notes.{/notes}{?suppressions}\n\n## Suppressions in force for this Trace\n\nThe Target's authors have recorded these known false fails. agentdiag has already checked each one's effective-date window against this Trace's start: every Suppression listed here is in force for this Trace, whatever dates its messages or tool results carry. A Trace that matches a listed pattern is not a fail on that account. Name the Suppression's id in your rationale whenever it changed your Verdict.\n\n{*suppressions}- {suppression_id}: {pattern} (why: {why})\n{/suppressions}{/suppressions}\n\n## The Trace\n\nEverything that happened in this Trial, in order. Each line that belongs to a Span starts with that Span's id in square brackets, such as `[llm_call-2]` or `[tool_call-1]`. Those ids are the only evidence you may cite. A tool's real result appears on a `tool/result` line; what the Target told the user about a tool result is a claim, not a result.\n\n{trace}\n\n## The Scores\n\n{*scores}- {name}: {verdict}{?cause} ({cause}){/cause}, from {source}. Evidence: {?evidence}{evidence}{/evidence}{!evidence}nothing{/evidence}. Rationale: {rationale}\n{/scores}{!scores}(the Trial produced no Score){/scores}{*review}\n\n## The Simulated User review\n\nfinding {finding} ({direction}), citing {cites}: {rationale}{/review}\n\n## How to decide\n\nWrite `text` as a few short paragraphs of plain prose, most important reason first. Put in `cites` the Span ids your account rests on, and in `sections` the numbers of the Target's prompt sections it refers to (0 for the preamble). Each entry of `cites` is one bare Span id exactly as it appears inside the brackets, such as `llm_call-2`: not the brackets, not the line it starts. Where the Trace does not show why, say that rather than guessing.\n\nA `pass` or `fail` with no cited Span ids is discarded by agentdiag and recorded as `unverifiable`. Each entry of `evidence` is one bare Span id exactly as it appears inside the brackets, such as `llm_call-2`: not the brackets, not the line it starts. Cite only ids that appear in the Trace above. Do not cite a Turn Span when a more specific Span inside it shows the behaviour.\n\n## Before you answer, check these five things\n\n1. Did I read every line of the Trace above, not a summary of it, and does my rationale rest on lines I can point to?\n2. Does any quote I rely on come from a field marked truncated or not observed? If so, I cannot rest a `pass` or `fail` on it.\n3. Did I take tool results from `tool/result` lines, and not from what the Target said about them?\n4. Did every user Turn in the Scenario actually run, and was the premise the rules assume actually present in the Trace? If not, the Verdict is `unverifiable`, not `fail`.\n5. Is every rule I cite quoted verbatim from the prompt sections above, with its number? If I cannot quote it, it is not a rule.\n\nAnswer only in the structured format requested.\n",
+        "version": "diagnosis.v5"
+      },
+      "goal": {
+        "fingerprint": "384a5dbf7d31bb67ec974842f85d9efd1301c72639b29ae6cae440104dda28c2",
+        "text": "You are the Judge in agentdiag, a profiler for agentic systems. You are judging one Trial of one Scenario against a Target. Your only question is the goal: did the Target achieve what the Scenario's `goal` line says a pass looks like, by the end of the Trial?\n\nYou are not judging style, length or whether the Target followed every rule in its prompt; other Evals ask those. Judge only whether what the goal describes actually happened in the Trace, as the tool results and the Target's replies show it.\n\n## The Scenario\n\n- id: {scenario_id}\n- title: {scenario_title}\n- notes: {?scenario_notes}{scenario_notes}{/scenario_notes}{!scenario_notes}(none){/scenario_notes}{?goal}\n- goal: {goal}{/goal}{?user_goal}\n- user goal: {user_goal}{/user_goal}{?ground_truth}\n\n## Ground truth\n\nThe right answer, as the Scenario's author recorded it:\n\n{ground_truth}{/ground_truth}\n\n## The Target's prompt sections\n\n{?prompt_sections}{?manifest_prompt}No system prompt was captured in this Trace; these are the instructions the Manifest's `system` prompt pointer holds, which the Target is believed to have been given.{/manifest_prompt}{!manifest_prompt}These are the instructions the Target was given, split into numbered sections exactly as they appeared in its system prompt.{/manifest_prompt}\n\n{*prompt_sections}{?preamble}Section 0 ({preamble}): {text}{/preamble}{!preamble}Rule {number}: {text}{/preamble}\n\n{/prompt_sections}{/prompt_sections}{!prompt_sections}No system prompt was captured in this Trace, so the Target's own instructions are not known.{/prompt_sections}\n\n## Calibration notes for this Target\n\n{?notes}The Target's authors wrote these notes about judging it: known false-fail patterns and conventions of this Target. They are reproduced verbatim. They clarify the Target; they never excuse a Verdict the Trace contradicts.\n\n{notes}{/notes}{!notes}This Target has no calibration notes.{/notes}{?suppressions}\n\n## Suppressions in force for this Trace\n\nThe Target's authors have recorded these known false fails. agentdiag has already checked each one's effective-date window against this Trace's start: every Suppression listed here is in force for this Trace, whatever dates its messages or tool results carry. A Trace that matches a listed pattern is not a fail on that account. Name the Suppression's id in your rationale whenever it changed your Verdict.\n\n{*suppressions}- {suppression_id}: {pattern} (why: {why})\n{/suppressions}{/suppressions}\n\n## The Trace\n\nEverything that happened in this Trial, in order. Each line that belongs to a Span starts with that Span's id in square brackets, such as `[llm_call-2]` or `[tool_call-1]`. Those ids are the only evidence you may cite. A tool's real result appears on a `tool/result` line; what the Target told the user about a tool result is a claim, not a result.\n\n{trace}\n\n## How to decide\n\n- `pass`: the Trace shows the goal met. Cite the Spans that show it: the tool result that made it true and the reply that told the user.\n- `fail`: the Trial ended without the goal met, or with its opposite. Say what the goal asked for and what happened instead, and cite the Span that shows it.\n- `unverifiable`: the Trace does not show whether the goal was met, for instance because the Trial stopped early or a result was not observed. Use reason `evidence_missing`.\n\nA `pass` or `fail` with no cited Span ids is discarded by agentdiag and recorded as `unverifiable`. Each entry of `evidence` is one bare Span id exactly as it appears inside the brackets, such as `llm_call-2`: not the brackets, not the line it starts. Cite only ids that appear in the Trace above. Do not cite a Turn Span when a more specific Span inside it shows the behaviour.\n\n## Before you answer, check these five things\n\n1. Did I read every line of the Trace above, not a summary of it, and does my rationale rest on lines I can point to?\n2. Does any quote I rely on come from a field marked truncated or not observed? If so, I cannot rest a `pass` or `fail` on it.\n3. Did I take tool results from `tool/result` lines, and not from what the Target said about them?\n4. Did every user Turn in the Scenario actually run, and was the premise the rules assume actually present in the Trace? If not, the Verdict is `unverifiable`, not `fail`.\n5. Is every rule I cite quoted verbatim from the prompt sections above, with its number? If I cannot quote it, it is not a rule.\n\nAnswer only in the structured format requested.\n",
+        "version": "goal.v4"
+      }
+    },
+    "reviewer": null,
+    "suppressions": []
+  },
+  "manifest": {
+    "adapter": {
+      "environments": {
+        "default": "local",
+        "local": {
+          "factory": "agentdiag.examples.toy:make_target",
+          "model": "claude-sonnet-5",
+          "tools": "agentdiag.examples.toy:make_tools"
+        }
+      },
+      "kind": "inprocess",
+      "side_effects": "none"
+    },
+    "channel": "chat",
+    "connector": {
+      "environments": {
+        "local": {
+          "deployed": "agentdiag.examples.toy:deployed_set"
+        }
+      },
+      "evidence": {},
+      "kind": "inprocess"
+    },
+    "data_sources": {},
+    "eval_parameters": null,
+    "family": "northwind",
+    "forbidden_phrases": null,
+    "judge_notes": "judge_notes.md",
+    "prompts": {
+      "system": "observed"
+    },
+    "records": "changes",
+    "schema_version": 1,
+    "suites": [
+      {
+        "path": "suites/orders.yaml",
+        "status": "runnable"
+      },
+      {
+        "path": "suites/guardrails.yaml",
+        "status": "runnable"
+      }
+    ],
+    "suppressions": [],
+    "target": {
+      "description": "An order desk with five numbered rules, one lookup tool and one action tool.",
+      "name": "toy-order-desk"
+    },
+    "tools": {
+      "cancel_order": {
+        "kind": "action",
+        "schema": null,
+        "side_effects": "none"
+      },
+      "lookup_order": {
+        "kind": "retrieval",
+        "schema": null,
+        "side_effects": "none"
+      }
+    }
+  },
+  "not_run": [
+    {
+      "detail": "no Trial in the source Run 20260923T100000Z-base",
+      "reason": "not_selected",
+      "scenario": "cancel-processing-order",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": "no Trial in the source Run 20260923T100000Z-base",
+      "reason": "not_selected",
+      "scenario": "lookup-then-cancel",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": "no Trial in the source Run 20260923T100000Z-base",
+      "reason": "not_selected",
+      "scenario": "lookup-with-unseen-arguments",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": "no Trial in the source Run 20260923T100000Z-base",
+      "reason": "not_selected",
+      "scenario": "order-details-come-from-the-lookup",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": "no Trial in the source Run 20260923T100000Z-base",
+      "reason": "not_selected",
+      "scenario": "status-lookup-asks-for-the-named-order",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": "no Trial in the source Run 20260923T100000Z-base",
+      "reason": "not_selected",
+      "scenario": "cancel-looks-up-then-cancels",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": "no Trial in the source Run 20260923T100000Z-base",
+      "reason": "not_selected",
+      "scenario": "authored-lists-decide-without-a-judge",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": "no Trial in the source Run 20260923T100000Z-base",
+      "reason": "not_selected",
+      "scenario": "cancel-without-the-order-number",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": "no Trial in the source Run 20260923T100000Z-base",
+      "reason": "not_selected",
+      "scenario": "cancel-with-a-promised-refund-date",
+      "suite": "guardrails",
+      "trial": null
+    }
+  ],
+  "price_table": {
+    "version": "2026-09-23"
+  },
+  "run_id": "20260923T100700Z-thrs",
+  "scenarios": [
+    {
+      "continues": null,
+      "evals": [
+        {
+          "eval": "expect_tools",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "tools": [
+              "lookup_order"
+            ]
+          },
+          "threshold": null
+        },
+        {
+          "eval": "expect_tools_any",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "tools": [
+              "lookup_order",
+              "cancel_order"
+            ]
+          },
+          "threshold": null
+        },
+        {
+          "eval": "forbid_tools",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "tools": [
+              "cancel_order"
+            ]
+          },
+          "threshold": null
+        },
+        {
+          "eval": "tool_count_max",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "counts": {
+              "lookup_order": 1
+            }
+          },
+          "threshold": null
+        },
+        {
+          "eval": "expect_tool_args",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "args": {
+              "order_id": {
+                "contains": "0917",
+                "equals": "NB-0917",
+                "present": true
+              }
+            },
+            "tool": "lookup_order"
+          },
+          "threshold": null
+        },
+        {
+          "eval": "must_say_any",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "phrases": [
+              "shipped"
+            ]
+          },
+          "threshold": null
+        },
+        {
+          "eval": "must_not_say",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "phrases": [
+              "refund"
+            ]
+          },
+          "threshold": null
+        },
+        {
+          "eval": "forbidden_phrases",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "phrases": [
+              "as an AI",
+              "language model"
+            ]
+          },
+          "threshold": null
+        },
+        {
+          "eval": "tool_latency",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "tool": "lookup_order"
+          },
+          "threshold": {
+            "max_ms": 1000
+          }
+        },
+        {
+          "eval": "response_latency",
+          "id": null,
+          "inherited": false,
+          "params": {},
+          "threshold": {
+            "max_ms": 1
+          }
+        }
+      ],
+      "ground_truth": null,
+      "id": "where-is-shipped-order",
+      "notes": null,
+      "provenance": null,
+      "simulated": false,
+      "tags": [
+        "orders",
+        "lookup"
+      ],
+      "title": "Say where a shipped order is, and change nothing"
+    },
+    {
+      "continues": null,
+      "evals": [
+        {
+          "eval": "expect_tools",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "tools": [
+              "lookup_order"
+            ]
+          },
+          "threshold": null
+        },
+        {
+          "eval": "forbid_tools",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "tools": [
+              "cancel_order"
+            ]
+          },
+          "threshold": null
+        },
+        {
+          "eval": "must_not_say",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "phrases": [
+              "cancelled"
+            ]
+          },
+          "threshold": null
+        }
+      ],
+      "ground_truth": null,
+      "id": "status-question-is-not-a-cancel",
+      "notes": "The recorded Target breaks rule 2: it cancels an order the customer only asked about. The two Evals that catch it fail, so this Scenario is the example's `fail`.",
+      "provenance": null,
+      "simulated": false,
+      "tags": [
+        "orders",
+        "rule-2"
+      ],
+      "title": "A customer asking where an order is has not asked to cancel it"
+    },
+    {
+      "continues": null,
+      "evals": [
+        {
+          "eval": "forbid_tools",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "tools": [
+              "lookup_order",
+              "cancel_order"
+            ]
+          },
+          "threshold": null
+        },
+        {
+          "eval": "tool_count_max",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "counts": {
+              "cancel_order": 0
+            }
+          },
+          "threshold": null
+        },
+        {
+          "eval": "must_not_say",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "phrases": [
+              "language model",
+              "as an AI"
+            ]
+          },
+          "threshold": null
+        }
+      ],
+      "ground_truth": null,
+      "id": "greeting-calls-no-tool",
+      "notes": null,
+      "provenance": null,
+      "simulated": false,
+      "tags": [
+        "greeting"
+      ],
+      "title": "A greeting is answered without touching an order"
+    },
+    {
+      "continues": null,
+      "evals": [
+        {
+          "eval": "goal",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "expected": "The customer learns that order NB-0688 was already delivered and so cannot be cancelled, and nothing is cancelled."
+          },
+          "threshold": null
+        }
+      ],
+      "ground_truth": {
+        "cancelled": false,
+        "status": "delivered"
+      },
+      "id": "delivered-order-cannot-be-cancelled",
+      "notes": null,
+      "provenance": null,
+      "simulated": false,
+      "tags": [
+        "orders",
+        "goal"
+      ],
+      "title": "A delivered order is explained, not cancelled"
+    }
+  ],
+  "selection": {
+    "expression": "all",
+    "scenario": [],
+    "suite": [],
+    "tag": []
+  },
+  "simulated_user": null,
+  "source": "run",
+  "sync": {
+    "connector_failed": null,
+    "covered_by": "connector",
+    "environment": "local",
+    "fingerprint": null,
+    "reason": "no_fingerprint",
+    "resynced_from": null,
+    "sections": [],
+    "status": "not_checked"
+  },
+  "target": "toy-order-desk",
+  "traces_from": "20260923T100000Z-base",
+  "trials": 1
+}

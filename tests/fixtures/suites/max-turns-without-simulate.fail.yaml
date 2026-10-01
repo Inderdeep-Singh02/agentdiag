@@ -1,0 +1,8 @@
+# With literal Turns only, max_turns can only equal the number of Turns (decision 10).
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: cancel-order
+    title: Cancel an order
+    turns: ["Cancel NB-1042, please.", "Thanks."]
+    max_turns: 5

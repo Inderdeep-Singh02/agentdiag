@@ -1,0 +1,453 @@
+{
+  "cites_read": 0,
+  "counts": {
+    "fail": 2,
+    "incomplete": 0,
+    "invalid": 0,
+    "pass": 12,
+    "unverifiable": 0
+  },
+  "excluded_trials": 0,
+  "not_run": [
+    {
+      "detail": null,
+      "reason": "not_selected",
+      "scenario": "cancel-processing-order",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": null,
+      "reason": "not_selected",
+      "scenario": "lookup-then-cancel",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": null,
+      "reason": "not_selected",
+      "scenario": "lookup-with-unseen-arguments",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": null,
+      "reason": "not_selected",
+      "scenario": "greeting-calls-no-tool",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": null,
+      "reason": "not_selected",
+      "scenario": "order-details-come-from-the-lookup",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": null,
+      "reason": "not_selected",
+      "scenario": "status-lookup-asks-for-the-named-order",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": null,
+      "reason": "not_selected",
+      "scenario": "cancel-looks-up-then-cancels",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": null,
+      "reason": "not_selected",
+      "scenario": "authored-lists-decide-without-a-judge",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": null,
+      "reason": "not_selected",
+      "scenario": "cancel-without-the-order-number",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": null,
+      "reason": "not_selected",
+      "scenario": "cancel-with-a-promised-refund-date",
+      "suite": "guardrails",
+      "trial": null
+    }
+  ],
+  "pass_k": {
+    "1": 0.6666666666666666
+  },
+  "pass_rate": 0.8571428571428571,
+  "run_id": "20260923T100300Z-part",
+  "scenario_aggregates": [
+    {
+      "decidable": 1,
+      "evals": [
+        {
+          "abnormal": {
+            "incomplete": 0,
+            "invalid": 0,
+            "unverifiable": 0
+          },
+          "decidable": 1,
+          "direction": null,
+          "eval": "expect_tools",
+          "eval_id": null,
+          "judged": false,
+          "mean": 1.0,
+          "passed": 1,
+          "value_mean": null
+        },
+        {
+          "abnormal": {
+            "incomplete": 0,
+            "invalid": 0,
+            "unverifiable": 0
+          },
+          "decidable": 1,
+          "direction": null,
+          "eval": "expect_tools_any",
+          "eval_id": null,
+          "judged": false,
+          "mean": 1.0,
+          "passed": 1,
+          "value_mean": null
+        },
+        {
+          "abnormal": {
+            "incomplete": 0,
+            "invalid": 0,
+            "unverifiable": 0
+          },
+          "decidable": 1,
+          "direction": null,
+          "eval": "forbid_tools",
+          "eval_id": null,
+          "judged": false,
+          "mean": 1.0,
+          "passed": 1,
+          "value_mean": null
+        },
+        {
+          "abnormal": {
+            "incomplete": 0,
+            "invalid": 0,
+            "unverifiable": 0
+          },
+          "decidable": 1,
+          "direction": null,
+          "eval": "tool_count_max",
+          "eval_id": null,
+          "judged": false,
+          "mean": 1.0,
+          "passed": 1,
+          "value_mean": null
+        },
+        {
+          "abnormal": {
+            "incomplete": 0,
+            "invalid": 0,
+            "unverifiable": 0
+          },
+          "decidable": 1,
+          "direction": null,
+          "eval": "expect_tool_args",
+          "eval_id": null,
+          "judged": false,
+          "mean": 1.0,
+          "passed": 1,
+          "value_mean": null
+        },
+        {
+          "abnormal": {
+            "incomplete": 0,
+            "invalid": 0,
+            "unverifiable": 0
+          },
+          "decidable": 1,
+          "direction": null,
+          "eval": "must_say_any",
+          "eval_id": null,
+          "judged": false,
+          "mean": 1.0,
+          "passed": 1,
+          "value_mean": null
+        },
+        {
+          "abnormal": {
+            "incomplete": 0,
+            "invalid": 0,
+            "unverifiable": 0
+          },
+          "decidable": 1,
+          "direction": null,
+          "eval": "must_not_say",
+          "eval_id": null,
+          "judged": false,
+          "mean": 1.0,
+          "passed": 1,
+          "value_mean": null
+        },
+        {
+          "abnormal": {
+            "incomplete": 0,
+            "invalid": 0,
+            "unverifiable": 0
+          },
+          "decidable": 1,
+          "direction": null,
+          "eval": "forbidden_phrases",
+          "eval_id": null,
+          "judged": false,
+          "mean": 1.0,
+          "passed": 1,
+          "value_mean": null
+        },
+        {
+          "abnormal": {
+            "incomplete": 0,
+            "invalid": 0,
+            "unverifiable": 0
+          },
+          "decidable": 1,
+          "direction": "minimize",
+          "eval": "tool_latency",
+          "eval_id": null,
+          "judged": false,
+          "mean": 1.0,
+          "passed": 1,
+          "value_mean": 3.0
+        },
+        {
+          "abnormal": {
+            "incomplete": 0,
+            "invalid": 0,
+            "unverifiable": 0
+          },
+          "decidable": 1,
+          "direction": "minimize",
+          "eval": "response_latency",
+          "eval_id": null,
+          "judged": false,
+          "mean": 1.0,
+          "passed": 1,
+          "value_mean": 16.0
+        }
+      ],
+      "id": "where-is-shipped-order",
+      "pass_k": {
+        "1": 1.0
+      },
+      "passed": 1,
+      "suite": "orders",
+      "trials": 1
+    },
+    {
+      "decidable": 1,
+      "evals": [
+        {
+          "abnormal": {
+            "incomplete": 0,
+            "invalid": 0,
+            "unverifiable": 0
+          },
+          "decidable": 1,
+          "direction": null,
+          "eval": "expect_tools",
+          "eval_id": null,
+          "judged": false,
+          "mean": 1.0,
+          "passed": 1,
+          "value_mean": null
+        },
+        {
+          "abnormal": {
+            "incomplete": 0,
+            "invalid": 0,
+            "unverifiable": 0
+          },
+          "decidable": 1,
+          "direction": null,
+          "eval": "forbid_tools",
+          "eval_id": null,
+          "judged": false,
+          "mean": 0.0,
+          "passed": 0,
+          "value_mean": null
+        },
+        {
+          "abnormal": {
+            "incomplete": 0,
+            "invalid": 0,
+            "unverifiable": 0
+          },
+          "decidable": 1,
+          "direction": null,
+          "eval": "must_not_say",
+          "eval_id": null,
+          "judged": false,
+          "mean": 0.0,
+          "passed": 0,
+          "value_mean": null
+        }
+      ],
+      "id": "status-question-is-not-a-cancel",
+      "pass_k": {
+        "1": 0.0
+      },
+      "passed": 0,
+      "suite": "orders",
+      "trials": 1
+    },
+    {
+      "decidable": 1,
+      "evals": [
+        {
+          "abnormal": {
+            "incomplete": 0,
+            "invalid": 0,
+            "unverifiable": 0
+          },
+          "decidable": 1,
+          "direction": null,
+          "eval": "goal",
+          "eval_id": null,
+          "judged": true,
+          "mean": 1.0,
+          "passed": 1,
+          "value_mean": null
+        }
+      ],
+      "id": "delivered-order-cannot-be-cancelled",
+      "pass_k": {
+        "1": 1.0
+      },
+      "passed": 1,
+      "suite": "orders",
+      "trials": 1
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "where-is-shipped-order",
+      "scores": [
+        {
+          "eval": "expect_tools",
+          "eval_id": null,
+          "reason": null,
+          "verdict": "pass"
+        },
+        {
+          "eval": "expect_tools_any",
+          "eval_id": null,
+          "reason": null,
+          "verdict": "pass"
+        },
+        {
+          "eval": "forbid_tools",
+          "eval_id": null,
+          "reason": null,
+          "verdict": "pass"
+        },
+        {
+          "eval": "tool_count_max",
+          "eval_id": null,
+          "reason": null,
+          "verdict": "pass"
+        },
+        {
+          "eval": "expect_tool_args",
+          "eval_id": null,
+          "reason": null,
+          "verdict": "pass"
+        },
+        {
+          "eval": "must_say_any",
+          "eval_id": null,
+          "reason": null,
+          "verdict": "pass"
+        },
+        {
+          "eval": "must_not_say",
+          "eval_id": null,
+          "reason": null,
+          "verdict": "pass"
+        },
+        {
+          "eval": "forbidden_phrases",
+          "eval_id": null,
+          "reason": null,
+          "verdict": "pass"
+        },
+        {
+          "eval": "tool_latency",
+          "eval_id": null,
+          "reason": null,
+          "verdict": "pass"
+        },
+        {
+          "eval": "response_latency",
+          "eval_id": null,
+          "reason": null,
+          "verdict": "pass"
+        }
+      ],
+      "trial": 1
+    },
+    {
+      "id": "status-question-is-not-a-cancel",
+      "scores": [
+        {
+          "eval": "expect_tools",
+          "eval_id": null,
+          "reason": null,
+          "verdict": "pass"
+        },
+        {
+          "eval": "forbid_tools",
+          "eval_id": null,
+          "reason": null,
+          "verdict": "fail"
+        },
+        {
+          "eval": "must_not_say",
+          "eval_id": null,
+          "reason": null,
+          "verdict": "fail"
+        }
+      ],
+      "trial": 1
+    },
+    {
+      "id": "delivered-order-cannot-be-cancelled",
+      "scores": [
+        {
+          "eval": "goal",
+          "eval_id": null,
+          "reason": null,
+          "verdict": "pass"
+        }
+      ],
+      "trial": 1
+    }
+  ],
+  "shared_model": false,
+  "simulated_user_sampling": null,
+  "sync": {
+    "connector_failed": null,
+    "covered_by": "connector",
+    "environment": "local",
+    "fingerprint": null,
+    "reason": "no_fingerprint",
+    "resynced_from": null,
+    "sections": [],
+    "status": "not_checked"
+  },
+  "trials": 1
+}

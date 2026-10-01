@@ -1,0 +1,87 @@
+{
+  "scenario": "greeting-calls-no-tool",
+  "scores": [
+    {
+      "cites_read": [],
+      "direction": null,
+      "eval": "forbid_tools",
+      "eval_id": null,
+      "evidence": [
+        "llm_call-1"
+      ],
+      "fault_direction": null,
+      "fault_source": null,
+      "fidelity": "instrumented",
+      "rationale": "The Target called none of lookup_order, cancel_order. The Adapter instrumented every model call and every tool, and no response in the Trace (llm_call-1) asked for a tool, so the absence of tool Spans is a fact, not a gap.",
+      "reason": null,
+      "shared_model": null,
+      "source": {
+        "code": "agentdiag.eval.tools:forbid_tools",
+        "judge_fingerprint": null,
+        "kind": "mechanical",
+        "prompt_version": null,
+        "requested_model": null,
+        "resolved_model": null,
+        "suppressions_in_force": []
+      },
+      "threshold": null,
+      "value": null,
+      "verdict": "pass"
+    },
+    {
+      "cites_read": [],
+      "direction": null,
+      "eval": "tool_count_max",
+      "eval_id": null,
+      "evidence": [
+        "llm_call-1"
+      ],
+      "fault_direction": null,
+      "fault_source": null,
+      "fidelity": "instrumented",
+      "rationale": "The Target called no tool, so none exceeded its cap. The Adapter instrumented every model call and every tool, and no response in the Trace (llm_call-1) asked for a tool, so the absence of tool Spans is a fact, not a gap.",
+      "reason": null,
+      "shared_model": null,
+      "source": {
+        "code": "agentdiag.eval.tools:tool_count_max",
+        "judge_fingerprint": null,
+        "kind": "mechanical",
+        "prompt_version": null,
+        "requested_model": null,
+        "resolved_model": null,
+        "suppressions_in_force": []
+      },
+      "threshold": null,
+      "value": null,
+      "verdict": "pass"
+    },
+    {
+      "cites_read": [],
+      "direction": null,
+      "eval": "must_not_say",
+      "eval_id": null,
+      "evidence": [
+        "turn-1"
+      ],
+      "fault_direction": null,
+      "fault_source": null,
+      "fidelity": "instrumented",
+      "rationale": "The Target said none of 'language model', 'as an AI' in the Trace",
+      "reason": null,
+      "shared_model": null,
+      "source": {
+        "code": "agentdiag.eval.text:must_not_say",
+        "judge_fingerprint": null,
+        "kind": "mechanical",
+        "prompt_version": null,
+        "requested_model": null,
+        "resolved_model": null,
+        "suppressions_in_force": []
+      },
+      "threshold": null,
+      "value": null,
+      "verdict": "pass"
+    }
+  ],
+  "trial": 2
+}

@@ -1,0 +1,11 @@
+llm.cost.completion
+llm.cost.completion_details.audio
+llm.cost.completion_details.output
+llm.cost.completion_details.reasoning
+llm.cost.prompt
+llm.cost.prompt_details.audio
+llm.cost.prompt_details.cache_input
+llm.cost.prompt_details.cache_read
+llm.cost.prompt_details.cache_write
+llm.cost.prompt_details.input
+llm.cost.total

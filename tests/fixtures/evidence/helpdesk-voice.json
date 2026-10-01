@@ -1,0 +1,46 @@
+{
+  "conversation_id": "v-0001",
+  "started_at": "2026-09-23T16:00:00Z",
+  "duration_s": 48.5,
+  "transcript": [
+    {
+      "role": "user",
+      "text": "Hi, I need to reset my password.",
+      "at": "2026-09-23T16:00:02Z"
+    },
+    {
+      "role": "assistant",
+      "text": "I can help with that. Let me find the steps.",
+      "at": "2026-09-23T16:00:05Z",
+      "tool_calls": [
+        {
+          "name": "search_articles",
+          "arguments": {
+            "query": "reset password"
+          },
+          "result": [
+            {
+              "id": "KB-101",
+              "title": "Reset your password"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "Choose Forgot password on the sign-in page and follow the email link.",
+      "at": "2026-09-23T16:00:12Z"
+    },
+    {
+      "role": "user",
+      "text": "Great, thanks.",
+      "at": "2026-09-23T16:00:40Z"
+    },
+    {
+      "role": "assistant",
+      "text": "You are welcome. Goodbye.",
+      "at": "2026-09-23T16:00:44Z"
+    }
+  ]
+}

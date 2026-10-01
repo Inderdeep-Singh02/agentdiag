@@ -1,0 +1,18 @@
+{
+  "built_at": "2026-09-27T10:00:00Z",
+  "environment": "local",
+  "id": "9ecda50d00fb10bc4b8e7a974691df8c1ad04bc51179aca97eafe236a7fe8732",
+  "manifest_sha256": "7021e610a5f62eefd01830fea68e5fa180e8cf017c08ea0890c326b2854ebc96",
+  "not_covered": [],
+  "resynced_from": null,
+  "schema_version": 1,
+  "sections": {
+    "tool.cancel_order": {
+      "covered_by": "adapter",
+      "id": "tool.cancel_order",
+      "kind": "tool",
+      "sha256": "2c8b08da5ce60398e1f19af0e5dccc744df274b826abe585eaba68c525434806",
+      "summary": null
+    }
+  }
+}

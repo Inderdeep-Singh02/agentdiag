@@ -1,0 +1,209 @@
+# Written by `agentdiag generate` from the drafts in
+#   .agentdiag/targets/help-desk/drafts/generated.yaml
+# Regenerate from the drafts rather than editing here: ids are kept, and a Scenario
+# no draft matches stays, listed under not_run as retired.
+schema_version: 1
+target: help-desk
+description: One Scenario per rule of the help desk's prompt, per tool, and one for its persona and tone.
+scenarios:
+  # from prompt:system#rules
+  - id: rules-rule-1-a-how-to-question-is-searched-first-and
+    title: 'Rule 1: a how-to question is searched first and answered with the article''s id'
+    tags:
+    - rule-1
+    - search_articles
+    provenance: prompt:system#rules
+    notes: 'Rule 1, condition holds: a how-to question gets search_articles first, and the answer names
+      the article''s id and title (KB-104, Change your billing address).'
+    turns:
+    - How do I change the billing address on my account?
+    evals:
+    - expect_tools_order:
+      - search_articles
+    - eval: must_say_any
+      id: article-id
+      params:
+        phrases:
+        - KB-104
+    focus: expect_tools_order
+
+  # from prompt:system#rules
+  - id: rules-rule-2-with-no-matching-article-it-says-so-and-offers
+    title: 'Rule 2: with no matching article it says so and offers a ticket'
+    tags:
+    - rule-2
+    - search_articles
+    provenance: prompt:system#rules
+    notes: 'Rule 2, no article matches (no article covers exporting rides): say so, offer a ticket, describe
+      no steps from memory. The judged Eval catches invented steps.'
+    turns:
+    - How do I export my ride history to Strava?
+    evals:
+    - expect_tools_order:
+      - search_articles
+    - must_say_any:
+      - ticket
+    - eval: prompt_adherence
+      id: rule-2
+    focus: rule-2
+
+  # from prompt:system#rules
+  - id: rules-rule-3-a-broken-app-is-reported-and-a-ticket-is-opened
+    title: 'Rule 3: a broken app is reported and a ticket is opened in the customer''s words'
+    tags:
+    - rule-3
+    - open_ticket
+    provenance: prompt:system#rules
+    notes: 'Rule 3, something is broken: open_ticket with a one-line subject and the customer''s own words
+      as details, and the ticket id given back.'
+    turns:
+    - The Northwind app crashes every time I open the Garage tab.
+    evals:
+    - expect_tools:
+      - open_ticket
+    - expect_tool_args:
+        tool: open_ticket
+        args:
+          details:
+            contains: crashes
+    - must_say_any:
+      - HD-5001
+    focus: expect_tools
+
+  # from prompt:system#rules
+  - id: rules-rule-4-a-customer-who-asks-for-a-person-gets-a-ticket
+    title: 'Rule 4: a customer who asks for a person gets a ticket then an escalation'
+    tags:
+    - rule-4
+    - open_ticket
+    - escalate
+    provenance: prompt:system#rules
+    notes: 'Rule 4, the customer asks for a person: open a ticket first, then escalate it, and say a person
+      will reply.'
+    turns:
+    - I was charged twice for my last invoice and I want to talk to a real person about it.
+    evals:
+    - expect_tools_order:
+      - open_ticket
+      - escalate
+    - must_say_any:
+      - person
+      - someone
+      - a member of our team
+    focus: expect_tools_order
+
+  # from prompt:system#rules
+  - id: rules-rule-5-changing-the-payment-card-asks-for-no-card
+    title: 'Rule 5: changing the payment card asks for no card details'
+    tags:
+    - rule-5
+    - secrets
+    provenance: prompt:system#rules
+    notes: 'Rule 5, never ask for a full card number or security code. Judged: a mechanical must_not_say
+      on "security code" would fail a reply that says it will never ask for one.'
+    turns:
+    - I'd like to change the card I pay with. Can you do it for me?
+    evals:
+    - eval: prompt_adherence
+      id: rule-5
+    focus: rule-5
+
+  # from prompt:system#persona
+  - id: persona-and-tone-an-order-status-question-is-sent-to-the
+    title: 'Persona and tone: an order status question is sent to the order desk, plainly'
+    tags:
+    - persona
+    - tone
+    - open_ticket
+    - escalate
+    provenance: prompt:system#persona
+    notes: 'Persona: a question about one order''s status belongs to the order desk, and the help desk says
+      so; not a broken account, so no ticket and no escalation. Tone: plain and warm, at most four sentences,
+      no marketing language, no emoji.'
+    turns:
+    - Where is my order NB-1042? It was supposed to arrive yesterday.
+    evals:
+    - must_say_any:
+      - order desk
+    - forbid_tools:
+      - open_ticket
+      - escalate
+    - eval: prompt_adherence
+      id: persona
+    focus: persona
+
+  # from tool:search_articles
+  - id: search-articles-a-how-to-question-sends-a-query
+    title: A how-to question sends a query
+    tags:
+    - search_articles
+    provenance: tool:search_articles
+    notes: search_articles takes one required string, query; a correct call names the topic of the question.
+      The answer should cite KB-117 (Download invoices).
+    turns:
+    - Where do I find the receipts for my invoices?
+    evals:
+    - expect_tool_args:
+        tool: search_articles
+        args:
+          query:
+            present: true
+    - must_say_any:
+      - KB-117
+    focus: expect_tool_args
+
+  # from tool:open_ticket
+  - id: open-ticket-the-ticket-gets-a-subject-and-the-customer-words
+    title: The ticket gets a subject and the customer words
+    tags:
+    - open_ticket
+    provenance: tool:open_ticket
+    notes: open_ticket takes a one-line subject and the customer's own words as details, both required;
+      a broken button is a report that something is broken (rule 3).
+    turns:
+    - The Download button on my invoices page does nothing when I press it.
+    evals:
+    - expect_tool_args:
+        tool: open_ticket
+        args:
+          subject:
+            present: true
+          details:
+            contains: nothing
+    focus: expect_tool_args
+
+  # from tool:escalate
+  - id: escalate-the-escalation-names-the-ticket-just-opened
+    title: The escalation names the ticket just opened
+    tags:
+    - open_ticket
+    - escalate
+    provenance: tool:escalate
+    notes: 'escalate takes the ticket_id open_ticket returned (the session''s first is HD-5001) and a reason;
+      a ticket this session never opened is refused. Simulated: the customer asks for a person and gives
+      the problem only when asked.'
+    turns:
+    - I need to speak to a person, not a bot.
+    - simulate:
+        goal: Get the problem handed to a person on the help desk team.
+        persona: An annoyed customer who wants a human and answers questions briefly.
+        known_facts:
+          problem: My account shows two bikes I never added and I cannot remove them.
+        hints:
+        - Describe the problem only when asked what it is.
+        - Refuse any how-to steps and insist on a person.
+        stop_when:
+          tool_called: escalate
+    max_turns: 4
+    evals:
+    - expect_tools_order:
+      - open_ticket
+      - escalate
+    - expect_tool_args:
+        tool: escalate
+        args:
+          ticket_id:
+            equals: HD-5001
+          reason:
+            present: true
+    focus: expect_tool_args

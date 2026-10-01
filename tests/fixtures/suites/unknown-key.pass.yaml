@@ -1,0 +1,11 @@
+# What must be kept without being interpreted goes under extras (decision 9).
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: cancel-order
+    title: Cancel an order
+    turns: ["Cancel NB-1042, please."]
+    extras:
+      max_turn: 1
+extras:
+  owner: the order-desk team

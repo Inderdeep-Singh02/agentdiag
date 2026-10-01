@@ -1,0 +1,93 @@
+{
+  "$schema": "https://www.speedscope.app/file-format-schema.json",
+  "activeProfileIndex": 0,
+  "exporter": "agentdiag 0.1.0",
+  "name": "20260922T101500Z-k7pq \u00b7 cancel-processing-order \u00b7 trial 1",
+  "profiles": [
+    {
+      "endValue": 1758536102398,
+      "events": [
+        {
+          "at": 1758536100002,
+          "frame": 0,
+          "type": "O"
+        },
+        {
+          "at": 1758536100006,
+          "frame": 1,
+          "type": "O"
+        },
+        {
+          "at": 1758536100918,
+          "frame": 2,
+          "type": "O"
+        },
+        {
+          "at": 1758536100948,
+          "frame": 2,
+          "type": "C"
+        },
+        {
+          "at": 1758536100951,
+          "frame": 1,
+          "type": "C"
+        },
+        {
+          "at": 1758536100955,
+          "frame": 1,
+          "type": "O"
+        },
+        {
+          "at": 1758536101709,
+          "frame": 3,
+          "type": "O"
+        },
+        {
+          "at": 1758536101752,
+          "frame": 3,
+          "type": "C"
+        },
+        {
+          "at": 1758536101755,
+          "frame": 1,
+          "type": "C"
+        },
+        {
+          "at": 1758536101759,
+          "frame": 1,
+          "type": "O"
+        },
+        {
+          "at": 1758536102392,
+          "frame": 1,
+          "type": "C"
+        },
+        {
+          "at": 1758536102398,
+          "frame": 0,
+          "type": "C"
+        }
+      ],
+      "name": "turn 1",
+      "startValue": 1758536100002,
+      "type": "evented",
+      "unit": "milliseconds"
+    }
+  ],
+  "shared": {
+    "frames": [
+      {
+        "name": "turn 1 [agentdiag, instrumented]"
+      },
+      {
+        "name": "llm_call chat claude-sonnet-5 [target, instrumented]"
+      },
+      {
+        "name": "retrieval execute_tool lookup_order [target, instrumented]"
+      },
+      {
+        "name": "tool_call execute_tool cancel_order [target, instrumented]"
+      }
+    ]
+  }
+}

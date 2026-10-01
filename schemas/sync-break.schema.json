@@ -1,0 +1,195 @@
+{
+  "$defs": {
+    "SectionState": {
+      "description": "One section's three hashes and what they say.",
+      "properties": {
+        "change": {
+          "anyOf": [
+            {
+              "enum": [
+                "changed",
+                "added",
+                "removed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Change"
+        },
+        "deployed": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Deployed"
+        },
+        "deployed_by": {
+          "anyOf": [
+            {
+              "enum": [
+                "local",
+                "adapter",
+                "connector"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Deployed By"
+        },
+        "direction": {
+          "enum": [
+            "identical",
+            "local_ahead",
+            "deployed_ahead",
+            "diverged",
+            "not_covered"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "prompt",
+            "tool",
+            "data_source",
+            "model",
+            "provider",
+            "flow",
+            "tier"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "local": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Local"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "recorded": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recorded"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "direction"
+      ],
+      "title": "SectionState",
+      "type": "object"
+    }
+  },
+  "description": "One recorded Sync break (decision 26).",
+  "properties": {
+    "covered_by": {
+      "anyOf": [
+        {
+          "enum": [
+            "local",
+            "adapter",
+            "connector"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Covered By"
+    },
+    "environment": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Environment"
+    },
+    "fingerprint": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Fingerprint"
+    },
+    "opened_at": {
+      "title": "Opened At",
+      "type": "string"
+    },
+    "opened_by": {
+      "enum": [
+        "sync",
+        "watch"
+      ],
+      "title": "Opened By",
+      "type": "string"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/SectionState"
+      },
+      "title": "Sections",
+      "type": "array"
+    }
+  },
+  "required": [
+    "opened_at",
+    "opened_by"
+  ],
+  "title": "SyncBreak",
+  "type": "object"
+}

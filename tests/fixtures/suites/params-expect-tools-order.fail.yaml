@@ -1,0 +1,9 @@
+# `validate` refuses expect_tools_order parameters that do not fit its typed params_model.
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: cancel-order
+    title: Cancel an order
+    turns: ["Cancel NB-1042, please."]
+    evals:
+      - expect_tools_order: {tools: [lookup_order], turn: 0}

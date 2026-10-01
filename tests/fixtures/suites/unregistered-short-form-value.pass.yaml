@@ -1,0 +1,13 @@
+# The same declarations in all three spellings, each binding to a registered parameter.
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: cancel-order
+    title: Cancel an order
+    turns: ["Cancel NB-1042, please."]
+    evals:
+      - prompt_adherence
+      - must_say_any: [cancelled]
+      - {eval: tool_latency, threshold: {max_ms: 2000}}
+      - response_latency: {max_ms: 10000}
+      - goal: The order is cancelled and the customer is told so.

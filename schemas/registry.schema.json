@@ -1,0 +1,200 @@
+{
+  "$defs": {
+    "SuiteEntry": {
+      "additionalProperties": false,
+      "description": "One Suite the Manifest names (phase-6 decision 8): its path and its status.",
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "status": {
+          "default": "runnable",
+          "enum": [
+            "runnable",
+            "draft",
+            "retired"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "SuiteEntry",
+      "type": "object"
+    },
+    "SyncSummary": {
+      "description": "A Target's Sync state as the Registry shows it (phase-6 decision 26): the status of\nthe last check as the files record it, how many Sync breaks are open, and the current\nFingerprint's id and when it was built.",
+      "properties": {
+        "built_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Built At"
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Environment"
+        },
+        "fingerprint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fingerprint"
+        },
+        "last_push": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Push"
+        },
+        "open_breaks": {
+          "default": 0,
+          "title": "Open Breaks",
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "held",
+            "broken",
+            "not_checked"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "SyncSummary",
+      "type": "object"
+    }
+  },
+  "description": "One Target of the Workspace, as its Manifest describes it (decision 5).",
+  "properties": {
+    "channel": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Channel"
+    },
+    "connector": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Connector"
+    },
+    "environments": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Environments",
+      "type": "array"
+    },
+    "family": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Family"
+    },
+    "name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Name"
+    },
+    "problems": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Problems",
+      "type": "array"
+    },
+    "protected": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Protected",
+      "type": "array"
+    },
+    "slug": {
+      "title": "Slug",
+      "type": "string"
+    },
+    "suites": {
+      "items": {
+        "$ref": "#/$defs/SuiteEntry"
+      },
+      "title": "Suites",
+      "type": "array"
+    },
+    "sync": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SyncSummary"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "slug"
+  ],
+  "title": "RegistryEntry",
+  "type": "object"
+}

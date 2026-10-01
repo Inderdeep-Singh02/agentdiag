@@ -1,0 +1,9 @@
+{
+  "includeCoAuthoredBy": false,
+  "attribution": { "commit": "", "pr": "" },
+  "env": {
+    "BASH_DEFAULT_TIMEOUT_MS": "300000",
+    "BASH_MAX_TIMEOUT_MS": "600000",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "claude-opus-5-5"
+  }
+}

@@ -1,0 +1,9 @@
+# `validate` refuses response_latency parameters that do not fit its typed params_model.
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: cancel-order
+    title: Cancel an order
+    turns: ["Cancel NB-1042, please."]
+    evals:
+      - response_latency: {max_ms: 8000, max_first_token_ms: 2000}

@@ -1,0 +1,38 @@
+# A Suite to select from (ticket 07): tags, deliberate skips and every kind of Scenario.
+# `tests/test_selection_cli.py` places it at `.agentdiag/suites/selection.yaml`, beside
+# `selection-refunds.yaml` at `.agentdiag/suites/billing/refunds.yaml`.
+schema_version: 1
+target: selection-desk
+description: Scenarios of every kind, tagged, two of them deliberately skipped.
+fixtures:
+  carmen: {kind: identity, name: Carmen}
+not_run:
+  refund-in-two-turns: Refunds are frozen while the desk migrates its ledger.
+  cancel-adaptively: Adaptive, so it runs only when named with --scenario.
+scenarios:
+  - id: greet-the-desk
+    title: Greet the desk
+    tags: [greeting]
+    turns: ["Hello"]
+  - id: ask-as-carmen
+    title: Ask about an order as Carmen
+    tags: [orders, lookup]
+    fixtures: [carmen]
+    turns: ["Where is my order?"]
+  - id: cancel-without-a-tool
+    title: Ask to cancel, and nothing is cancelled
+    tags: [orders, cancel]
+    turns: ["Cancel NB-1042, please."]
+    evals:
+      - forbid_tools: [cancel_order]
+  - id: refund-in-two-turns
+    title: Ask for a refund over two Turns
+    tags: [orders, refund]
+    turns: ["I want a refund.", "For NB-1042."]
+  - id: cancel-adaptively
+    title: Cancel, the customer improvising
+    tags: [orders, cancel]
+    turns:
+      - "Hi, I want to cancel something."
+      - simulate: {goal: Get NB-1042 cancelled., stop_token: "[DONE]"}
+    max_turns: 4

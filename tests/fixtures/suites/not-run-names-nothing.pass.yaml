@@ -1,0 +1,11 @@
+schema_version: 1
+target: toy-order-desk
+not_run:
+  cancel-refunded-order: The refund tool is not built yet.
+scenarios:
+  - id: cancel-order
+    title: Cancel an order
+    turns: ["Cancel NB-1042, please."]
+  - id: cancel-refunded-order
+    title: Cancel an order that was refunded
+    turns: ["Cancel NB-1044, please."]

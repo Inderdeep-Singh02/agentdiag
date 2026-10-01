@@ -1,0 +1,16 @@
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: cancel-adaptively
+    title: Cancel an order, the customer improvising
+    turns:
+      - "Hi, I want to cancel something."
+      - simulate:
+          goal: Get order NB-1042 cancelled.
+          persona: A patient customer who answers only what is asked.
+          known_facts: {order_id: NB-1042}
+          unknown_facts: {order_status: processing}
+          hints: ["If asked for the order number, give it."]
+          stop_when:
+            tool_called: cancel_order
+    max_turns: 4

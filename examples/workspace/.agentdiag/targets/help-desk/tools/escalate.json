@@ -1,0 +1,21 @@
+{
+  "name": "escalate",
+  "description": "Hand an open ticket to a person, who replies to the customer directly.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "ticket_id": {
+        "type": "string",
+        "description": "The ticket to escalate."
+      },
+      "reason": {
+        "type": "string",
+        "description": "Why a person must take it."
+      }
+    },
+    "required": [
+      "ticket_id",
+      "reason"
+    ]
+  }
+}

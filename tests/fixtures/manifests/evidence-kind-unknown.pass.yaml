@@ -1,0 +1,20 @@
+# An Evidence store of no known kind (friction 9). Passing: the same Manifest, well formed.
+schema_version: 1
+target: {name: toy-order-desk}
+adapter:
+  kind: inprocess
+  side_effects: none
+  environments:
+    default: local
+    local:
+      factory: agentdiag.examples.toy:make_target
+      tools: agentdiag.examples.toy:make_tools
+      model: claude-sonnet-5
+connector:
+  kind: inprocess
+  environments:
+    local: {deployed: agentdiag.examples.toy:deployed_set}
+  evidence: {proxy: {rows: agentdiag.examples.helpdesk.platform:EVIDENCE}}
+judge_notes: judge_notes.md
+suites:
+  - suites/orders.yaml

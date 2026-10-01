@@ -1,0 +1,33 @@
+{
+  "scenario": "delivered-order-cannot-be-cancelled",
+  "scores": [
+    {
+      "cites_read": [],
+      "direction": null,
+      "eval": "goal",
+      "eval_id": null,
+      "evidence": [
+        "llm_call-2"
+      ],
+      "fault_direction": null,
+      "fault_source": null,
+      "fidelity": "instrumented",
+      "rationale": "The reply in llm_call-2 says the order cannot be cancelled but never says it was delivered, so the customer does not learn why.",
+      "reason": null,
+      "shared_model": false,
+      "source": {
+        "code": null,
+        "judge_fingerprint": "eb4c7ada5f2c66eeefa7fe8e032b020f68c8a48400167068c557cf33acd00091",
+        "kind": "judge",
+        "prompt_version": "goal.v4",
+        "requested_model": "claude-opus-5-5",
+        "resolved_model": "claude-opus-5-5",
+        "suppressions_in_force": []
+      },
+      "threshold": null,
+      "value": null,
+      "verdict": "fail"
+    }
+  ],
+  "trial": 1
+}

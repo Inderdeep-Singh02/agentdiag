@@ -1,0 +1,15 @@
+{
+  "name": "search_articles",
+  "description": "Search the help articles by keyword.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "query"
+    ]
+  }
+}

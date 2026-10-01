@@ -1,0 +1,9 @@
+# The same Eval inherited the way it is meant to be: declared once, on the Suite.
+schema_version: 1
+target: toy-order-desk
+evals:
+  - prompt_adherence
+scenarios:
+  - id: cancel-order
+    title: Cancel an order
+    turns: ["Cancel NB-1042, please."]

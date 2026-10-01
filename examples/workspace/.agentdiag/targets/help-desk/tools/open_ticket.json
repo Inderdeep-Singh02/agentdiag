@@ -1,0 +1,21 @@
+{
+  "name": "open_ticket",
+  "description": "Open a support ticket for a person on the help desk team to follow up.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "subject": {
+        "type": "string",
+        "description": "One line naming the problem."
+      },
+      "details": {
+        "type": "string",
+        "description": "The customer's own words."
+      }
+    },
+    "required": [
+      "subject",
+      "details"
+    ]
+  }
+}

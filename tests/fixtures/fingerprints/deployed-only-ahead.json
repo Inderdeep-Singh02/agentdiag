@@ -1,0 +1,18 @@
+{
+  "built_at": "2026-09-27T10:00:00Z",
+  "environment": "local",
+  "id": "d6a7acef194e43692de0712a408c22f7128c4d254b2734fab0431a6d59eac253",
+  "manifest_sha256": "7021e610a5f62eefd01830fea68e5fa180e8cf017c08ea0890c326b2854ebc96",
+  "not_covered": [],
+  "resynced_from": null,
+  "schema_version": 1,
+  "sections": {
+    "model": {
+      "covered_by": "adapter",
+      "id": "model",
+      "kind": "model",
+      "sha256": "2c8b08da5ce60398e1f19af0e5dccc744df274b826abe585eaba68c525434806",
+      "summary": null
+    }
+  }
+}

@@ -1,0 +1,19 @@
+# Empty, or exactly the continued Scenario's: both say the same customer is still there.
+schema_version: 1
+target: toy-order-desk
+fixtures:
+  carmen: {kind: identity, name: Carmen}
+scenarios:
+  - id: ask-about-order
+    title: Ask about an order
+    fixtures: [carmen]
+    turns: ["Where is NB-1042?"]
+  - id: then-cancel-it
+    title: Then cancel it in the same conversation
+    continues: ask-about-order
+    fixtures: [carmen]
+    turns: ["Cancel it, please."]
+  - id: then-thank-them
+    title: Then say thanks
+    continues: then-cancel-it
+    turns: ["Thanks."]

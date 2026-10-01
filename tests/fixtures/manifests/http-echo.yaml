@@ -1,0 +1,31 @@
+# The reference Manifest of an HTTP Target (phase-8 decision 11): a chat endpoint driven
+# through the interface it ships, one POST per Turn. The tests serve the fake Target of
+# tests/fakes/http_target.py on 127.0.0.1 and put its port in `base_url`; nothing else is
+# reached. README.md's "Drive a Target over HTTP" shows this block.
+schema_version: 1
+target:
+  name: http-echo
+  description: A chat endpoint the tests serve on the loopback, speaking core's sse-json Dialect.
+adapter:
+  kind: http
+  # The Adapter-level side-effect class; an environment may raise it, never lower it.
+  side_effects: none
+  environments:
+    default: dev
+    dev:
+      # Identifiers, not secrets: scheme and host, then the path with identifiers in it.
+      base_url: http://127.0.0.1:8765
+      path: /api/agents/{agent_id}/chat
+      agent_id: echo-1
+      org_id: org-7
+      # Static headers interpolate identifiers, never credentials.
+      headers: {x-organization-id: "{org_id}"}
+      # A credential role maps to the NAME of an environment variable; its value comes
+      # from the process (or ~/.agentdiag/env) and is never written anywhere.
+      credentials: {token: HTTP_ECHO_TOKEN}
+      dialect: sse-json
+      # A Fixture of kind identity is sent as this header on every request of a session.
+      identity: {mode: header, header: x-user-phone, from: phone}
+      turn_timeout: 30
+suites:
+  - suites/http-echo.yaml

@@ -1,0 +1,109 @@
+# The help desk's Manifest: pointers, not copies. Drafted by `agentdiag discover --scan`,
+# then `--from-connector --env local`, every guess reviewed; the reasons are the comments
+# beside each key (from the discovery walkthrough in docs/guide.md).
+schema_version: 1
+
+# Who the Target is. The name is what a Report and a comparison print.
+target:
+  name: help-desk
+  description: Northwind Bicycles' account help desk (sign-in, billing, invoices, addresses, the app), with one article search and two ticket actions, its prompt and tools held on a platform.
+
+# The chat help desk of the Northwind persona, the same Family as order-desk (the package
+# docstring of agentdiag.examples.helpdesk says both Manifests carry these two keys).
+family: northwind
+channel: chat
+
+# How agentdiag drives it. The Adapter is the only thing that touches a Target (ADR-0001).
+adapter:
+  kind: inprocess
+  # `none`: the HelpDesk object keeps tickets and escalations in memory for one session and
+  # nothing leaves this process. escalate stands for a hand-off to a person, so the tool
+  # itself is marked below; this build of it only appends to a list.
+  side_effects: none
+  environments:
+    default: local
+    # `local` is the in-process build; it reaches no real user, so it is not protected.
+    local:
+      factory: agentdiag.examples.helpdesk:make_helpdesk
+      tools: agentdiag.examples.helpdesk:make_tools
+      # make_helpdesk takes `model` as a required keyword and has no default of its own;
+      # the value is the platform's DEFAULT_MODEL, which the Connector's read also reports.
+      model: claude-sonnet-5
+    # `staging` is the platform environment a change is tried on before customers see it
+    # (platform.STAGING, a copy of the local record): the same tools and model, and the
+    # factory that reads that record. `sandboxed`: it writes only to the staging record.
+    # Protected, so a push to it needs its name typed by a person and a Change record
+    # (ADR-0011 §6d); `init` would mark a `staging` protected by its name alone, and the
+    # key says so here.
+    staging:
+      factory: agentdiag.examples.helpdesk:make_staging_helpdesk
+      tools: agentdiag.examples.helpdesk:make_tools
+      model: claude-sonnet-5
+      side_effects: sandboxed
+      protected: true
+
+# The system prompt is a platform record (platform.DEPLOYED["prompts"]["system"]) that the
+# Target reads at every request. prompts/system.md is the copy `discover --from-connector`
+# saved: the local side of the Sync, with the Connector's read the deployed side, so `sync`
+# says which one moved, and the file a pull or a push writes.
+prompts:
+  system: {path: prompts/system.md}
+
+# The management side (ADR-0011): the Connector reads the deployed set, and the Evidence
+# stores where the Target has them, without running a Turn, and `agentdiag sync` takes its
+# read first. `inprocess` reads a Python module's deployed set; a platform's Connector is a
+# plugin. `credentials`, when an environment needs them, maps a role to the NAME of an
+# environment variable, never to a value.
+connector:
+  # The "platform" is a Python module in this process, so the in-process Connector reads it;
+  # it needs no credentials.
+  kind: inprocess
+  environments:
+    local:
+      # The deployed set lives in platform.py (prompts, tools, model, provider); the package
+      # root re-exports it, and this points at its home. `store` keeps it between processes,
+      # as a hosted platform keeps its records: a push writes the record there, and every
+      # later read loads it back into platform.DEPLOYED. Gitignored: it is the platform's
+      # state, never source.
+      deployed: agentdiag.examples.helpdesk.platform:DEPLOYED
+      store: platform/local.json
+    # The staging record: a push to `staging` writes here and never reaches `local`.
+    staging:
+      deployed: agentdiag.examples.helpdesk.platform:STAGING
+      store: platform/staging.json
+  # The platform's proxy log: one mapping of store kind to rows (platform.EVIDENCE), read by
+  # `agentdiag import --chat <conversation id>`; it holds conversation hd-0001, logged under
+  # an earlier prompt.
+  evidence:
+    proxy: {rows: agentdiag.examples.helpdesk.platform:EVIDENCE}
+
+# The Target's tools, by name. `kind: retrieval` marks a lookup, recorded as a
+# `retrieval` Span; `action`, the default, marks a tool that changes something.
+# The schemas are platform records (platform.TOOL_SCHEMAS); tools/*.json are the copies
+# `discover --from-connector` saved, the local side of each `tool.*` section.
+tools:
+  # A keyword search over a read-only article table.
+  search_articles: {kind: retrieval, schema: tools/search_articles.json}
+  # Writes a ticket into the session's HelpDesk.
+  open_ticket: {kind: action, schema: tools/open_ticket.json}
+  # Hands a ticket to a person: `sandboxed`, the class the package docstring gives it; this
+  # build only queues it in memory, so the Adapter as a whole stays `none`.
+  escalate: {kind: action, side_effects: sandboxed, schema: tools/escalate.json}
+
+# The Judge's calibration notes: the Target runs on claude-sonnet-5 and the Judge on
+# claude-opus-5, so no same-model note is needed.
+judge_notes: judge_notes.md
+
+# Eval parameters, read by the Evals and never shown to the Judge: a default threshold for
+# the latency Evals, and the JSON type each tool argument must have. Forbidden phrases stay
+# in `forbidden_phrases`, their one home.
+# eval_parameters:
+#   latency: {response_max_ms: 30000, first_token_max_ms: 5000, tool_max_ms: 1000}
+#   tool_argument_types: {lookup_order: {order_id: string}}
+
+# Where the Scenarios live, relative to this Target directory. A bare path runs;
+# `{path: …, status: draft}` is validated and never run, and `retired` is neither.
+# generated.yaml is written by `agentdiag generate` from drafts/generated.yaml; init's
+# placeholder sample.yaml was deleted.
+suites:
+  - suites/generated.yaml

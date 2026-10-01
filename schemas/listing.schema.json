@@ -1,0 +1,181 @@
+{
+  "$defs": {
+    "ListedSync": {
+      "description": "The Sync result a Run recorded (ADR-0007), as the listing shows it.",
+      "properties": {
+        "reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "no_manifest",
+                "no_fingerprint",
+                "adapter_cannot_observe"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "status": {
+          "enum": [
+            "held",
+            "broken",
+            "not_checked"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "ListedSync",
+      "type": "object"
+    },
+    "VerdictCounts": {
+      "description": "Every Verdict counted, zeros included (ADR-0005 §8): five required fields, so the\npublished schema cannot let a listing leave one out.",
+      "properties": {
+        "fail": {
+          "title": "Fail",
+          "type": "integer"
+        },
+        "incomplete": {
+          "title": "Incomplete",
+          "type": "integer"
+        },
+        "invalid": {
+          "title": "Invalid",
+          "type": "integer"
+        },
+        "pass": {
+          "title": "Pass",
+          "type": "integer"
+        },
+        "unverifiable": {
+          "title": "Unverifiable",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "pass",
+        "fail",
+        "incomplete",
+        "unverifiable",
+        "invalid"
+      ],
+      "title": "VerdictCounts",
+      "type": "object"
+    }
+  },
+  "description": "One Run as `agentdiag list --json` emits it (decision 64), read from the index.",
+  "properties": {
+    "change_record": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Change Record"
+    },
+    "counts": {
+      "$ref": "#/$defs/VerdictCounts"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "disk_bytes": {
+      "title": "Disk Bytes",
+      "type": "integer"
+    },
+    "fingerprint": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Fingerprint"
+    },
+    "not_run": {
+      "title": "Not Run",
+      "type": "integer"
+    },
+    "pass_rate": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Pass Rate"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "selection": {
+      "title": "Selection",
+      "type": "string"
+    },
+    "source": {
+      "enum": [
+        "run",
+        "imported"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "sync": {
+      "$ref": "#/$defs/ListedSync"
+    },
+    "target": {
+      "title": "Target",
+      "type": "string"
+    },
+    "traces_from": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Traces From"
+    },
+    "trials": {
+      "title": "Trials",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "run_id",
+    "target",
+    "created_at",
+    "source",
+    "sync",
+    "selection",
+    "trials",
+    "counts",
+    "not_run",
+    "disk_bytes"
+  ],
+  "title": "RunListing",
+  "type": "object"
+}

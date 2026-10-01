@@ -1,0 +1,37 @@
+{
+  "conversation_id": "c-0001",
+  "started_at": "2026-09-22T08:30:00Z",
+  "channel": "chat",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Where do I find my invoices?"
+    },
+    {
+      "role": "tool",
+      "tool_name": "search_articles",
+      "tool_call_id": "call_c0001_1",
+      "content": "[{\"id\": \"KB-117\", \"title\": \"Download invoices\"}]"
+    },
+    {
+      "role": "assistant",
+      "content": "Go to Billing, then Invoices (article KB-117)."
+    },
+    {
+      "role": "user",
+      "content": "The page is blank for me. Can someone help?"
+    },
+    {
+      "role": "operator",
+      "content": "Hi, this is Sam from the help desk. I have refreshed your billing profile; please reload the page."
+    },
+    {
+      "role": "user",
+      "content": "It works now, thank you."
+    },
+    {
+      "role": "assistant",
+      "content": "Glad it works. Is there anything else?"
+    }
+  ]
+}

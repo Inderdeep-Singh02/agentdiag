@@ -1,0 +1,1391 @@
+{
+  "$defs": {
+    "AdapterDescription": {
+      "description": "An Adapter's own account of itself, recorded verbatim in `run.json`.\n\n`config` is the environment's block from the Manifest as written. Secrets never live\nin a Manifest, so nothing here needs redacting.",
+      "properties": {
+        "backend": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Backend"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "config": {
+          "additionalProperties": true,
+          "title": "Config",
+          "type": "object"
+        },
+        "environment": {
+          "title": "Environment",
+          "type": "string"
+        },
+        "fidelity": {
+          "enum": [
+            "instrumented",
+            "reconstructed",
+            "observed"
+          ],
+          "title": "Fidelity",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "live_acknowledged": {
+          "default": false,
+          "title": "Live Acknowledged",
+          "type": "boolean"
+        },
+        "observes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Observes",
+          "type": "array"
+        },
+        "side_effects": {
+          "enum": [
+            "none",
+            "sandboxed",
+            "live"
+          ],
+          "title": "Side Effects",
+          "type": "string"
+        },
+        "turn_timeout_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Turn Timeout S"
+        }
+      },
+      "required": [
+        "kind",
+        "fidelity",
+        "side_effects",
+        "environment"
+      ],
+      "title": "AdapterDescription",
+      "type": "object"
+    },
+    "AgentdiagSection": {
+      "description": "Which agentdiag, and which of the packages it drives models and files with.",
+      "properties": {
+        "packages": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Packages",
+          "type": "object"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "version"
+      ],
+      "title": "AgentdiagSection",
+      "type": "object"
+    },
+    "Backend": {
+      "description": "Which path a model call took: the Judge's, as `run.json.judge.backend` records it,\nor the Target's, as `run.json.adapter.backend` does (ticket 20, decision 28).\n\nPart of the Judge Fingerprint (decision 25): the same model reached through a\ndifferent path, or through another CLI version that wraps the prompt differently, can\nmove a Verdict without the Target moving.",
+      "properties": {
+        "cli_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cli Version"
+        },
+        "kind": {
+          "enum": [
+            "anthropic_api",
+            "claude_code",
+            "replay"
+          ],
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "Backend",
+      "type": "object"
+    },
+    "EvalSummary": {
+      "description": "One effective declaration of a Scenario, and whether its Suite put it there.",
+      "properties": {
+        "eval": {
+          "title": "Eval",
+          "type": "string"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "inherited": {
+          "default": false,
+          "title": "Inherited",
+          "type": "boolean"
+        },
+        "params": {
+          "additionalProperties": true,
+          "title": "Params",
+          "type": "object"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold"
+        }
+      },
+      "required": [
+        "eval"
+      ],
+      "title": "EvalSummary",
+      "type": "object"
+    },
+    "EvidenceQuery": {
+      "description": "What to read from one Evidence store.",
+      "properties": {
+        "conversation_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Conversation Id"
+        },
+        "extra": {
+          "additionalProperties": true,
+          "title": "Extra",
+          "type": "object"
+        },
+        "limit": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Limit"
+        },
+        "since": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Since"
+        },
+        "until": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Until"
+        }
+      },
+      "title": "EvidenceQuery",
+      "type": "object"
+    },
+    "Fingerprint": {
+      "description": "The whole of `fingerprint.json`, and what `run.json.fingerprint` records.",
+      "properties": {
+        "built_at": {
+          "title": "Built At",
+          "type": "string"
+        },
+        "environment": {
+          "title": "Environment",
+          "type": "string"
+        },
+        "manifest_sha256": {
+          "title": "Manifest Sha256",
+          "type": "string"
+        },
+        "not_covered": {
+          "items": {
+            "$ref": "#/$defs/NotCovered"
+          },
+          "title": "Not Covered",
+          "type": "array"
+        },
+        "pushed_from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pushed From"
+        },
+        "resynced_from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resynced From"
+        },
+        "schema_version": {
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "sections": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Section"
+          },
+          "title": "Sections",
+          "type": "object"
+        }
+      },
+      "required": [
+        "built_at",
+        "environment",
+        "manifest_sha256"
+      ],
+      "title": "Fingerprint",
+      "type": "object"
+    },
+    "GitSection": {
+      "description": "Both repositories: agentdiag's own, and the Target's.",
+      "properties": {
+        "agentdiag": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GitState"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GitState"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "GitSection",
+      "type": "object"
+    },
+    "GitState": {
+      "description": "One repository at the moment of the Run.",
+      "properties": {
+        "commit": {
+          "title": "Commit",
+          "type": "string"
+        },
+        "dirty": {
+          "title": "Dirty",
+          "type": "boolean"
+        },
+        "repository": {
+          "title": "Repository",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "commit",
+        "dirty"
+      ],
+      "title": "GitState",
+      "type": "object"
+    },
+    "ImporterSection": {
+      "description": "What an imported Run was imported from (ADR-0013 §5, phase-6 decision 36): the\nEvidence store, the Fidelity it supports, the query that read it, when, and every fact\nthe evidence lacked, as the Trace's `import/source` Event names them.",
+      "properties": {
+        "evidence_read_at": {
+          "title": "Evidence Read At",
+          "type": "string"
+        },
+        "fidelity": {
+          "enum": [
+            "instrumented",
+            "reconstructed",
+            "observed"
+          ],
+          "title": "Fidelity",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "proxy",
+            "conversation",
+            "voice",
+            "flows"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "lacked": {
+          "items": {
+            "$ref": "#/$defs/Lacked"
+          },
+          "title": "Lacked",
+          "type": "array"
+        },
+        "query": {
+          "$ref": "#/$defs/EvidenceQuery"
+        }
+      },
+      "required": [
+        "kind",
+        "fidelity",
+        "query",
+        "evidence_read_at"
+      ],
+      "title": "ImporterSection",
+      "type": "object"
+    },
+    "JudgeConfiguration": {
+      "description": "The `judge` block of `run.json`: which model, how hard, which prompts, which notes.\n\nThe full text, not a pointer: a Run is meant to be interpretable with no access to the\nagentdiag that produced it, and a prompt that changed between two Runs must be visible\nin a comparison rather than inferred from a version string. `overrides` names every\ndeclaration that asked for a Judge of its own (D14, D19), by its id or its Eval's name.",
+      "properties": {
+        "backend": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Backend"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "effort": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effort"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JudgeNotes"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "overrides": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JudgeOverride"
+          },
+          "title": "Overrides",
+          "type": "object"
+        },
+        "prompts": {
+          "additionalProperties": {
+            "$ref": "#/$defs/RecordedPrompt"
+          },
+          "title": "Prompts",
+          "type": "object"
+        },
+        "reviewer": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReviewerConfiguration"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "suppressions": {
+          "items": {
+            "$ref": "#/$defs/Suppression"
+          },
+          "title": "Suppressions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "model"
+      ],
+      "title": "JudgeConfiguration",
+      "type": "object"
+    },
+    "JudgeNotes": {
+      "description": "The calibration notes one Run's Judge was given (ADR-0003 §8).",
+      "properties": {
+        "fingerprint": {
+          "title": "Fingerprint",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "text",
+        "fingerprint"
+      ],
+      "title": "JudgeNotes",
+      "type": "object"
+    },
+    "JudgeOverride": {
+      "additionalProperties": false,
+      "description": "A judged Eval's own model and effort, overriding the Run's default (D19, D14).",
+      "properties": {
+        "effort": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effort"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        }
+      },
+      "title": "JudgeOverride",
+      "type": "object"
+    },
+    "Lacked": {
+      "description": "One fact the evidence could not give: which, where in the Trace, and why.",
+      "properties": {
+        "field": {
+          "title": "Field",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "where": {
+          "title": "Where",
+          "type": "string"
+        }
+      },
+      "required": [
+        "field",
+        "where",
+        "reason"
+      ],
+      "title": "Lacked",
+      "type": "object"
+    },
+    "NotCovered": {
+      "description": "A section the Manifest names that nothing observed, and why (ADR-0007 §1).",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "prompt",
+            "tool",
+            "data_source",
+            "model",
+            "provider",
+            "flow",
+            "tier"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "reason"
+      ],
+      "title": "NotCovered",
+      "type": "object"
+    },
+    "NotRun": {
+      "description": "A Scenario that a Suite declared and this Run did not execute (D31, ADR-0005 §3).\n\nEnumerated rather than omitted: \"nothing failed\" and \"nothing ran\" look identical in a\npass rate, and ADR-0005 §8 makes the Scorecard say which it was.",
+      "properties": {
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "reason": {
+          "enum": [
+            "not_selected",
+            "suite_not_run",
+            "fixture_unavailable",
+            "cancelled"
+          ],
+          "title": "Reason",
+          "type": "string"
+        },
+        "scenario": {
+          "title": "Scenario",
+          "type": "string"
+        },
+        "suite": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suite"
+        },
+        "trial": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trial"
+        }
+      },
+      "required": [
+        "scenario",
+        "reason"
+      ],
+      "title": "NotRun",
+      "type": "object"
+    },
+    "PriceTableSection": {
+      "description": "Which price table the Spans of this Run were costed under (ADR-0006 §4, decision 4).\n\nThe costs themselves are on the Spans, written at capture; this names the table, so a\ncomparison of two Runs can say they were priced differently rather than imply that the\nTarget's cost moved.",
+      "properties": {
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "version"
+      ],
+      "title": "PriceTableSection",
+      "type": "object"
+    },
+    "RecordedPrompt": {
+      "description": "One prompt as `run.json` records it (ADR-0005 §3, ADR-0003 §7): a judged Eval's, the\nDiagnosis's, the stop check's, the reviewer's or the Simulated User's (phase-5 decision\n52; it was `JudgePrompt`). The full text, not a pointer.",
+      "properties": {
+        "fingerprint": {
+          "title": "Fingerprint",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "text",
+        "fingerprint"
+      ],
+      "title": "RecordedPrompt",
+      "type": "object"
+    },
+    "ReviewerConfiguration": {
+      "description": "`run.json.judge.reviewer`: the Simulated User reviewer's Judge (D28, decision 57).",
+      "properties": {
+        "effort": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effort"
+        },
+        "model": {
+          "default": "claude-opus-5",
+          "title": "Model",
+          "type": "string"
+        },
+        "prompt": {
+          "$ref": "#/$defs/RecordedPrompt"
+        }
+      },
+      "required": [
+        "prompt"
+      ],
+      "title": "ReviewerConfiguration",
+      "type": "object"
+    },
+    "ScenarioSummary": {
+      "description": "One selected Scenario as `run.json` names it, without repeating its Turns.",
+      "properties": {
+        "continues": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Continues"
+        },
+        "evals": {
+          "items": {
+            "$ref": "#/$defs/EvalSummary"
+          },
+          "title": "Evals",
+          "type": "array"
+        },
+        "ground_truth": {
+          "default": null,
+          "title": "Ground Truth"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        },
+        "provenance": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provenance"
+        },
+        "simulated": {
+          "default": false,
+          "title": "Simulated",
+          "type": "boolean"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "title": "ScenarioSummary",
+      "type": "object"
+    },
+    "Section": {
+      "description": "One section of the deployed set as the Fingerprint recorded it.",
+      "properties": {
+        "covered_by": {
+          "enum": [
+            "local",
+            "adapter",
+            "connector"
+          ],
+          "title": "Covered By",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "prompt",
+            "tool",
+            "data_source",
+            "model",
+            "provider",
+            "flow",
+            "tier"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "sha256": {
+          "title": "Sha256",
+          "type": "string"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "sha256",
+        "covered_by"
+      ],
+      "title": "Section",
+      "type": "object"
+    },
+    "SectionState": {
+      "description": "One section's three hashes and what they say.",
+      "properties": {
+        "change": {
+          "anyOf": [
+            {
+              "enum": [
+                "changed",
+                "added",
+                "removed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Change"
+        },
+        "deployed": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Deployed"
+        },
+        "deployed_by": {
+          "anyOf": [
+            {
+              "enum": [
+                "local",
+                "adapter",
+                "connector"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Deployed By"
+        },
+        "direction": {
+          "enum": [
+            "identical",
+            "local_ahead",
+            "deployed_ahead",
+            "diverged",
+            "not_covered"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "prompt",
+            "tool",
+            "data_source",
+            "model",
+            "provider",
+            "flow",
+            "tier"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "local": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Local"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "recorded": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recorded"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "direction"
+      ],
+      "title": "SectionState",
+      "type": "object"
+    },
+    "SelectionSection": {
+      "description": "What the caller asked to run, normalised, and the expression it amounts to (D31).",
+      "properties": {
+        "expression": {
+          "title": "Expression",
+          "type": "string"
+        },
+        "scenario": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Scenario",
+          "type": "array"
+        },
+        "suite": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Suite",
+          "type": "array"
+        },
+        "tag": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tag",
+          "type": "array"
+        }
+      },
+      "required": [
+        "expression"
+      ],
+      "title": "SelectionSection",
+      "type": "object"
+    },
+    "SimulatedUserConfiguration": {
+      "description": "`run.json.simulated_user`: the Simulated User one Run drove its adaptive Trials with.",
+      "properties": {
+        "backend": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Backend"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "effort": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effort"
+        },
+        "fingerprint": {
+          "title": "Fingerprint",
+          "type": "string"
+        },
+        "implementation": {
+          "const": "model",
+          "title": "Implementation",
+          "type": "string"
+        },
+        "model": {
+          "default": "claude-sonnet-5",
+          "title": "Model",
+          "type": "string"
+        },
+        "prompt": {
+          "$ref": "#/$defs/RecordedPrompt"
+        },
+        "sampling": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          },
+          "title": "Sampling",
+          "type": "object"
+        }
+      },
+      "required": [
+        "implementation",
+        "prompt",
+        "fingerprint"
+      ],
+      "title": "SimulatedUserConfiguration",
+      "type": "object"
+    },
+    "Suppression": {
+      "description": "One known false fail, as the Manifest's `suppressions` list names it.",
+      "properties": {
+        "eval": {
+          "minLength": 1,
+          "title": "Eval",
+          "type": "string"
+        },
+        "from": {
+          "format": "date",
+          "title": "From",
+          "type": "string"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "pattern": {
+          "minLength": 1,
+          "title": "Pattern",
+          "type": "string"
+        },
+        "until": {
+          "format": "date",
+          "title": "Until",
+          "type": "string"
+        },
+        "why": {
+          "minLength": 1,
+          "title": "Why",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "eval",
+        "from",
+        "until",
+        "pattern",
+        "why"
+      ],
+      "title": "Suppression",
+      "type": "object"
+    },
+    "SyncSection": {
+      "description": "The Sync a Run checked before its first Trial (ADR-0007, ADR-0008, D30).\n\n`fingerprint` is the id of the Fingerprint compared against; `resynced_from` is set when\nthe Run found Sync broken and rebuilt the Fingerprint (the default), so `show`, the\nScorecard's summary and the Report can say which sections moved before anything else\n(ADR-0008's \"never silent\"); `sections` are the broken ones.",
+      "properties": {
+        "connector_failed": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Connector Failed"
+        },
+        "covered_by": {
+          "anyOf": [
+            {
+              "enum": [
+                "local",
+                "adapter",
+                "connector"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Covered By"
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Environment"
+        },
+        "fingerprint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fingerprint"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "no_manifest",
+                "no_fingerprint",
+                "adapter_cannot_observe"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "resynced_from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resynced From"
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/SectionState"
+          },
+          "title": "Sections",
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "held",
+            "broken",
+            "not_checked"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "SyncSection",
+      "type": "object"
+    }
+  },
+  "description": "The whole of `run.json` (ADR-0005 §3).",
+  "properties": {
+    "adapter": {
+      "$ref": "#/$defs/AdapterDescription"
+    },
+    "agentdiag": {
+      "$ref": "#/$defs/AgentdiagSection"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "fingerprint": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Fingerprint"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "git": {
+      "$ref": "#/$defs/GitSection"
+    },
+    "importer": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ImporterSection"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "judge": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/JudgeConfiguration"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "manifest": {
+      "additionalProperties": true,
+      "title": "Manifest",
+      "type": "object"
+    },
+    "not_run": {
+      "items": {
+        "$ref": "#/$defs/NotRun"
+      },
+      "title": "Not Run",
+      "type": "array"
+    },
+    "price_table": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PriceTableSection"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "scenarios": {
+      "items": {
+        "$ref": "#/$defs/ScenarioSummary"
+      },
+      "title": "Scenarios",
+      "type": "array"
+    },
+    "selection": {
+      "$ref": "#/$defs/SelectionSection"
+    },
+    "simulated_user": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SimulatedUserConfiguration"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "source": {
+      "default": "run",
+      "enum": [
+        "run",
+        "imported"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "sync": {
+      "$ref": "#/$defs/SyncSection"
+    },
+    "target": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Target"
+    },
+    "traces_from": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Traces From"
+    },
+    "trials": {
+      "default": 1,
+      "title": "Trials",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "run_id",
+    "created_at",
+    "agentdiag",
+    "manifest",
+    "sync",
+    "adapter",
+    "selection",
+    "git"
+  ],
+  "title": "RunRecord",
+  "type": "object"
+}

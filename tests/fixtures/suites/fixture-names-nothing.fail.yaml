@@ -1,0 +1,10 @@
+# A Scenario may only name Fixtures its Suite declares.
+schema_version: 1
+target: toy-order-desk
+fixtures:
+  carmen: {kind: identity, name: Carmen, phone: "<redacted phone>"}
+scenarios:
+  - id: cancel-as-carmen
+    title: Cancel an order as a known customer
+    fixtures: [carmen, csaba]
+    turns: ["Cancel NB-1042, please."]

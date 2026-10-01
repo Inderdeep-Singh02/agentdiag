@@ -1,0 +1,3 @@
+# LF on every clone, Windows with autocrlf included: the byte gates (the example directories,
+# the recordings, fingerprint.json and its manifest_sha256) compare files by the byte.
+* text=auto eol=lf

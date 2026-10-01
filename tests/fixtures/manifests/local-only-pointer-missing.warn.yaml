@@ -1,0 +1,16 @@
+# A local_only pointer whose file this checkout lacks: a warning, never an error.
+schema_version: 1
+target: {name: toy-order-desk}
+adapter:
+  kind: inprocess
+  environments:
+    default: local
+    local:
+      factory: agentdiag.examples.toy:make_target
+      tools: agentdiag.examples.toy:make_tools
+      model: claude-sonnet-5
+judge_notes: judge_notes.md
+prompts:
+  rules: {path: prompts/rules.local.md, local_only: true}
+suites:
+  - suites/orders.yaml

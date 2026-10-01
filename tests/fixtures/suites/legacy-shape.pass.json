@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "target": "toy-order-desk",
+  "scenarios": [
+    {
+      "id": "S1_cancel",
+      "title": "Cancel an order",
+      "turns": ["Cancel NB-1042, please."],
+      "max_turns": 1,
+      "evals": [{"goal": "The order is cancelled."}],
+      "extras": {"goal": "Get NB-1042 cancelled."}
+    }
+  ]
+}

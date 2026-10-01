@@ -1,0 +1,14 @@
+# A Scenario has one simulate Turn and it is the last (phase-5 decision 55): what a literal
+# Turn after the stop criterion ended the conversation would mean is not defined in v1.
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: cancel-adaptively
+    title: Cancel an order, the customer improvising
+    turns:
+      - "Hi, I need to cancel an order."
+      - simulate:
+          goal: Get order NB-1042 cancelled.
+          stop_when: {tool_called: cancel_order}
+      - "Thanks, that's all."
+    max_turns: 4

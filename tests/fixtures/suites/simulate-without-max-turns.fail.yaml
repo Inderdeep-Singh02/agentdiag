@@ -1,0 +1,11 @@
+# A stop criterion says how a conversation ends; max_turns says by when (decision 10).
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: cancel-adaptively
+    title: Cancel an order, the customer improvising
+    turns:
+      - "Hi, I want to cancel something."
+      - simulate:
+          goal: Get order NB-1042 cancelled.
+          stop_when: {judged: The order is cancelled and the customer was told so.}

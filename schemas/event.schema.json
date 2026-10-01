@@ -1,0 +1,74 @@
+{
+  "additionalProperties": true,
+  "description": "One thing that happened at an instant.\n\n`extra=\"allow\"` carries unknown Event types and type-specific fields through a\nread/write round trip untouched (ADR-0004 section 1: the type set is open).",
+  "properties": {
+    "actor": {
+      "enum": [
+        "target",
+        "simulated_user",
+        "adapter",
+        "agentdiag",
+        "judge",
+        "operator"
+      ],
+      "title": "Actor",
+      "type": "string"
+    },
+    "parent_span_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Parent Span Id"
+    },
+    "seq": {
+      "title": "Seq",
+      "type": "integer"
+    },
+    "span_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Span Id"
+    },
+    "ts": {
+      "title": "Ts",
+      "type": "integer"
+    },
+    "turn": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Turn"
+    },
+    "type": {
+      "title": "Type",
+      "type": "string"
+    }
+  },
+  "required": [
+    "seq",
+    "ts",
+    "type",
+    "actor",
+    "turn",
+    "span_id",
+    "parent_span_id"
+  ],
+  "title": "Event",
+  "type": "object"
+}

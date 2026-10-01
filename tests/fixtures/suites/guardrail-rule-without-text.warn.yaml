@@ -1,0 +1,12 @@
+# A rule whose text lives elsewhere (namespaced `constraint:*` graph ids) is kept, and
+# warned about: nothing can judge the Target against it (decision 16).
+schema_version: 1
+target: toy-order-desk
+evals:
+  - guardrails:
+      rules:
+        - {id: "constraint:no_invented_data", rule: null}
+scenarios:
+  - id: cancel-order
+    title: Cancel an order
+    turns: ["Cancel NB-1042, please."]

@@ -1,0 +1,83 @@
+# The Target's identity document (D37, ADR-0005 section 1).
+#
+# Pointers, not copies: nothing here holds a prompt, a tool schema or a secret. `agentdiag
+# run --root examples/toy` reads this file and nothing above it.
+schema_version: 1
+
+# Who the Target is. The name is what a Report and a comparison print.
+target:
+  name: toy-order-desk
+  description: An order desk with five numbered rules, one lookup tool and one action tool.
+
+# The persona this Target is one channel of: Targets naming one `family` are one agent's
+# chat, voice or other builds, and `agentdiag registry` lists them together (ADR-0013 §3).
+family: northwind
+channel: chat
+
+# How agentdiag drives it. The Adapter is the only thing that touches a Target (ADR-0001).
+adapter:
+  # `inprocess` drives a Python Target in this process and captures at its two boundaries.
+  kind: inprocess
+  # What a Run against this Target does to the world, one of three classes: `none`, nothing
+  # outside this process changes; `sandboxed`, it writes only to a test system; `live`, it
+  # reaches real users or data, and a Run is refused without a flag. A tool entry may carry
+  # its own `side_effects`, and `agentdiag validate` names the classes when one is wrong.
+  side_effects: none
+  environments:
+    # Which environment a Run opens when nothing else says.
+    default: local
+    # One block per environment. `protected: true` marks one that is never pushed to
+    # without confirmation; prod, staging and eu_prod are protected unless their block says
+    # `protected: false`. A block may raise the side-effect class for itself, never lower it.
+    local:
+      # `module:attr`, called with (client, tools, **options). The Adapter hands in the
+      # client, so it can record every exchange without the Target knowing (D6).
+      factory: agentdiag.examples.toy:make_target
+      # `module:attr` returning the tool callables, resolved once per session so the
+      # Target's own state is never shared between Trials.
+      tools: agentdiag.examples.toy:make_tools
+      # Passed to the factory as an option. Not the Judge's model: a Target and a Judge
+      # on the same model would trip the self-preference warning (D23).
+      model: claude-sonnet-5
+
+# The Target's prompts, by name: a path relative to this Target directory, or
+# `observed` for one the Connector reads or the Adapter observes from the running Target.
+# `system` is the system prompt; `agentdiag sync` fingerprints each one section by section.
+prompts: {system: observed}
+
+# The management side (ADR-0011): the Connector reads the deployed set, and the Evidence
+# stores where the Target has them, without running a Turn, and `agentdiag sync` takes its
+# read first. `inprocess` reads a Python module's deployed set; a platform's Connector is a
+# plugin. `credentials`, when an environment needs them, maps a role to the NAME of an
+# environment variable, never to a value.
+connector:
+  kind: inprocess
+  environments:
+    local:
+      # `module:attr`: a mapping of `prompts`, `tools` and `model` as the running Target
+      # holds them, or a callable returning one, read afresh on every `sync`.
+      deployed: agentdiag.examples.toy:deployed_set
+
+# The Target's tools, by name. `kind: retrieval` marks a lookup, recorded as a
+# `retrieval` Span; `action`, the default, marks a tool that changes something.
+tools:
+  lookup_order: {kind: retrieval}
+  cancel_order: {kind: action}
+
+# The Judge's calibration notes, relative to this Target directory: known
+# false-fail patterns, at most 600 words, read verbatim by every judged Eval and part of
+# each judged Score's Judge Fingerprint (ADR-0003 section 8).
+judge_notes: judge_notes.md
+
+# Eval parameters, read by the Evals and never shown to the Judge: a default threshold for
+# the latency Evals, and the JSON type each tool argument must have. Forbidden phrases stay
+# in `forbidden_phrases`, their one home.
+# eval_parameters:
+#   latency: {response_max_ms: 30000, first_token_max_ms: 5000, tool_max_ms: 1000}
+#   tool_argument_types: {lookup_order: {order_id: string}}
+
+# Where the Scenarios live, relative to this Target directory. A bare path runs;
+# `{path: …, status: draft}` is validated and never run, and `retired` is neither.
+suites:
+  - suites/orders.yaml
+  - suites/guardrails.yaml

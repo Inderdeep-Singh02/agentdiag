@@ -1,0 +1,16 @@
+# A tool schema pointer whose file is absent: an error.
+schema_version: 1
+target: {name: toy-order-desk}
+adapter:
+  kind: inprocess
+  environments:
+    default: local
+    local:
+      factory: agentdiag.examples.toy:make_target
+      tools: agentdiag.examples.toy:make_tools
+      model: claude-sonnet-5
+judge_notes: judge_notes.md
+tools:
+  lookup_order: {kind: retrieval, schema: tools/lookup_order.json}
+suites:
+  - suites/orders.yaml

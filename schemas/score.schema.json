@@ -1,0 +1,284 @@
+{
+  "$defs": {
+    "ScoreSource": {
+      "description": "Who or what produced a Score, in enough detail to re-examine it (ADR-0003 §4).\n\nA judged Score names the model asked for and the model the API actually resolved to,\nbecause those differ and a Verdict from an alias is not reproducible. A mechanical\nScore names the code that computed it instead.",
+      "properties": {
+        "code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Code"
+        },
+        "judge_fingerprint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Judge Fingerprint"
+        },
+        "kind": {
+          "enum": [
+            "judge",
+            "mechanical",
+            "human"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Version"
+        },
+        "requested_model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requested Model"
+        },
+        "resolved_model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resolved Model"
+        },
+        "suppressions_in_force": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Suppressions In Force",
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "ScoreSource",
+      "type": "object"
+    }
+  },
+  "description": "The output of one Eval on one Trace (`CONTEXT.md`, ADR-0003).",
+  "properties": {
+    "cites_read": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Cites Read",
+      "type": "array"
+    },
+    "direction": {
+      "anyOf": [
+        {
+          "enum": [
+            "minimize",
+            "maximize"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Direction"
+    },
+    "eval": {
+      "title": "Eval",
+      "type": "string"
+    },
+    "eval_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Eval Id"
+    },
+    "evidence": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence",
+      "type": "array"
+    },
+    "fault_direction": {
+      "anyOf": [
+        {
+          "enum": [
+            "helped",
+            "hindered",
+            "none"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Fault Direction"
+    },
+    "fault_source": {
+      "anyOf": [
+        {
+          "enum": [
+            "simulated_user",
+            "scenario",
+            "fixture",
+            "judge",
+            "agentdiag"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Fault Source"
+    },
+    "fidelity": {
+      "enum": [
+        "instrumented",
+        "reconstructed",
+        "observed"
+      ],
+      "title": "Fidelity",
+      "type": "string"
+    },
+    "rationale": {
+      "title": "Rationale",
+      "type": "string"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "enum": [
+            "timeout",
+            "transport_error",
+            "no_response",
+            "target_error",
+            "cancelled"
+          ],
+          "type": "string"
+        },
+        {
+          "enum": [
+            "evidence_missing",
+            "evidence_truncated",
+            "fidelity_too_low",
+            "eval_not_applicable"
+          ],
+          "type": "string"
+        },
+        {
+          "enum": [
+            "refusal",
+            "malformed_output"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason"
+    },
+    "shared_model": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Shared Model"
+    },
+    "source": {
+      "$ref": "#/$defs/ScoreSource"
+    },
+    "threshold": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Threshold"
+    },
+    "value": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Value"
+    },
+    "verdict": {
+      "enum": [
+        "pass",
+        "fail",
+        "incomplete",
+        "unverifiable",
+        "invalid"
+      ],
+      "title": "Verdict",
+      "type": "string"
+    }
+  },
+  "required": [
+    "eval",
+    "verdict",
+    "rationale",
+    "evidence",
+    "source",
+    "fidelity"
+  ],
+  "title": "Score",
+  "type": "object"
+}

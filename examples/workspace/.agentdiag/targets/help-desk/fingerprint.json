@@ -1,0 +1,74 @@
+{
+  "built_at": "2026-09-28T13:33:51Z",
+  "environment": "local",
+  "id": "a3f2b2e8c9d8ff8da0b3e5e60f6afc305e1dc5fe90a936a917ab7d014735875d",
+  "manifest_sha256": "1ac7202289eed54e5ebc5c48d4299e10ed66b10530d8540f6821f9831d40f256",
+  "not_covered": [],
+  "resynced_from": null,
+  "schema_version": 1,
+  "sections": {
+    "flow.open_ticket_flow": {
+      "covered_by": "connector",
+      "id": "flow.open_ticket_flow",
+      "kind": "flow",
+      "sha256": "01e936538d6ce0ab537dc34336ac3f301119ed915d102c0393d4570b1f14d15e",
+      "summary": "open_ticket_flow"
+    },
+    "model": {
+      "covered_by": "connector",
+      "id": "model",
+      "kind": "model",
+      "sha256": "4b07d9a517e35f5852d8385b4a192070b78ed4722b3b043b5737ddd7570283d7",
+      "summary": "claude-sonnet-5"
+    },
+    "prompt.system#persona": {
+      "covered_by": "connector",
+      "id": "prompt.system#persona",
+      "kind": "prompt",
+      "sha256": "2e21910e1ce87ed7c99d848dafc9a7f95a23060b9673b0de21458ae750fd4f5f",
+      "summary": "Persona"
+    },
+    "prompt.system#rules": {
+      "covered_by": "connector",
+      "id": "prompt.system#rules",
+      "kind": "prompt",
+      "sha256": "745d9d53d6318368cb8dc68a16933f5588592e82393623179f3f1d68132c54e4",
+      "summary": "Rules"
+    },
+    "prompt.system#tone": {
+      "covered_by": "connector",
+      "id": "prompt.system#tone",
+      "kind": "prompt",
+      "sha256": "69c896f56dd788e549c6f28fa06e9c87f5b25c2bef0b56971546b7088ef89eed",
+      "summary": "Tone"
+    },
+    "provider": {
+      "covered_by": "connector",
+      "id": "provider",
+      "kind": "provider",
+      "sha256": "c70eca6b0f88f44d81a41311647e50fda1ac454ec04ffd442b0eb4743a993131",
+      "summary": "anthropic"
+    },
+    "tool.escalate": {
+      "covered_by": "connector",
+      "id": "tool.escalate",
+      "kind": "tool",
+      "sha256": "7115698d574b1e2632c0c1213aee6252f7eb5bc275621e2cbbb7168cd91f4e23",
+      "summary": "escalate"
+    },
+    "tool.open_ticket": {
+      "covered_by": "connector",
+      "id": "tool.open_ticket",
+      "kind": "tool",
+      "sha256": "3e8d17080eed81f8b413201dc54f312057ad0fbad359906dece006db032e9ebd",
+      "summary": "open_ticket"
+    },
+    "tool.search_articles": {
+      "covered_by": "connector",
+      "id": "tool.search_articles",
+      "kind": "tool",
+      "sha256": "1224ef294d8ab436b0b09034b447c8cd500f4df5ce406afc162d2e24fc18d1c7",
+      "summary": "search_articles"
+    }
+  }
+}

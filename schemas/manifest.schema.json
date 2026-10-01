@@ -1,0 +1,502 @@
+{
+  "$defs": {
+    "AdapterSection": {
+      "additionalProperties": true,
+      "description": "How to drive the Target: the Adapter kind, its side effects, its environments.\n\n`environments` is open because each Adapter kind reads its own block; `default` names\nthe one a Run uses when nothing else does. The side-effect class is declared here and\nnowhere else, so refusing a live Run is a decision about the Manifest, not about code;\nan environment may raise it for itself (`side_effects`) and never lower it.",
+      "properties": {
+        "environments": {
+          "additionalProperties": true,
+          "title": "Environments",
+          "type": "object"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "side_effects": {
+          "default": "none",
+          "title": "Side Effects",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "AdapterSection",
+      "type": "object"
+    },
+    "ConnectorSection": {
+      "additionalProperties": true,
+      "description": "The management side (ADR-0011): which Connector, its environments' identifiers, and\nthe Evidence stores it reads. Open, because each kind reads its own keys (ticket 23).",
+      "properties": {
+        "environments": {
+          "additionalProperties": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Environments",
+          "type": "object"
+        },
+        "evidence": {
+          "additionalProperties": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Evidence",
+          "type": "object"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "ConnectorSection",
+      "type": "object"
+    },
+    "DataSource": {
+      "additionalProperties": true,
+      "description": "One data source by its identity (D37): what a change of database or index is.",
+      "properties": {
+        "identity": {
+          "minLength": 1,
+          "title": "Identity",
+          "type": "string"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kind"
+        }
+      },
+      "required": [
+        "identity"
+      ],
+      "title": "DataSource",
+      "type": "object"
+    },
+    "EvalParameters": {
+      "additionalProperties": false,
+      "description": "Per-Target data an Eval reads from the Manifest (CONTEXT.md **Eval parameters**).\n`forbidden_phrases` predates the block and stays top-level: a second home would be\nduplication.",
+      "properties": {
+        "latency": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LatencyDefaults"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tool_argument_types": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "enum": [
+                "string",
+                "number",
+                "integer",
+                "boolean",
+                "object",
+                "array",
+                "null"
+              ],
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "title": "Tool Argument Types",
+          "type": "object"
+        }
+      },
+      "title": "EvalParameters",
+      "type": "object"
+    },
+    "LatencyDefaults": {
+      "additionalProperties": false,
+      "description": "`eval_parameters.latency`: the default `max_ms` of each latency Eval a declaration\nleaves without a threshold (decision 17). Named for what it is to a declaration.",
+      "properties": {
+        "first_token_max_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "First Token Max Ms"
+        },
+        "response_max_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Response Max Ms"
+        },
+        "tool_max_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tool Max Ms"
+        }
+      },
+      "title": "LatencyDefaults",
+      "type": "object"
+    },
+    "PromptPointer": {
+      "additionalProperties": false,
+      "description": "A pointer to a local file: a prompt's text, or a tool's schema (D37).",
+      "properties": {
+        "local_only": {
+          "default": false,
+          "title": "Local Only",
+          "type": "boolean"
+        },
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "PromptPointer",
+      "type": "object"
+    },
+    "Redaction": {
+      "additionalProperties": false,
+      "description": "What never reaches a committed Change record beyond e-mail addresses and phone\nnumbers (phase-7 decision 6): the names `agentdiag.change.redact` replaces, its one\nreader.",
+      "properties": {
+        "names": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Names",
+          "type": "array"
+        }
+      },
+      "title": "Redaction",
+      "type": "object"
+    },
+    "SuiteEntry": {
+      "additionalProperties": false,
+      "description": "One Suite the Manifest names (phase-6 decision 8): its path and its status.",
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "status": {
+          "default": "runnable",
+          "enum": [
+            "runnable",
+            "draft",
+            "retired"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "SuiteEntry",
+      "type": "object"
+    },
+    "Suppression": {
+      "description": "One known false fail, as the Manifest's `suppressions` list names it.",
+      "properties": {
+        "eval": {
+          "minLength": 1,
+          "title": "Eval",
+          "type": "string"
+        },
+        "from": {
+          "format": "date",
+          "title": "From",
+          "type": "string"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "pattern": {
+          "minLength": 1,
+          "title": "Pattern",
+          "type": "string"
+        },
+        "until": {
+          "format": "date",
+          "title": "Until",
+          "type": "string"
+        },
+        "why": {
+          "minLength": 1,
+          "title": "Why",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "eval",
+        "from",
+        "until",
+        "pattern",
+        "why"
+      ],
+      "title": "Suppression",
+      "type": "object"
+    },
+    "TargetSection": {
+      "additionalProperties": true,
+      "description": "Who the Target is. A name a Report can print and a line saying what it does.",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "TargetSection",
+      "type": "object"
+    },
+    "ToolEntry": {
+      "additionalProperties": true,
+      "description": "One tool the Target has, as the Manifest points at it (D37).",
+      "properties": {
+        "kind": {
+          "default": "action",
+          "enum": [
+            "retrieval",
+            "action"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PromptPointer"
+            },
+            {
+              "const": "observed",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Schema"
+        },
+        "side_effects": {
+          "default": "none",
+          "enum": [
+            "none",
+            "sandboxed",
+            "live"
+          ],
+          "title": "Side Effects",
+          "type": "string"
+        }
+      },
+      "title": "ToolEntry",
+      "type": "object"
+    }
+  },
+  "additionalProperties": true,
+  "description": "The Target's identity document, as `run.json` snapshots it (ADR-0005 §3).",
+  "properties": {
+    "adapter": {
+      "$ref": "#/$defs/AdapterSection"
+    },
+    "channel": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Channel"
+    },
+    "connector": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ConnectorSection"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "data_sources": {
+      "additionalProperties": {
+        "$ref": "#/$defs/DataSource"
+      },
+      "title": "Data Sources",
+      "type": "object"
+    },
+    "eval_parameters": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EvalParameters"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "family": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Family"
+    },
+    "forbidden_phrases": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Forbidden Phrases"
+    },
+    "judge_notes": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Judge Notes"
+    },
+    "prompts": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/PromptPointer"
+          },
+          {
+            "const": "observed",
+            "type": "string"
+          }
+        ]
+      },
+      "title": "Prompts",
+      "type": "object"
+    },
+    "records": {
+      "default": "changes",
+      "title": "Records",
+      "type": "string"
+    },
+    "redaction": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Redaction"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "schema_version": {
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "suites": {
+      "items": {
+        "$ref": "#/$defs/SuiteEntry"
+      },
+      "title": "Suites",
+      "type": "array"
+    },
+    "suppressions": {
+      "items": {
+        "$ref": "#/$defs/Suppression"
+      },
+      "title": "Suppressions",
+      "type": "array"
+    },
+    "target": {
+      "$ref": "#/$defs/TargetSection"
+    },
+    "tools": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ToolEntry"
+      },
+      "title": "Tools",
+      "type": "object"
+    }
+  },
+  "required": [
+    "target",
+    "adapter"
+  ],
+  "title": "Manifest",
+  "type": "object"
+}

@@ -1,0 +1,9 @@
+# A response_latency declaration with no threshold: valid only under a Manifest default.
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: cancel-order
+    title: Cancel an order
+    turns: ["Cancel NB-1042, please."]
+    evals:
+      - response_latency

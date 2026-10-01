@@ -1,0 +1,14 @@
+# A Scenario picks guardrail rules by id from the Suite's rules (decision 16).
+schema_version: 1
+target: toy-order-desk
+evals:
+  - guardrails:
+      rules:
+        - {id: G1, rule: Never cancel an order that has shipped.}
+        - {id: G2, rule: Never promise a refund date.}
+scenarios:
+  - id: cancel-shipped-order
+    title: Refuse to cancel a shipped order
+    turns: ["Cancel NB-1043, please."]
+    evals:
+      - guardrails: [G1, G3]

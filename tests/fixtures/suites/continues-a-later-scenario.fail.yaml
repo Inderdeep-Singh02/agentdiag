@@ -1,0 +1,11 @@
+# The continued Scenario must come first: its session has to exist to be resumed.
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: then-cancel-it
+    title: Then cancel it in the same conversation
+    continues: ask-about-order
+    turns: ["Cancel it, please."]
+  - id: ask-about-order
+    title: Ask about an order
+    turns: ["Where is NB-1042?"]

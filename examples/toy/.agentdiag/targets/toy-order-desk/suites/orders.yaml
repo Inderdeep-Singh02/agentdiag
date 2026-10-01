@@ -1,0 +1,202 @@
+# One Suite: an authored collection of Scenarios for one Target (CONTEXT.md).
+schema_version: 1
+
+# The Target these Scenarios are written against, by the name in the Manifest.
+target: toy-order-desk
+description: What the order desk must do when a customer asks to cancel.
+
+scenarios:
+  # The id is how `--scenario` selects this Scenario and how a comparison joins it across
+  # Runs, so it is stable even when the title is reworded.
+  - id: cancel-processing-order
+    title: Cancel an order that is still processing
+    # Tags select without naming ids (`--tag orders`), and appear in the Run record.
+    tags: [orders, cancel]
+    # Literal user messages, in order. One Turn is one user message and the Target's
+    # complete response to it. A `- simulate: {goal, stop_when}` Turn, with `max_turns` on
+    # the Scenario, would hand the rest of the conversation to a Simulated User. Every
+    # field and every Eval's parameters: .claude/skills/agentdiag-generate/scenario-reference.md,
+    # which `agentdiag init --skills` installs.
+    turns:
+      - "Hi, I'd like to cancel order NB-1042."
+    # The judgements applied to this Trace. `- prompt_adherence` is the same declaration
+    # written short; the long form takes an `id` and `params` as well. Check the file
+    # offline with `agentdiag validate`.
+    evals:
+      - eval: prompt_adherence
+
+  # ---------------------------------------------------------------------------------
+  # Everything below is the example's own: `agentdiag init` writes only the Scenario
+  # above. These exercise every mechanical and judged Eval against the toy Target
+  # (guardrails, whose rules are Suite-level, in suites/guardrails.yaml), and replay
+  # from tests/fixtures/recordings/toy-orders.jsonl.
+  - id: where-is-shipped-order
+    title: Say where a shipped order is, and change nothing
+    tags: [orders, lookup]
+    turns:
+      - "Where is my order NB-0917?"
+    # Most mechanical Evals once, each expected to pass. The short form binds the value to
+    # the Eval's primary parameter; for a Metric, the value is its threshold.
+    evals:
+      - expect_tools: [lookup_order]
+      - expect_tools_any: [lookup_order, cancel_order]
+      - forbid_tools: [cancel_order]
+      - tool_count_max: {lookup_order: 1}
+      - expect_tool_args:
+          tool: lookup_order
+          args:
+            order_id: {equals: NB-0917, contains: "0917", present: true}
+      - must_say_any: [shipped]
+      - must_not_say: [refund]
+      - forbidden_phrases: [as an AI, language model]
+      - tool_latency: {threshold: {max_ms: 1000}, tool: lookup_order}
+      - response_latency: {max_ms: 30000}
+
+  - id: lookup-then-cancel
+    title: Look an order up in one Turn, cancel it in the next
+    tags: [orders, cancel]
+    turns:
+      - "Can you check on order NB-1042 for me?"
+      - "Thanks. Please cancel it."
+    # `turn: <n>` restricts a tool or text Eval to one Turn.
+    evals:
+      - expect_tools_order: [lookup_order, cancel_order]
+      - forbid_tools: {tools: [cancel_order], turn: 1}
+      - expect_tools: {tools: [cancel_order], turn: 2}
+      - tool_count_max: {lookup_order: 1, cancel_order: 1}
+      - expect_tool_args:
+          tool: cancel_order
+          args:
+            order_id: {equals: NB-1042}
+          turn: 2
+      - must_say_any: {phrases: [cancelled], turn: 2}
+
+  - id: status-question-is-not-a-cancel
+    title: A customer asking where an order is has not asked to cancel it
+    tags: [orders, rule-2]
+    notes: >-
+      The recorded Target breaks rule 2: it cancels an order the customer only asked
+      about. The two Evals that catch it fail, so this Scenario is the example's `fail`.
+    turns:
+      - "Where is order NB-1042? It's taking a while."
+    evals:
+      - expect_tools: [lookup_order]
+      - forbid_tools: [cancel_order]
+      - must_not_say: [cancelled]
+
+  - id: lookup-with-unseen-arguments
+    title: A lookup whose arguments the Adapter could not see is never a pass
+    tags: [orders, lookup]
+    notes: >-
+      The recorded model first calls lookup_order with an argument named `id`, which the
+      tool cannot bind, so the Adapter records that call's arguments as not observed.
+      `expect_tool_args` is then `unverifiable`, as is `first_token_latency` over responses
+      that were not streamed: this Scenario is the example's `unverifiable`.
+    turns:
+      - "Has order NB-0688 arrived yet?"
+    evals:
+      - expect_tools: [lookup_order]
+      - expect_tool_args:
+          tool: lookup_order
+          args:
+            order_id: {equals: NB-0688}
+      - first_token_latency: {max_ms: 2000}
+
+  - id: greeting-calls-no-tool
+    title: A greeting is answered without touching an order
+    tags: [greeting]
+    turns:
+      - "Hi there! What can you help me with?"
+    # In an instrumented Trace, no tool Span is a fact rather than a gap: nothing was called.
+    evals:
+      - forbid_tools: [lookup_order, cancel_order]
+      - tool_count_max: {cancel_order: 0}
+      - must_not_say: [language model, as an AI]
+
+  # ---------------------------------------------------------------------------------
+  # The judged Evals (ticket 05). Each Trial that declares one is judged, then gets a
+  # Diagnosis: the Judge's account of why its Verdicts came out as they did. The Judge's
+  # side of each is worked in toy-orders.jsonl by scripts/record_fixtures.py.
+  - id: delivered-order-cannot-be-cancelled
+    title: A delivered order is explained, not cancelled
+    tags: [orders, goal]
+    # What the right answer was, for the Judge and for a reader of the Run.
+    ground_truth: {status: delivered, cancelled: false}
+    turns:
+      - "Please cancel order NB-0688."
+    # `goal` judges whether what a pass looks like happened; the short form binds the text
+    # to `expected`.
+    evals:
+      - goal: >-
+          The customer learns that order NB-0688 was already delivered and so cannot be
+          cancelled, and nothing is cancelled.
+
+  - id: order-details-come-from-the-lookup
+    title: Every detail of an order comes from its lookup
+    tags: [orders, grounding]
+    turns:
+      - "What did I order in NB-0917, and what did it cost?"
+    # Every factual claim in the reply is checked against a tool result, a Fixture or the
+    # prompt, citing the claim's Span and the Span that supports it.
+    evals:
+      - data_grounding
+
+  - id: status-lookup-asks-for-the-named-order
+    title: A status question looks up the order the customer named
+    tags: [orders, lookup]
+    turns:
+      - "Is order NB-1042 still processing?"
+    # With no `expect_tool_args` authored, the Judge decides whether the lookup's
+    # arguments fit the request.
+    evals:
+      - data_query
+
+  - id: cancel-looks-up-then-cancels
+    title: A cancellation looks the order up, cancels it, and calls nothing else
+    tags: [orders, cancel]
+    turns:
+      - "Please cancel my order NB-1042."
+    # With no tool list authored, the Judge decides whether the tools fit the intent.
+    evals:
+      - tool_choice
+
+  - id: authored-lists-decide-without-a-judge
+    title: With the tools and arguments authored, data_query and tool_choice are mechanical
+    tags: [orders, lookup]
+    turns:
+      - "Where is my order NB-0917?"
+    # The Scenario already says which tools and which arguments are right, so data_query
+    # and tool_choice are decided from these declarations and ask the Judge nothing; the
+    # Trial's Diagnosis still explains them.
+    evals:
+      - expect_tools: [lookup_order]
+      - forbid_tools: [cancel_order]
+      - expect_tool_args:
+          tool: lookup_order
+          args:
+            order_id: {equals: NB-0917}
+      - data_query
+      - tool_choice
+
+  # An adaptive Scenario (ticket 06): a scripted opener, then a Simulated User plays the
+  # customer until the stop criterion holds or max_turns is reached. It is told its goal,
+  # who it is, what it knows, what it must not reveal because the customer in the story
+  # does not know it, and how to behave; agentdiag checks `stop_when` over the Trace after
+  # every Turn. The Simulated User's messages and calls are in the Trace, as its own actor.
+  - id: cancel-without-the-order-number
+    title: A customer who forgot the order number still gets the cancellation
+    tags: [orders, cancel]
+    turns:
+      - "Hi, I need to cancel an order I placed last week."
+      - simulate:
+          goal: Get order NB-1042 cancelled.
+          persona: A hurried customer who gives one piece of information at a time.
+          known_facts: {order_id: NB-1042}
+          unknown_facts: {order_status: processing}
+          hints:
+            - Give the order number only when asked for it.
+          stop_when: {tool_called: cancel_order}
+    max_turns: 4
+    evals:
+      - expect_tools_order: [lookup_order, cancel_order]
+      - goal: Order NB-1042 is cancelled and the customer is told so.

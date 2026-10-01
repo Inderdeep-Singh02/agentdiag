@@ -1,0 +1,549 @@
+{
+  "$defs": {
+    "ChangeSet": {
+      "additionalProperties": false,
+      "description": "What the change touches.",
+      "properties": {
+        "files": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Files",
+          "type": "array"
+        },
+        "flow_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Flow Ids",
+          "type": "array"
+        },
+        "git_sha": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Git Sha"
+        },
+        "sections": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Sections",
+          "type": "array"
+        }
+      },
+      "title": "ChangeSet",
+      "type": "object"
+    },
+    "DiagnosisLink": {
+      "additionalProperties": false,
+      "description": "The Diagnosis the record answers, as read at `open`; the Run is never written to.",
+      "properties": {
+        "run": {
+          "title": "Run",
+          "type": "string"
+        },
+        "scenario": {
+          "title": "Scenario",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "trial": {
+          "title": "Trial",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "run",
+        "scenario",
+        "trial",
+        "text"
+      ],
+      "title": "DiagnosisLink",
+      "type": "object"
+    },
+    "Expectation": {
+      "additionalProperties": false,
+      "description": "The effect expected, stated before the verifying Run (ADR-0012 §3).",
+      "properties": {
+        "must_not_move": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Must Not Move",
+          "type": "array"
+        },
+        "should_move": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Should Move",
+          "type": "array"
+        },
+        "stated_at": {
+          "title": "Stated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "stated_at",
+        "should_move",
+        "must_not_move"
+      ],
+      "title": "Expectation",
+      "type": "object"
+    },
+    "Observation": {
+      "additionalProperties": false,
+      "description": "One Score of the post-change Run over a `should_move` Scenario, cited at close.",
+      "properties": {
+        "eval": {
+          "title": "Eval",
+          "type": "string"
+        },
+        "eval_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Eval Id"
+        },
+        "rationale": {
+          "title": "Rationale",
+          "type": "string"
+        },
+        "run": {
+          "title": "Run",
+          "type": "string"
+        },
+        "scenario": {
+          "title": "Scenario",
+          "type": "string"
+        },
+        "trial": {
+          "title": "Trial",
+          "type": "integer"
+        },
+        "verdict": {
+          "enum": [
+            "pass",
+            "fail",
+            "incomplete",
+            "unverifiable",
+            "invalid"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run",
+        "scenario",
+        "trial",
+        "eval",
+        "verdict",
+        "rationale"
+      ],
+      "title": "Observation",
+      "type": "object"
+    },
+    "PushEvent": {
+      "additionalProperties": false,
+      "description": "One push of the change: a Connector push (its Push record) or a `local` one (the\nRun that re-synced onto the edited files, ADR-0012 §2).",
+      "properties": {
+        "at": {
+          "title": "At",
+          "type": "string"
+        },
+        "environment": {
+          "title": "Environment",
+          "type": "string"
+        },
+        "fingerprint_after": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fingerprint After"
+        },
+        "fingerprint_before": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fingerprint Before"
+        },
+        "kind": {
+          "enum": [
+            "connector",
+            "local"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "push_record": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Push Record"
+        },
+        "run": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Run"
+        }
+      },
+      "required": [
+        "kind",
+        "environment",
+        "at"
+      ],
+      "title": "PushEvent",
+      "type": "object"
+    },
+    "Trigger": {
+      "additionalProperties": false,
+      "description": "What opened the record: a Diagnosis (with the Trial it explains) or a complaint.",
+      "properties": {
+        "cites": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Cites",
+          "type": "array"
+        },
+        "kind": {
+          "enum": [
+            "diagnosis",
+            "complaint"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "run": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Run"
+        },
+        "scenario": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scenario"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "trial": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trial"
+        }
+      },
+      "required": [
+        "kind",
+        "summary"
+      ],
+      "title": "Trigger",
+      "type": "object"
+    },
+    "Verification": {
+      "additionalProperties": false,
+      "description": "The `compare` that closed the record as `verified` or `refuted`.",
+      "properties": {
+        "baseline": {
+          "title": "Baseline",
+          "type": "string"
+        },
+        "compared_at": {
+          "title": "Compared At",
+          "type": "string"
+        },
+        "environment": {
+          "default": "unknown",
+          "title": "Environment",
+          "type": "string"
+        },
+        "environment_mismatch": {
+          "default": false,
+          "title": "Environment Mismatch",
+          "type": "boolean"
+        },
+        "expect": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Expect",
+          "type": "array"
+        },
+        "result": {
+          "enum": [
+            "verified",
+            "refuted"
+          ],
+          "title": "Result",
+          "type": "string"
+        },
+        "run": {
+          "title": "Run",
+          "type": "string"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "baseline",
+        "run",
+        "compared_at",
+        "expect",
+        "result",
+        "summary"
+      ],
+      "title": "Verification",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One recorded fix for a Target (CONTEXT.md **Change record**, ADR-0012 §3).",
+  "properties": {
+    "change": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ChangeSet"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "closed_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Closed At"
+    },
+    "diagnosis": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DiagnosisLink"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "expected": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Expectation"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "imported_from": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Imported From"
+    },
+    "layer": {
+      "anyOf": [
+        {
+          "enum": [
+            "persona",
+            "rules",
+            "memory",
+            "checklist",
+            "flow",
+            "runtime",
+            "data"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Layer"
+    },
+    "observed": {
+      "items": {
+        "$ref": "#/$defs/Observation"
+      },
+      "title": "Observed",
+      "type": "array"
+    },
+    "opened_at": {
+      "title": "Opened At",
+      "type": "string"
+    },
+    "opened_by": {
+      "title": "Opened By",
+      "type": "string"
+    },
+    "pushes": {
+      "items": {
+        "$ref": "#/$defs/PushEvent"
+      },
+      "title": "Pushes",
+      "type": "array"
+    },
+    "schema_version": {
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "status": {
+      "enum": [
+        "open",
+        "proposed",
+        "pushed",
+        "verified",
+        "refuted",
+        "wontfix",
+        "superseded"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "superseded_by": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Superseded By"
+    },
+    "target": {
+      "title": "Target",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "trigger": {
+      "$ref": "#/$defs/Trigger"
+    },
+    "verification": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Verification"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "why": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Why"
+    }
+  },
+  "required": [
+    "id",
+    "target",
+    "status",
+    "opened_at",
+    "opened_by",
+    "title",
+    "trigger"
+  ],
+  "title": "ChangeRecord",
+  "type": "object"
+}

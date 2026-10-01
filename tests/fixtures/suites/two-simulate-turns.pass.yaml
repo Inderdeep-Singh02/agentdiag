@@ -1,0 +1,17 @@
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: cancel-adaptively
+    title: Cancel an order, the customer improvising
+    turns:
+      - simulate:
+          goal: Get order NB-1042 cancelled.
+          stop_when: {tool_called: cancel_order}
+    max_turns: 6
+  - id: reorder-adaptively
+    title: Order the same bike in blue, the customer improvising
+    turns:
+      - simulate:
+          goal: Order the same bike in blue.
+          stop_token: "[DONE]"
+    max_turns: 6

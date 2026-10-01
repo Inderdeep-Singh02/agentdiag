@@ -1,0 +1,13 @@
+# The second Suite `tests/test_selection_cli.py` selects from, placed at
+# `.agentdiag/suites/billing/refunds.yaml` so it is addressed as `refunds` or by its path.
+schema_version: 1
+target: selection-desk
+scenarios:
+  - id: refund-a-late-order
+    title: Refund an order that arrived late
+    tags: [refund]
+    turns: ["My order came a week late; refund it."]
+  - id: dispute-a-charge
+    title: Dispute a charge over two Turns
+    tags: [billing]
+    turns: ["I was charged twice.", "Both on the same card."]

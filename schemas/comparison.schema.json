@@ -1,0 +1,392 @@
+{
+  "$defs": {
+    "CitesRead": {
+      "description": "How often each side's Judge had a cite read as the Span id it begins with\n(decision 37): each Run's `Scorecard.cites_read`, as two sides, the way every two-sided\nvalue here is carried (ticket 21, decision 39).",
+      "properties": {
+        "baseline": {
+          "default": 0,
+          "title": "Baseline",
+          "type": "integer"
+        },
+        "run": {
+          "default": 0,
+          "title": "Run",
+          "type": "integer"
+        }
+      },
+      "title": "CitesRead",
+      "type": "object"
+    },
+    "ConfigDifference": {
+      "description": "One `run.json` leaf that differs between the two Runs.",
+      "properties": {
+        "baseline": {
+          "default": null,
+          "title": "Baseline"
+        },
+        "declared": {
+          "title": "Declared",
+          "type": "boolean"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "run": {
+          "default": null,
+          "title": "Run"
+        }
+      },
+      "required": [
+        "path",
+        "declared"
+      ],
+      "title": "ConfigDifference",
+      "type": "object"
+    },
+    "EvalAggregate": {
+      "description": "One Eval of one Scenario across that Scenario's Trials: what `compare` joins on.",
+      "properties": {
+        "abnormal": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "propertyNames": {
+            "enum": [
+              "pass",
+              "fail",
+              "incomplete",
+              "unverifiable",
+              "invalid"
+            ]
+          },
+          "title": "Abnormal",
+          "type": "object"
+        },
+        "decidable": {
+          "title": "Decidable",
+          "type": "integer"
+        },
+        "direction": {
+          "anyOf": [
+            {
+              "enum": [
+                "minimize",
+                "maximize"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Direction"
+        },
+        "eval": {
+          "title": "Eval",
+          "type": "string"
+        },
+        "eval_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Eval Id"
+        },
+        "judged": {
+          "default": false,
+          "title": "Judged",
+          "type": "boolean"
+        },
+        "mean": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "integer"
+        },
+        "value_mean": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value Mean"
+        }
+      },
+      "required": [
+        "eval",
+        "decidable",
+        "passed"
+      ],
+      "title": "EvalAggregate",
+      "type": "object"
+    },
+    "RunHeader": {
+      "description": "One side of the comparison, as its `run.json` names it.",
+      "properties": {
+        "created_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Created At"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target"
+        },
+        "traces_from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Traces From"
+        }
+      },
+      "required": [
+        "run_id"
+      ],
+      "title": "RunHeader",
+      "type": "object"
+    },
+    "ScenarioSets": {
+      "description": "Which Scenarios both Runs recorded, and which only one did.",
+      "properties": {
+        "intersection": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Intersection",
+          "type": "array"
+        },
+        "only_in_baseline": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Only In Baseline",
+          "type": "array"
+        },
+        "only_in_run": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Only In Run",
+          "type": "array"
+        }
+      },
+      "title": "ScenarioSets",
+      "type": "object"
+    },
+    "ScoreDelta": {
+      "description": "One Eval of one Scenario, Baseline against Run.",
+      "properties": {
+        "baseline": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvalAggregate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "because": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Because",
+          "type": "array"
+        },
+        "delta": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Delta"
+        },
+        "eval": {
+          "title": "Eval",
+          "type": "string"
+        },
+        "eval_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Eval Id"
+        },
+        "judge_changed": {
+          "default": false,
+          "title": "Judge Changed",
+          "type": "boolean"
+        },
+        "label": {
+          "enum": [
+            "regression",
+            "improvement",
+            "unchanged",
+            "undecided",
+            "changed"
+          ],
+          "title": "Label",
+          "type": "string"
+        },
+        "run": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvalAggregate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "scenario": {
+          "title": "Scenario",
+          "type": "string"
+        },
+        "value_delta": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value Delta"
+        }
+      },
+      "required": [
+        "scenario",
+        "eval",
+        "label"
+      ],
+      "title": "ScoreDelta",
+      "type": "object"
+    }
+  },
+  "description": "What `compare` found, in the order it is printed (D33, ADR-0005 §6).",
+  "properties": {
+    "baseline": {
+      "$ref": "#/$defs/RunHeader"
+    },
+    "cites_read": {
+      "$ref": "#/$defs/CitesRead"
+    },
+    "counts": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "propertyNames": {
+        "enum": [
+          "regression",
+          "improvement",
+          "unchanged",
+          "undecided",
+          "changed"
+        ]
+      },
+      "title": "Counts",
+      "type": "object"
+    },
+    "deltas": {
+      "items": {
+        "$ref": "#/$defs/ScoreDelta"
+      },
+      "title": "Deltas",
+      "type": "array"
+    },
+    "differences": {
+      "items": {
+        "$ref": "#/$defs/ConfigDifference"
+      },
+      "title": "Differences",
+      "type": "array"
+    },
+    "judge_statements": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Judge Statements",
+      "type": "array"
+    },
+    "run": {
+      "$ref": "#/$defs/RunHeader"
+    },
+    "scenarios": {
+      "$ref": "#/$defs/ScenarioSets"
+    },
+    "shared_traces": {
+      "default": false,
+      "title": "Shared Traces",
+      "type": "boolean"
+    },
+    "summary": {
+      "default": "",
+      "title": "Summary",
+      "type": "string"
+    }
+  },
+  "required": [
+    "baseline",
+    "run"
+  ],
+  "title": "Comparison",
+  "type": "object"
+}

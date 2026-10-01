@@ -1,0 +1,5 @@
+# Runs, Restore points, in-process platform stores and the index are output, not source: written by `agentdiag run`, a push and `agentdiag index rebuild`.
+.agentdiag/targets/*/runs/
+.agentdiag/targets/*/restore-points/
+.agentdiag/targets/*/platform/
+.agentdiag/index.sqlite

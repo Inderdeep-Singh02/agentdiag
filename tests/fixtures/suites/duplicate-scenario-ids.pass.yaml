@@ -1,0 +1,9 @@
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: cancel-order
+    title: Cancel an order
+    turns: ["Cancel NB-1042, please."]
+  - id: cancel-another-order
+    title: Cancel another order
+    turns: ["Cancel NB-1043, please."]

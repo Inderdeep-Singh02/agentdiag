@@ -1,0 +1,10 @@
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: ask-about-order
+    title: Ask about an order
+    turns: ["Where is NB-1042?"]
+  - id: then-cancel-it
+    title: Then cancel it in the same conversation
+    continues: ask-about-order
+    turns: ["Cancel it, please."]

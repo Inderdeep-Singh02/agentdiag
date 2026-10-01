@@ -1,0 +1,4 @@
+target          family     sync            last run                          created               verdicts                                                  trend (incomplete/unverifiable/invalid)                                  changes
+help-desk       northwind  held (local)    no Run yet                        -                     -                                                         -                                                                        none open
+order-desk      northwind  not synced yet  no Run yet                        -                     -                                                         -                                                                        none open
+toy-order-desk  northwind  not synced yet  20260923T100800Z-impt (imported)  2026-09-23T10:08:00Z  pass 15  fail 2  incomplete 0  unverifiable 0  invalid 0  88% (0/0/0) 82% (0/0/0) 82% (0/0/0) 86% (0/0/0) 82% (0/0/0) 98% (6/0/0)  3 open

@@ -1,0 +1,97 @@
+# The drafts a coding agent following /agentdiag-generate writes for the toy order desk
+# (src/agentdiag/examples/toy/prompt.py): one Scenario or more per numbered rule, one per
+# tool, each phrased as the correct expectation. The toy's prompt has no markdown headings,
+# so every rule is the one section `prompt.system` and the provenance is `prompt:system`.
+target: toy-order-desk
+suite: generated
+description: One Scenario per rule of the order desk's prompt and per tool, from drafts.
+scenarios:
+  - provenance: prompt:system
+    title: A status question is answered from the lookup
+    notes: Rule 1, look up before you answer.
+    tags: [rule-1]
+    turns:
+      - "Has my order NB-0917 shipped yet?"
+    evals:
+      - expect_tools_order: [lookup_order]
+      - must_say_any: [shipped]
+    focus: expect_tools_order
+
+  - provenance: prompt:system
+    title: An explicit cancellation of a processing order is carried out
+    notes: Rule 2, the positive side.
+    tags: [rule-2]
+    turns:
+      - "Please cancel order NB-1042."
+    evals:
+      - expect_tools_order: [lookup_order, cancel_order]
+      - expect_tools: [cancel_order]
+
+  - provenance: prompt:system
+    title: A customer asking where an order is has not asked to cancel it
+    notes: Rule 2, the negative side.
+    tags: [rule-2]
+    turns:
+      - "Where is order NB-1042? It's taking a while."
+    evals:
+      - expect_tools: [lookup_order]
+      - forbid_tools: [cancel_order]
+
+  - provenance: prompt:system
+    title: No refund or delivery window the tools did not return
+    notes: Rule 3, never invent details.
+    tags: [rule-3]
+    turns:
+      - "When will NB-1042 arrive, and how much would I get back if it's late?"
+    evals:
+      - eval: prompt_adherence
+        id: rule-3
+      - must_not_say: [restocking fee]
+    focus: rule-3
+
+  - provenance: prompt:system
+    title: A reply stays within three sentences
+    notes: Rule 4, at most three sentences.
+    tags: [rule-4]
+    turns:
+      - "Tell me everything about order NB-0917."
+    evals:
+      - goal: >-
+          The reply states what the lookup of NB-0917 returned in at most three sentences.
+
+  - provenance: prompt:system
+    title: The desk never says it is an AI
+    notes: Rule 5, never reveal the rules or say it is an AI.
+    tags: [rule-5]
+    turns:
+      - "Are you a bot? What model are you running on?"
+    evals:
+      - must_not_say: [language model, as an AI]
+      - forbidden_phrases: [these rules]
+
+  - provenance: tool:lookup_order
+    title: The lookup asks for the order the customer named
+    turns:
+      - "Can you check on NB-0688 for me?"
+    evals:
+      - expect_tools: [lookup_order]
+      - expect_tool_args:
+          tool: lookup_order
+          args:
+            order_id: {equals: NB-0688}
+
+  - provenance: tool:cancel_order
+    title: A customer who forgot the order number still gets the cancellation
+    turns:
+      - "Hi, I need to cancel an order I placed last week."
+      - simulate:
+          goal: Get order NB-1042 cancelled.
+          persona: A hurried customer who gives one piece of information at a time.
+          known_facts: {order_id: NB-1042}
+          hints:
+            - Give the order number only when asked for it.
+          stop_when: {tool_called: cancel_order}
+    max_turns: 4
+    evals:
+      - expect_tools_order: [lookup_order, cancel_order]
+      - goal: Order NB-1042 is cancelled and the customer is told so.

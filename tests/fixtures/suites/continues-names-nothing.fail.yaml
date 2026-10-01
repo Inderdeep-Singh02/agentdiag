@@ -1,0 +1,11 @@
+# continues must name a Scenario in the same Suite (decision 13).
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: ask-about-order
+    title: Ask about an order
+    turns: ["Where is NB-1042?"]
+  - id: then-cancel-it
+    title: Then cancel it in the same conversation
+    continues: ask-about-an-order
+    turns: ["Cancel it, please."]

@@ -1,0 +1,10 @@
+schema_version: 1
+target: toy-order-desk
+fixtures:
+  carmen: {kind: identity, name: Carmen, phone: "<redacted phone>"}
+  orders-on-file: {orders: [NB-1042, NB-1043]}
+scenarios:
+  - id: cancel-as-carmen
+    title: Cancel an order as a known customer
+    fixtures: [carmen, orders-on-file]
+    turns: ["Cancel NB-1042, please."]

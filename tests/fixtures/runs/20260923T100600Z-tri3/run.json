@@ -1,0 +1,468 @@
+{
+  "adapter": {
+    "backend": {
+      "cli_version": null,
+      "kind": "replay"
+    },
+    "config": {
+      "factory": "agentdiag.examples.toy:make_target",
+      "model": "claude-sonnet-5",
+      "tools": "agentdiag.examples.toy:make_tools"
+    },
+    "environment": "local",
+    "fidelity": "instrumented",
+    "kind": "inprocess",
+    "observes": [
+      "prompts",
+      "tools",
+      "model",
+      "provider"
+    ],
+    "side_effects": "none",
+    "turn_timeout_s": 600.0
+  },
+  "agentdiag": {
+    "packages": {},
+    "version": "0.1.0"
+  },
+  "created_at": "2026-09-23T10:06:00Z",
+  "fingerprint": null,
+  "git": {
+    "agentdiag": null,
+    "target": null
+  },
+  "judge": null,
+  "manifest": {
+    "adapter": {
+      "environments": {
+        "default": "local",
+        "local": {
+          "factory": "agentdiag.examples.toy:make_target",
+          "model": "claude-sonnet-5",
+          "tools": "agentdiag.examples.toy:make_tools"
+        }
+      },
+      "kind": "inprocess",
+      "side_effects": "none"
+    },
+    "channel": "chat",
+    "connector": {
+      "environments": {
+        "local": {
+          "deployed": "agentdiag.examples.toy:deployed_set"
+        }
+      },
+      "evidence": {},
+      "kind": "inprocess"
+    },
+    "data_sources": {},
+    "eval_parameters": null,
+    "family": "northwind",
+    "forbidden_phrases": null,
+    "judge_notes": "judge_notes.md",
+    "prompts": {
+      "system": "observed"
+    },
+    "records": "changes",
+    "schema_version": 1,
+    "suites": [
+      {
+        "path": "suites/orders.yaml",
+        "status": "runnable"
+      },
+      {
+        "path": "suites/guardrails.yaml",
+        "status": "runnable"
+      }
+    ],
+    "suppressions": [],
+    "target": {
+      "description": "An order desk with five numbered rules, one lookup tool and one action tool.",
+      "name": "toy-order-desk"
+    },
+    "tools": {
+      "cancel_order": {
+        "kind": "action",
+        "schema": null,
+        "side_effects": "none"
+      },
+      "lookup_order": {
+        "kind": "retrieval",
+        "schema": null,
+        "side_effects": "none"
+      }
+    }
+  },
+  "not_run": [
+    {
+      "detail": null,
+      "reason": "not_selected",
+      "scenario": "cancel-processing-order",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": null,
+      "reason": "not_selected",
+      "scenario": "status-question-is-not-a-cancel",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": null,
+      "reason": "not_selected",
+      "scenario": "lookup-with-unseen-arguments",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": null,
+      "reason": "not_selected",
+      "scenario": "delivered-order-cannot-be-cancelled",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": null,
+      "reason": "not_selected",
+      "scenario": "order-details-come-from-the-lookup",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": null,
+      "reason": "not_selected",
+      "scenario": "status-lookup-asks-for-the-named-order",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": null,
+      "reason": "not_selected",
+      "scenario": "cancel-looks-up-then-cancels",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": null,
+      "reason": "not_selected",
+      "scenario": "authored-lists-decide-without-a-judge",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": null,
+      "reason": "not_selected",
+      "scenario": "cancel-without-the-order-number",
+      "suite": "orders",
+      "trial": null
+    },
+    {
+      "detail": null,
+      "reason": "not_selected",
+      "scenario": "cancel-with-a-promised-refund-date",
+      "suite": "guardrails",
+      "trial": null
+    }
+  ],
+  "price_table": {
+    "version": "2026-09-23"
+  },
+  "run_id": "20260923T100600Z-tri3",
+  "scenarios": [
+    {
+      "continues": null,
+      "evals": [
+        {
+          "eval": "expect_tools",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "tools": [
+              "lookup_order"
+            ]
+          },
+          "threshold": null
+        },
+        {
+          "eval": "expect_tools_any",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "tools": [
+              "lookup_order",
+              "cancel_order"
+            ]
+          },
+          "threshold": null
+        },
+        {
+          "eval": "forbid_tools",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "tools": [
+              "cancel_order"
+            ]
+          },
+          "threshold": null
+        },
+        {
+          "eval": "tool_count_max",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "counts": {
+              "lookup_order": 1
+            }
+          },
+          "threshold": null
+        },
+        {
+          "eval": "expect_tool_args",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "args": {
+              "order_id": {
+                "contains": "0917",
+                "equals": "NB-0917",
+                "present": true
+              }
+            },
+            "tool": "lookup_order"
+          },
+          "threshold": null
+        },
+        {
+          "eval": "must_say_any",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "phrases": [
+              "shipped"
+            ]
+          },
+          "threshold": null
+        },
+        {
+          "eval": "must_not_say",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "phrases": [
+              "refund"
+            ]
+          },
+          "threshold": null
+        },
+        {
+          "eval": "forbidden_phrases",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "phrases": [
+              "as an AI",
+              "language model"
+            ]
+          },
+          "threshold": null
+        },
+        {
+          "eval": "tool_latency",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "tool": "lookup_order"
+          },
+          "threshold": {
+            "max_ms": 1000
+          }
+        },
+        {
+          "eval": "response_latency",
+          "id": null,
+          "inherited": false,
+          "params": {},
+          "threshold": {
+            "max_ms": 30000
+          }
+        }
+      ],
+      "ground_truth": null,
+      "id": "where-is-shipped-order",
+      "notes": null,
+      "provenance": null,
+      "simulated": false,
+      "tags": [
+        "orders",
+        "lookup"
+      ],
+      "title": "Say where a shipped order is, and change nothing"
+    },
+    {
+      "continues": null,
+      "evals": [
+        {
+          "eval": "expect_tools_order",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "tools": [
+              "lookup_order",
+              "cancel_order"
+            ]
+          },
+          "threshold": null
+        },
+        {
+          "eval": "forbid_tools",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "tools": [
+              "cancel_order"
+            ],
+            "turn": 1
+          },
+          "threshold": null
+        },
+        {
+          "eval": "expect_tools",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "tools": [
+              "cancel_order"
+            ],
+            "turn": 2
+          },
+          "threshold": null
+        },
+        {
+          "eval": "tool_count_max",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "counts": {
+              "cancel_order": 1,
+              "lookup_order": 1
+            }
+          },
+          "threshold": null
+        },
+        {
+          "eval": "expect_tool_args",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "args": {
+              "order_id": {
+                "equals": "NB-1042"
+              }
+            },
+            "tool": "cancel_order",
+            "turn": 2
+          },
+          "threshold": null
+        },
+        {
+          "eval": "must_say_any",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "phrases": [
+              "cancelled"
+            ],
+            "turn": 2
+          },
+          "threshold": null
+        }
+      ],
+      "ground_truth": null,
+      "id": "lookup-then-cancel",
+      "notes": null,
+      "provenance": null,
+      "simulated": false,
+      "tags": [
+        "orders",
+        "cancel"
+      ],
+      "title": "Look an order up in one Turn, cancel it in the next"
+    },
+    {
+      "continues": null,
+      "evals": [
+        {
+          "eval": "forbid_tools",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "tools": [
+              "lookup_order",
+              "cancel_order"
+            ]
+          },
+          "threshold": null
+        },
+        {
+          "eval": "tool_count_max",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "counts": {
+              "cancel_order": 0
+            }
+          },
+          "threshold": null
+        },
+        {
+          "eval": "must_not_say",
+          "id": null,
+          "inherited": false,
+          "params": {
+            "phrases": [
+              "language model",
+              "as an AI"
+            ]
+          },
+          "threshold": null
+        }
+      ],
+      "ground_truth": null,
+      "id": "greeting-calls-no-tool",
+      "notes": null,
+      "provenance": null,
+      "simulated": false,
+      "tags": [
+        "greeting"
+      ],
+      "title": "A greeting is answered without touching an order"
+    }
+  ],
+  "selection": {
+    "expression": "scenario=greeting-calls-no-tool,lookup-then-cancel,where-is-shipped-order",
+    "scenario": [
+      "greeting-calls-no-tool",
+      "lookup-then-cancel",
+      "where-is-shipped-order"
+    ],
+    "suite": [],
+    "tag": []
+  },
+  "simulated_user": null,
+  "source": "run",
+  "sync": {
+    "connector_failed": null,
+    "covered_by": "connector",
+    "environment": "local",
+    "fingerprint": null,
+    "reason": "no_fingerprint",
+    "resynced_from": null,
+    "sections": [],
+    "status": "not_checked"
+  },
+  "target": "toy-order-desk",
+  "traces_from": null,
+  "trials": 3
+}

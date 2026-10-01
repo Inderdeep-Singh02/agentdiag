@@ -1,0 +1,10 @@
+# Two Scenarios share an id: a comparison could not tell their Trials apart (ADR-0002 §8).
+schema_version: 1
+target: toy-order-desk
+scenarios:
+  - id: cancel-order
+    title: Cancel an order
+    turns: ["Cancel NB-1042, please."]
+  - id: cancel-order
+    title: Cancel an order, again
+    turns: ["Cancel NB-1043, please."]

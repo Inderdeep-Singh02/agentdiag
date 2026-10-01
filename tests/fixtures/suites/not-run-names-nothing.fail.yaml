@@ -1,0 +1,9 @@
+# not_run skips Scenarios by id; an id that is no Scenario skips nothing.
+schema_version: 1
+target: toy-order-desk
+not_run:
+  cancel-refunded-order: The refund tool is not built yet.
+scenarios:
+  - id: cancel-order
+    title: Cancel an order
+    turns: ["Cancel NB-1042, please."]

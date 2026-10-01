@@ -1,0 +1,18 @@
+{
+  "built_at": "2026-09-27T10:00:00Z",
+  "environment": "local",
+  "id": "e62a37698fe8d83e85090cecac31047f31a3d00a8b4626dcfb68b32b763e459b",
+  "manifest_sha256": "7021e610a5f62eefd01830fea68e5fa180e8cf017c08ea0890c326b2854ebc96",
+  "not_covered": [],
+  "resynced_from": null,
+  "schema_version": 1,
+  "sections": {
+    "prompt.system": {
+      "covered_by": "adapter",
+      "id": "prompt.system",
+      "kind": "prompt",
+      "sha256": "2c8b08da5ce60398e1f19af0e5dccc744df274b826abe585eaba68c525434806",
+      "summary": null
+    }
+  }
+}
