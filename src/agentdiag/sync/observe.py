@@ -172,7 +172,8 @@ def connector_read(
     and the probe then covers). `connector` is one already built; without one it is built
     here (`plugins.build_connector`); the environment's credentials resolve when it is read.
     `ConnectorError` (a `CredentialMissing` among them) and `UnknownKind` propagate: `sync`
-    refuses on either, a Run falls back to the probe (decision 25).
+    refuses on either; a Run falls back to the probe on a `ConnectorError` (decision 25) and
+    never gets here with an unknown kind, which its preflight refuses (ADR-0015 §3).
     """
     if manifest.connector is None:
         return None, None
@@ -230,7 +231,9 @@ def deployed_side(
 ) -> DeployedSide:
     """The Connector's read of `environment` when there is one, else the Adapter's probe;
     a Connector that fails (`ConnectorError`, `UnknownKind`) leaves the probe standing in and
-    says why in `connector_failed`, the one place that text is made."""
+    says why in `connector_failed`, the one place that text is made. A Run reaches this only
+    with a registered kind (its preflight refuses an unknown one, ADR-0015 §3); `sync`,
+    `import` and the UI still meet `UnknownKind` here."""
     try:
         deployed, no_connector = connector_read(manifest, environment, environ=environ)
     except (ConnectorError, UnknownKind) as exc:

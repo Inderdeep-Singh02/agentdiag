@@ -1394,7 +1394,10 @@ missing credential never blocks a local Run. Credentials are named in the Manife
 environment variable that holds them (`credentials: {token: ORDERS_DEV_TOKEN}`) and read from
 the process environment only, never from another environment's variable. A platform's
 Connector is a plugin package found by `connector.kind`; a kind nothing installed provides
-is refused naming the package that would.
+is refused naming the package that would. `run`, `run --dry-run` and `rescore` refuse an
+unknown `adapter.kind` (and `connector.kind`, when the Run reads through the Connector) with
+`validate`'s message, exit 3; an unknown Connector kind no longer falls back to the Adapter's
+probe.
 
 `sync --json` prints the same comparison as JSON, and `--env <name>` reads another of the
 Manifest's environments, including one only the Connector names. A Target that has never

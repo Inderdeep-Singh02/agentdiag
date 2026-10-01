@@ -84,7 +84,8 @@ def manifest_problems(manifest: Manifest) -> list[Problem]:
                         "environment if it reaches no real user",
                     )
                 )
-    problems += _kind_rules("adapter.kind", ADAPTER_GROUP, adapter.kind, adapter)
+    unknown = dict(kind_problems(manifest))
+    problems += _kind_rules("adapter.kind", ADAPTER_GROUP, adapter, unknown)
     section = manifest.connector
     if section is None:
         return problems
@@ -97,7 +98,24 @@ def manifest_problems(manifest: Manifest) -> list[Problem]:
                     f"{kind!r} is not an Evidence store kind; the kinds are {', '.join(kinds)}",
                 )
             )
-    problems += _kind_rules("connector.kind", CONNECTOR_GROUP, section.kind, section)
+    problems += _kind_rules("connector.kind", CONNECTOR_GROUP, section, unknown)
+    return problems
+
+
+def kind_problems(manifest: Manifest, *, connector: bool = True) -> list[Problem]:
+    """`adapter.kind`, and `connector.kind` when `connector` and the Manifest has one, when
+    no installed distribution registers it (`plugins.check_registered`, loading nothing).
+    The one owner of the rule: `validate` reports it, and preflight refuses a Run on it
+    (ADR-0015 §3). `connector` is False for a preflight that will not use the Connector."""
+    kinds = [("adapter.kind", ADAPTER_GROUP, manifest.adapter.kind)]
+    if connector and manifest.connector is not None:
+        kinds.append(("connector.kind", CONNECTOR_GROUP, manifest.connector.kind))
+    problems: list[Problem] = []
+    for where, group, kind in kinds:
+        try:
+            check_registered(group, kind)
+        except UnknownKind as unknown:
+            problems.append((where, str(unknown)))
     return problems
 
 
@@ -112,12 +130,12 @@ def _side_effects(where: str, declared: Any) -> list[Problem]:
     ]
 
 
-def _kind_rules(where: str, group: str, kind: str, section: Any) -> list[Problem]:
-    """The kind unknown, or else its own `validate_section`'s problems."""
-    try:
-        check_registered(group, kind)
-    except UnknownKind as unknown:
-        return [(where, str(unknown))]
+def _kind_rules(where: str, group: str, section: Any, unknown: Mapping[str, str]) -> list[Problem]:
+    """The kind unknown (`kind_problems`' message for `where`), or else its own
+    `validate_section`'s problems."""
+    if where in unknown:
+        return [(where, unknown[where])]
+    kind = section.kind
     core = CORE_RULES.get((group, kind))
     if core is not None and kind in CORE_KINDS_OF[group]:
         return core(section)
@@ -125,4 +143,10 @@ def _kind_rules(where: str, group: str, kind: str, section: Any) -> list[Problem
     return list(hook(section)) if callable(hook) else []
 
 
-__all__ = ["CORE_RULES", "MANIFEST_SCHEMA_VERSION", "http_adapter_problems", "manifest_problems"]
+__all__ = [
+    "CORE_RULES",
+    "MANIFEST_SCHEMA_VERSION",
+    "http_adapter_problems",
+    "kind_problems",
+    "manifest_problems",
+]

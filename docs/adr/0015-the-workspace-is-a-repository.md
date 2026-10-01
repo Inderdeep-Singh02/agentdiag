@@ -45,11 +45,14 @@ one machine:
    in-process `store` keeps its stricter rule (inside the Target directory).
 3. **An unknown kind is refused wherever a Manifest is read to act on it.** `run`,
    `run --dry-run` and the preflight a `rescore` runs refuse a Manifest whose `adapter.kind`
-   or `connector.kind` no installed distribution registers, before credentials, the Adapter
-   and the Sync plan, with character for character the problem `validate` prints (ADR-0014
-   §2's message, naming the installed kinds and the entry-point group a plugin registers
-   under). The probe stands in for a Connector that cannot *read* (a missing credential,
-   decision 25 of phase 6); it never stands in for one that cannot *exist*.
+   no installed distribution registers, and whose `connector.kind` none registers when that
+   preflight reads through the Connector (the Sync check, or tool truth over HTTP; a
+   `rescore` needs no Connector and is not refused for one), before credentials, the
+   Adapter and the Sync plan, with character for character the problem `validate` prints
+   (ADR-0014 §2's message, naming the installed kinds and the entry-point group a plugin
+   registers under), alongside every other problem the pass finds. The Adapter's probe
+   stands in for a Connector that cannot *read* (a missing credential, decision 25 of phase
+   6); it never stands in for one that cannot *exist*.
 4. **The names to redact are local, not committed.** They live in `redaction.yaml` beside
    the Manifest (`names: [...]`), which `init` writes as an empty starter and whose line
    `init` adds to the Workspace `.gitignore`. The Manifest's `redaction` key is a pointer to

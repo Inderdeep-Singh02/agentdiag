@@ -81,6 +81,12 @@ arguments (`environment`, `tool_kinds`, `allow_live`) and the in-process kind al
 here, exit 3, and with it the description records `live_acknowledged`. A selection that
 declares a tool Eval against the HTTP Adapter with no proxy Evidence store to reconstruct
 from is warned of, once, and runs: those Evals are `unverifiable / fidelity_too_low`.
+
+Once the Manifest loads (a missing or unloadable one is refused before anything else), an
+`adapter.kind` nothing registers is a problem, with the message `validate` gives for it, and
+so is a `connector.kind` when this preflight uses the Connector (a Sync check, or an HTTP
+Adapter whose `tool_truth` reads through it): the Adapter is then neither built nor probed,
+and the rest is collected as usual (ADR-0015 §3).
 """
 
 from __future__ import annotations
@@ -96,7 +102,7 @@ from agentdiag.adapter import (
     InProcessAdapter,
     LiveSideEffectsRefused,
 )
-from agentdiag.adapter.http.config import tool_truth_of
+from agentdiag.adapter.http.config import TOOL_TRUTH_KEY, tool_truth_of
 from agentdiag.adapter.http.session import HttpAdapter
 from agentdiag.connector.base import ConnectorError
 from agentdiag.connector.environment import scrub_credentials
@@ -128,6 +134,7 @@ from agentdiag.run.manifest import (
     PromptPointer,
     load_manifest,
 )
+from agentdiag.run.manifest_checks import kind_problems
 from agentdiag.run.record import Defaulted, SyncSection
 from agentdiag.scenario.load import LoadedSuite, load_suite_files
 from agentdiag.scenario.models import (
@@ -346,14 +353,23 @@ def preflight(
         # Nothing after this can be checked without a Manifest, so this one short-circuits
         # rather than producing a cascade of failures that all mean "no Manifest".
         raise PreflightFailed([str(exc)]) from exc
+    # A kind nothing registers can never be built: `validate`'s problem, word for word, and
+    # no Adapter, so the Adapter's probe never stands in for a Connector that cannot exist.
+    # Everything that does not need the Adapter is still collected below.
+    unknown = unknown_kinds(manifest, connector=check_sync or reads_tool_truth(manifest))
+    problems.extend(unknown)
 
     suites, warnings, suite_problems = load_suites(target, manifest)
     problems.extend(suite_problems)
     suites = with_adhoc(suites, adhoc, manifest)
     # Before the Adapter: what resolves decides the Backend of the Target's calls too.
     source = None if client_backend is not None else resolve_credentials(replay, dry_run)
-    adapter, description, adapter_problems = build_adapter(
-        manifest, cursor, source, allow_live=live, drives=drives, environment=environment
+    adapter, description, adapter_problems = (
+        (None, None, [])
+        if unknown
+        else build_adapter(
+            manifest, cursor, source, allow_live=live, drives=drives, environment=environment
+        )
     )
     # Sync, once the Adapter exists and before credentials are asked about, so a `strict`
     # refusal costs nothing more (decision 14). One probe; no Run directory yet.
@@ -915,14 +931,16 @@ def build_adapter(
 
     `adapter.kind` resolves through the entry points (`connector.plugins.adapter_class`,
     phase-6 decision 21); a kind no distribution registers is a problem naming the package
-    that would. Every kind is constructed as `Kind(config, *, environment, tool_kinds,
-    allow_live, **kind_specific)` (phase-8 decision 1) and built when what it constructs is
-    an `Adapter` with a `check`: the in-process kind alone takes `replay` and `credentials`
-    (what preflight resolved: the Claude Code login has it carry the Target's calls through
-    the CLI, decision 29), and the HTTP kind the Target's Connector when its `tool_truth`
-    reads one (decision 8). `allow_live` is `run --live` (decision 9). With `drives` False (a
-    rescore) the Adapter is described and never checked: no credential read, no `live`
-    refusal, nothing imported that `check` would import.
+    that would, a branch only a direct caller reaches, since `preflight` reports an unknown
+    kind itself and then does not call this (ADR-0015 §3). Every kind is constructed as
+    `Kind(config, *, environment, tool_kinds, allow_live, **kind_specific)` (phase-8
+    decision 1) and built when what it constructs is an `Adapter` with a `check`: the
+    in-process kind alone takes `replay` and `credentials` (what preflight resolved: the
+    Claude Code login has it carry the Target's calls through the CLI, decision 29), and the
+    HTTP kind the Target's Connector when its `tool_truth` reads one (decision 8).
+    `allow_live` is `run --live` (decision 9). With `drives` False (a rescore) the Adapter
+    is described and never checked: no credential read, no `live` refusal, nothing imported
+    that `check` would import.
 
     `environment` is `run --env` (phase-8 decision 12): the Adapter's default when None,
     else the name given (an empty one included); a name the Adapter block does not declare
@@ -971,6 +989,22 @@ def build_adapter(
     except (ImportError, KeyError, TypeError, ValueError, ManifestError, ConnectorError) as exc:
         problems.append(f"Adapter: {exc}")
     return None, None, problems
+
+
+def unknown_kinds(manifest: Manifest, *, connector: bool) -> list[str]:
+    """`manifest_checks.kind_problems` rendered as `validate` renders a problem,
+    `<where>: <message>` (ADR-0015 §3)."""
+    return [
+        f"{where}: {message}" for where, message in kind_problems(manifest, connector=connector)
+    ]
+
+
+def reads_tool_truth(manifest: Manifest) -> bool:
+    """Whether the Adapter block sets `tool_truth`, which hands the HTTP kind the Connector
+    (`_connector_for`'s condition, decision 8). Read as the key's presence, without loading
+    the Adapter class, so a plugin kind built on the HTTP Adapter counts too and a malformed
+    block is left to `build_adapter` to name."""
+    return (manifest.adapter.model_extra or {}).get(TOOL_TRUTH_KEY) is not None
 
 
 def unknown_environment(environment: str, declared: Sequence[str]) -> str:
@@ -1023,6 +1057,7 @@ __all__ = [
     "not_implemented_warnings",
     "preflight",
     "read_manifest_prompts",
+    "reads_tool_truth",
     "resolve_credentials",
     "resolve_guardrails",
     "restrict",
@@ -1031,6 +1066,7 @@ __all__ = [
     "tool_truth_warnings",
     "undeclared",
     "unknown_environment",
+    "unknown_kinds",
     "with_adhoc",
     "with_default_thresholds",
     "without_drafts",
