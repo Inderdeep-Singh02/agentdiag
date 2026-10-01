@@ -458,6 +458,130 @@ def test_no_workspace_above_the_current_directory_is_an_error_saying_so(
     assert output(result).startswith("error: no Workspace found")
 
 
+# --- the walk up stops at the enclosing git repository (ADR-0013 §2) ---
+
+
+def one_target_workspace(root: Path) -> Path:
+    """`init --root root`: a Workspace of one Target, the root back."""
+    made = invoke("init", "--root", str(root))
+    assert made.exit_code == 0, output(made)
+    return root
+
+
+def registry_slugs(result: object) -> list[str]:
+    return [entry["slug"] for entry in json.loads(result.stdout)]  # type: ignore[attr-defined]
+
+
+def test_a_git_repository_inside_a_workspace_bounds_the_walk_up_and_names_the_outer_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    outer = one_target_workspace(tmp_path / "w")
+    clone = outer / "innerclone"
+    (clone / ".git").mkdir(parents=True)
+    below = clone / "sub"
+    below.mkdir()
+    monkeypatch.chdir(below)
+
+    result = invoke("registry")
+
+    assert result.exit_code == 3, output(result)
+    assert output(result).startswith(
+        f"error: no Workspace found: no .agentdiag/ in {below} or above it; "
+        f"the walk stops at the git top level {clone}; "
+        f"the Workspace at {outer} is outside it: name it with --root {outer}"
+    )
+    assert "agentdiag init" not in output(result)
+
+
+def test_at_a_git_top_level_holding_no_workspace_the_error_looks_nowhere_above_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clone = tmp_path / "clone"
+    (clone / ".git").mkdir(parents=True)
+    monkeypatch.chdir(clone)
+
+    result = invoke("registry")
+
+    assert result.exit_code == 3, output(result)
+    assert output(result).startswith(
+        f"error: no Workspace found: no .agentdiag/ in {clone}; "
+        f"the walk stops at the git top level {clone}; "
+        "name one with --root, or `agentdiag init` makes one here"
+    )
+
+
+def test_a_workspace_at_the_git_top_level_is_found_from_below_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = one_target_workspace(tmp_path / "w")
+    (root / ".git").mkdir()
+    below = root / "sub"
+    below.mkdir()
+    monkeypatch.chdir(below)
+
+    result = invoke("registry", "--json")
+
+    assert result.exit_code == 0, output(result)
+    assert registry_slugs(result) == ["default"]
+
+
+def test_with_no_git_repository_the_walk_up_still_finds_the_workspace(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = one_target_workspace(tmp_path / "w")
+    below = root / "sub" / "deeper"
+    below.mkdir(parents=True)
+    monkeypatch.chdir(below)
+
+    result = invoke("registry", "--json")
+
+    assert result.exit_code == 0, output(result)
+    assert registry_slugs(result) == ["default"]
+
+
+def test_a_git_file_as_a_worktree_writes_bounds_the_walk_up_too(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    outer = one_target_workspace(tmp_path / "w")
+    worktree = outer / "worktree"
+    worktree.mkdir()
+    (worktree / ".git").write_text("gitdir: /elsewhere/.git/worktrees/w\n", encoding="utf-8")
+    monkeypatch.chdir(worktree)
+
+    result = invoke("registry")
+
+    assert result.exit_code == 3, output(result)
+    assert f"the walk stops at the git top level {worktree}" in output(result)
+
+
+def test_root_names_a_workspace_from_inside_another_git_repository(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = one_target_workspace(tmp_path / "w")
+    elsewhere = tmp_path / "clone"
+    (elsewhere / ".git").mkdir(parents=True)
+    monkeypatch.chdir(elsewhere)
+
+    result = invoke("registry", "--root", str(root), "--json")
+
+    assert result.exit_code == 0, output(result)
+    assert registry_slugs(result) == ["default"]
+
+
+def test_init_in_a_clone_inside_a_workspace_prints_no_nesting_notice(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    outer = one_target_workspace(tmp_path / "w")
+    clone = outer / "innerclone"
+    (clone / ".git").mkdir(parents=True)
+    monkeypatch.chdir(clone)
+
+    result = invoke("init")
+
+    assert result.exit_code == 0, output(result)
+    assert "notice: a Workspace already exists" not in result.stderr
+
+
 def test_a_root_without_agentdiag_is_an_error_naming_it(tmp_path: Path) -> None:
     result = invoke("list", "--root", str(tmp_path))
 

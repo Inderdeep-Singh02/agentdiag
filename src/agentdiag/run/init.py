@@ -264,11 +264,14 @@ def _target_to_write(
 def enclosing_workspace(start: Path) -> Path | None:
     """The root of a Workspace strictly above `start`, when `start` holds none itself: what
     an `init` with no `--root` would nest a second Workspace inside (it still does, per
-    phase-6 decision 4, and says so)."""
+    phase-6 decision 4, and says so). Looked for as `Workspace.holding` does, no further up
+    than the enclosing git repository's top level, so `init` and `find` agree on what is
+    inside a Workspace."""
     here = Path(start).resolve()
     if (here / AGENTDIAG_DIR).is_dir():
         return None
-    return next((parent for parent in here.parents if (parent / AGENTDIAG_DIR).is_dir()), None)
+    outer = Workspace.holding(here)
+    return None if outer is None else outer.root
 
 
 def ignore_outputs(path: Path, lines: tuple[str, ...] = GITIGNORE_LINES) -> bool:

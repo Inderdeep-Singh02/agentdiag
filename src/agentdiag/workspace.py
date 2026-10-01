@@ -13,7 +13,11 @@ refused by name, with the move that fixes it, rather than read as a Workspace ho
 Target: an author whose Manifest seems to vanish would otherwise be told to `init` over it.
 
 **The root is the user's** (ADR-0013 §2): given by `--root`, or found by walking up from the
-current directory to the nearest `.agentdiag/`. agentdiag writes only under it.
+current directory to the nearest `.agentdiag/`. The walk stops at the enclosing git
+repository's top level — the first directory on the way up holding a `.git` (a directory, or
+a worktree's file) — which is still looked in and whose parents are not: a clone inside a
+Workspace is not read as part of it. With no `.git` on the way up the walk reaches the
+filesystem root, since a Workspace need not be a repository. agentdiag writes only under it.
 
 Imports nothing beyond the standard library: `show`, `validate` and `list` resolve a
 Workspace, and they are offline commands.
@@ -54,6 +58,37 @@ SUITES_DIRNAME = "suites"
 INDEX_FILE = "index.sqlite"
 """The derived Index, one per Workspace (ADR-0005 §5): never inside a Target, never the
 truth."""
+
+
+GIT_MARKER = ".git"
+"""What makes a directory a git repository's top level: a directory, or the file a worktree
+writes in its place."""
+
+
+def _is_repository_top(directory: Path) -> bool:
+    return (directory / GIT_MARKER).exists()
+
+
+def find_repository(start: Path) -> Path | None:
+    """The enclosing git repository's top level: the nearest directory at or above `start`
+    holding a `.git`, or None."""
+    current = Path(start).resolve()
+    for candidate in (current, *current.parents):
+        if _is_repository_top(candidate):
+            return candidate
+    return None
+
+
+def _nearest_workspace_root(start: Path) -> tuple[Path | None, Path | None]:
+    """The nearest directory at or above `start` holding `.agentdiag/`, looking no further
+    up than the enclosing git repository's top level; else None and that top level (None
+    too when no `.git` bounded the walk and it reached the filesystem root)."""
+    for candidate in (start, *start.parents):
+        if (candidate / AGENTDIAG_DIR).is_dir():
+            return candidate, None
+        if _is_repository_top(candidate):
+            return None, candidate
+    return None, None
 
 
 class WorkspaceError(ValueError):
@@ -150,17 +185,40 @@ class TargetPaths:
         return path.as_posix()
 
 
+def _not_found(here: Path, top: Path | None) -> str:
+    """What `find` says when the walk up from `here` met no `.agentdiag/`. Stopped at a git
+    top level, it looks above that only to name a Workspace outside it, and then suggests
+    `--root` and never `init`: a Workspace inside a Target's clone is what ADR-0013 §2 rules
+    out."""
+    if top is None:
+        return (
+            f"no Workspace found: no {AGENTDIAG_DIR}/ in {here} or any directory above it; "
+            "name one with --root, or `agentdiag init` makes one here"
+        )
+    above = "" if here == top else " or above it"
+    stopped = (
+        f"no Workspace found: no {AGENTDIAG_DIR}/ in {here}{above}; "
+        f"the walk stops at the git top level {top}"
+    )
+    outer = next((parent for parent in top.parents if (parent / AGENTDIAG_DIR).is_dir()), None)
+    if outer is not None:
+        return f"{stopped}; the Workspace at {outer} is outside it: name it with --root {outer}"
+    return f"{stopped}; name one with --root, or `agentdiag init` makes one here"
+
+
 @dataclass(frozen=True)
 class Workspace:
-    """One root and the Targets under its `.agentdiag/`."""
+    """One root and the Targets under its `.agentdiag/`. Found from below by a walk that
+    stops at the enclosing git repository's top level (see the module docstring)."""
 
     root: Path
 
     @classmethod
     def find(cls, start: Path | None) -> Workspace:
         """The Workspace at `start`, which must hold `.agentdiag/`; with None, the nearest
-        one found walking up from the current directory. `WorkspaceError` when there is
-        none, or when the one found is in the Phase 4 spelling."""
+        one found walking up from the current directory, no further than the enclosing git
+        repository's top level. `WorkspaceError` when there is none, or when the one found
+        is in the Phase 4 spelling."""
         if start is not None:
             root = Path(start)
             if not (root / AGENTDIAG_DIR).is_dir():
@@ -170,23 +228,19 @@ class Workspace:
                 )
             return cls._checked(root)
         here = Path.cwd()
-        for candidate in (here, *here.parents):
-            if (candidate / AGENTDIAG_DIR).is_dir():
-                return cls._checked(candidate)
-        raise WorkspaceNotFound(
-            f"no Workspace found: no {AGENTDIAG_DIR}/ in {here} or any directory above it; "
-            "name one with --root, or `agentdiag init` makes one here"
-        )
+        found, top = _nearest_workspace_root(here)
+        if found is not None:
+            return cls._checked(found)
+        raise WorkspaceNotFound(_not_found(here, top))
 
     @classmethod
     def holding(cls, path: Path) -> Workspace | None:
-        """The nearest Workspace at or above `path`, unchecked; None when no directory on
-        the way up holds `.agentdiag/` (a Run directory copied out of every Workspace)."""
-        start = Path(path).resolve()
-        for candidate in (start, *start.parents):
-            if (candidate / AGENTDIAG_DIR).is_dir():
-                return cls(candidate)
-        return None
+        """The nearest Workspace at or above `path`, unchecked, no further up than the
+        enclosing git repository's top level; None when no directory on that way up holds
+        `.agentdiag/`: a Run directory copied out of every Workspace, or into another
+        clone, belongs to no Workspace."""
+        found, _ = _nearest_workspace_root(Path(path).resolve())
+        return None if found is None else cls(found)
 
     @classmethod
     def at(cls, root: Path) -> Workspace:

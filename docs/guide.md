@@ -80,11 +80,13 @@ uv run agentdiag --help
 ```
 
 Every command reads the Workspace whose `.agentdiag/` is under the directory `--root` names,
-and when it names none, the nearest `.agentdiag/` at or above the current directory. A
-Workspace holds one or more Targets, each under `.agentdiag/targets/<slug>/`; with one
-Target no command needs `--target`. From this checkout `uv run` has to stay in the
-repository, so every command below passes `--root`; with `agentdiag` installed on your PATH
-you drop the `uv run` and the `--root` and work anywhere inside the Workspace instead.
+and when it names none, the nearest `.agentdiag/` at or above the current directory. The
+walk up stops at the enclosing git repository's top level, so a clone inside a Workspace is
+not read as part of it; `--root` names a Workspace from anywhere. A Workspace holds one
+or more Targets, each under `.agentdiag/targets/<slug>/`; with one Target no command needs
+`--target`. From this checkout `uv run` has to stay in the repository, so every command
+below passes `--root`; with `agentdiag` installed on your PATH you drop the `uv run` and the
+`--root` and work anywhere inside the Workspace instead.
 
 ### Scaffold a Target
 

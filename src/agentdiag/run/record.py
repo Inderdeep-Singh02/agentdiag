@@ -42,7 +42,7 @@ from agentdiag.types import (
     DEFAULT_RUN_SOURCE,
     RunSource,
 )
-from agentdiag.workspace import TargetPaths
+from agentdiag.workspace import TargetPaths, find_repository
 
 RECORDED_PACKAGES = ("anthropic", "claude-agent-sdk", "pydantic", "typer", "pyyaml")
 """The dependencies whose version can change a Run's behaviour, recorded by name."""
@@ -280,15 +280,6 @@ def package_versions() -> dict[str, str]:
 def agentdiag_section() -> AgentdiagSection:
     """Which agentdiag produced this Run, and what it was built on."""
     return AgentdiagSection(version=agentdiag.__version__, packages=package_versions())
-
-
-def find_repository(start: Path) -> Path | None:
-    """The nearest ancestor of `start` holding a `.git`, or None."""
-    current = Path(start).resolve()
-    for candidate in (current, *current.parents):
-        if (candidate / ".git").exists():
-            return candidate
-    return None
 
 
 def git_state(start: Path) -> GitState | None:
