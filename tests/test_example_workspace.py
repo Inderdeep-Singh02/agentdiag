@@ -40,7 +40,12 @@ HELP_DESK = WORKSPACE / ".agentdiag" / "targets" / "help-desk"
 OUTPUT = ("runs", "restore-points", "platform", "index.sqlite")
 """What using the example writes that is output, gitignored and never gated."""
 
-USED = (*OUTPUT, "sync-breaks", "fingerprint.json")
+LOCAL = ("redaction.yaml",)
+"""What `init` writes that the Workspace's gitignore keeps out of every clone (ADR-0015 §4):
+a reader's own names to redact, never gated. `examples/toy/`, which has no gitignore of its
+own, carries the starter and gates it."""
+
+USED = (*OUTPUT, *LOCAL, "sync-breaks", "fingerprint.json")
 """Beside the output, what a `sync` writes: committed in a Workspace of one's own. The order
 desk ships without them, so a `sync` a reader ran there is set aside; the help desk ships its
 `fingerprint.json`, gated below, and no Sync break."""
@@ -120,7 +125,7 @@ def test_the_help_desk_holds_what_the_walkthrough_left_and_nothing_else() -> Non
     written = sorted(
         p.relative_to(HELP_DESK).as_posix()
         for p in HELP_DESK.rglob("*")
-        if p.is_file() and not set(p.relative_to(HELP_DESK).parts) & set(OUTPUT)
+        if p.is_file() and not set(p.relative_to(HELP_DESK).parts) & {*OUTPUT, *LOCAL}
     )
     assert written == [
         "drafts/generated.yaml",

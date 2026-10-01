@@ -12,8 +12,13 @@ or a number (a hash, a Run id, `$1.095.000`) is not a candidate at all. The seve
 is the contract's, and its false positive is accepted: any other number of seven digits or
 more written with separators, an order number among them, is redacted too.
 
-The redaction list is the Manifest's `redaction.names`; `redaction_names` is the one reader
-of it (decision 6: nothing else reads the list).
+The redaction list is local, never committed (ADR-0015 §4): the Target's `redaction.yaml`
+beside the Manifest, `names: [...]`, gitignored by `init`, or the file the Manifest's
+`redaction` pointer names. `redaction_names` is the one reader of the list (decision 6); the
+file's shape and the pointer's rule are `agentdiag.run.manifest`'s (`read_redaction_file`,
+`redaction_file_names`), which `validate` asks too. Names an older
+Manifest still lists inline are read as well, so an un-migrated Manifest keeps redacting while
+`validate` reports the move.
 """
 
 from __future__ import annotations
@@ -21,7 +26,13 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 
-from agentdiag.run.manifest import manifest_if_it_loads
+import yaml
+
+from agentdiag.run.manifest import (
+    Redaction,
+    manifest_if_it_loads,
+    redaction_file_names,
+)
 from agentdiag.workspace import TargetPaths
 
 EMAIL_SHOWN = "[email]"
@@ -68,12 +79,31 @@ def redaction_misses(text: str) -> list[str]:
 
 
 def redaction_names(target: TargetPaths) -> list[str]:
-    """The names the Target's Manifest lists under `redaction.names`; none when the
-    Manifest does not load or lists none."""
+    """The names a Change record of the Target never carries: those of the redaction file
+    the Manifest points at (`redaction.yaml` beside it when it names none), with any an older
+    Manifest still lists inline. A Manifest that does not load still has its pointer
+    honoured when the key is a path. None listed when there is no default file;
+    `RedactionFileInvalid` for a file of the wrong shape, a pointer the ADR-0015 §2 rule
+    refuses (never read), or a pointer to nothing."""
     manifest = manifest_if_it_loads(target)
-    if manifest is None or manifest.redaction is None:
-        return []
-    return list(manifest.redaction.names)
+    inline: list[str] = []
+    if manifest is None:
+        pointer = _pointer_of_an_unloadable(target)
+    else:
+        pointer = manifest.redaction if isinstance(manifest.redaction, str) else None
+        if isinstance(manifest.redaction, Redaction):
+            inline = list(manifest.redaction.names)
+    return list(redaction_file_names(target, pointer) or []) + inline
+
+
+def _pointer_of_an_unloadable(target: TargetPaths) -> str | None:
+    """The `redaction` key of a Manifest the model refuses, when it is a path."""
+    try:
+        raw = yaml.safe_load(target.manifest.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, yaml.YAMLError):
+        return None
+    pointer = raw.get("redaction") if isinstance(raw, dict) else None
+    return pointer if isinstance(pointer, str) else None
 
 
 def _phone(match: re.Match[str]) -> str:

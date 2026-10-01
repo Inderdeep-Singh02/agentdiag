@@ -45,13 +45,19 @@ a shell, a URL and a `--target` all carry unchanged."""
 MANIFEST_NAME = "manifest.yaml"
 FINGERPRINT_NAME = "fingerprint.json"
 JUDGE_NOTES_NAME = "judge_notes.md"
+REDACTION_NAME = "redaction.yaml"
 RUNS_DIRNAME = "runs"
 SYNC_BREAKS_DIRNAME = "sync-breaks"
 CHANGES_DIRNAME = "changes"
 PUSHES_DIRNAME = "pushes"
 RESTORE_POINTS_DIRNAME = "restore-points"
 """What a Target directory holds (decision 1), by name. `runs/` and `restore-points/` are
-output and gitignored; everything else is committed (ADR-0013 §1)."""
+output and gitignored, `redaction.yaml` is local and gitignored (ADR-0015 §4); everything
+else is committed (ADR-0013 §1)."""
+
+GITIGNORE_REDACTION_LINE = f"{AGENTDIAG_DIR}/{TARGETS_DIRNAME}/*/{REDACTION_NAME}"
+"""The Workspace `.gitignore` line that keeps every Target's redaction file out of git
+(ADR-0015 §4): `init` writes it, and `validate` warns where it is missing."""
 
 SUITES_DIRNAME = "suites"
 
@@ -149,6 +155,12 @@ class TargetPaths:
     def judge_notes(self) -> Path:
         """Where `init` puts the Calibration Notes; the Manifest's `judge_notes` names them."""
         return self.directory / JUDGE_NOTES_NAME
+
+    @property
+    def redaction(self) -> Path:
+        """Where `init` puts the names a Change record never carries (ADR-0015 §4): local and
+        gitignored; the Manifest's `redaction` points elsewhere when it says so."""
+        return self.directory / REDACTION_NAME
 
     @property
     def runs(self) -> Path:
@@ -345,10 +357,12 @@ __all__ = [
     "CHANGES_DIRNAME",
     "DEFAULT_SLUG",
     "FINGERPRINT_NAME",
+    "GITIGNORE_REDACTION_LINE",
     "INDEX_FILE",
     "JUDGE_NOTES_NAME",
     "MANIFEST_NAME",
     "PUSHES_DIRNAME",
+    "REDACTION_NAME",
     "RESTORE_POINTS_DIRNAME",
     "RUNS_DIRNAME",
     "SLUG",

@@ -68,6 +68,8 @@ tools:
 # false-fail patterns, at most 600 words, read verbatim by every judged Eval and part of
 # each judged Score's Judge Fingerprint (ADR-0003 section 8).
 judge_notes: judge_notes.md
+# The names a Change record never carries are in redaction.yaml beside this file: local and
+# gitignored, so a key here is needed only to point elsewhere (redaction: <path>).
 
 # Eval parameters, read by the Evals and never shown to the Judge: a default threshold for
 # the latency Evals, and the JSON type each tool argument must have. Forbidden phrases stay

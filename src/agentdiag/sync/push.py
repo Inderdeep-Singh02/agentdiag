@@ -52,6 +52,7 @@ from pydantic import BaseModel, Field
 
 from agentdiag.change.lifecycle import ChangeRefused, record_connector_push, require_pushable
 from agentdiag.change.record import ChangeRecordInvalid, ChangeRecordNotFound, find_record
+from agentdiag.change.redact import redaction_names
 from agentdiag.connector.base import (
     WRITE_DEPLOYED_SET,
     Connector,
@@ -63,7 +64,12 @@ from agentdiag.connector.base import (
 from agentdiag.connector.plugins import UnknownKind, build_connector
 from agentdiag.exits import USAGE_EXIT
 from agentdiag.run.directory import render_json
-from agentdiag.run.manifest import Manifest, ManifestError, higher_side_effects
+from agentdiag.run.manifest import (
+    Manifest,
+    ManifestError,
+    RedactionFileInvalid,
+    higher_side_effects,
+)
 from agentdiag.sync.check import check_target, rebuilt
 from agentdiag.sync.compare import SectionState
 from agentdiag.sync.fingerprint import (
@@ -586,13 +592,15 @@ def check_confirmation(
 
 def pushable_record(target: TargetPaths, change_record: str | None) -> Path | None:
     """The file of Change record `change_record` when a push may name it (`lifecycle.
-    require_pushable`); `PushRefused` saying why otherwise."""
+    require_pushable`) and its push event can be written redacted (the redaction file reads,
+    ADR-0015 §4); `PushRefused` saying why otherwise, before the Connector writes."""
     if change_record is None:
         return None
     try:
         path, record, _ = find_record(target, change_record)
         require_pushable(record)
-    except (ChangeRecordNotFound, ChangeRecordInvalid, ChangeRefused) as exc:
+        redaction_names(target)
+    except (ChangeRecordNotFound, ChangeRecordInvalid, ChangeRefused, RedactionFileInvalid) as exc:
         raise PushRefused(str(exc)) from exc
     return path
 
@@ -707,7 +715,13 @@ def push(
                 fingerprint_before=before,
                 fingerprint_after=after,
             )
-        except (ChangeRefused, ChangeRecordNotFound, ChangeRecordInvalid, OSError) as exc:
+        except (
+            ChangeRefused,
+            ChangeRecordNotFound,
+            ChangeRecordInvalid,
+            RedactionFileInvalid,
+            OSError,
+        ) as exc:
             problems.append(
                 f"Change record {change_record} gained no push event: {exc}; append it with "
                 "the Push record's path once the record is proposed or pushed again"

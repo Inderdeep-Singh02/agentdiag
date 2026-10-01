@@ -14,8 +14,8 @@ loads unchanged; unknown keys are carried rather than refused.
 - **What agentdiag reads for its own work**: `suites` (a path, or a path with a `status`),
   `records` (the Change records directory), `judge_notes` (ADR-0003 §8),
   `forbidden_phrases` (phase-5 decision 6), `eval_parameters` (the latency defaults and the
-  tool argument types), `suppressions` (ADR-0003 §8, decision 16) and `redaction` (the names
-  a Change record never carries, phase-7 decision 6).
+  tool argument types), `suppressions` (ADR-0003 §8, decision 16) and `redaction` (a pointer
+  to the local, gitignored file of the names a Change record never carries, ADR-0015 §4).
 
 Where the file is belongs to `agentdiag.workspace` (ADR-0013): `load_manifest` takes the
 `TargetPaths` a Workspace resolved, never a bare root. What is wrong with a Manifest beyond
@@ -26,6 +26,7 @@ starts — is `manifest_report`'s, which `validate` prints before it checks any 
 
 from __future__ import annotations
 
+import fnmatch
 import posixpath
 import re
 from collections.abc import Mapping
@@ -55,7 +56,13 @@ from agentdiag.types import (
     SuiteStatus,
     ToolKind,
 )
-from agentdiag.workspace import CHANGES_DIRNAME, TargetPaths
+from agentdiag.workspace import (
+    CHANGES_DIRNAME,
+    GITIGNORE_REDACTION_LINE,
+    REDACTION_NAME,
+    TargetPaths,
+    find_repository,
+)
 
 DEFAULT_TURN_TIMEOUT_S = 600.0
 """How long one Turn may take when the environment writes no `turn_timeout` (phase-5
@@ -290,13 +297,62 @@ class EvalParameters(BaseModel):
 
 
 class Redaction(BaseModel):
-    """What never reaches a committed Change record beyond e-mail addresses and phone
-    numbers (phase-7 decision 6): the names `agentdiag.change.redact` replaces, its one
-    reader."""
+    """The names a Change record never carries, as an older Manifest listed them inline
+    (phase-7 decision 6). Kept so a `run.json` snapshot that carried them still loads, and so
+    an un-migrated Manifest still redacts; `validate` reports the inline list as an error
+    (ADR-0015 §4), since the names now live in the Target's local `redaction.yaml`."""
 
     model_config = ConfigDict(extra="forbid")
 
     names: list[str] = Field(default_factory=list)
+
+
+class RedactionFileInvalid(ValueError):
+    """A redaction file that is not `names: [...]` (ADR-0015 §4), or a pointer to one that is
+    refused or missing. The message names the file and the kind of problem, never what the
+    file holds: it can reach a Push record, which is committed."""
+
+
+def read_redaction_file(path: Path) -> list[str] | None:
+    """The names the redaction file at `path` lists, or None when nothing is there; its shape
+    is `Redaction`'s, so a key beside `names` or a `names` that is not a list of strings is
+    `RedactionFileInvalid`. An empty file, or `names:` with no value, lists none."""
+    if not path.exists():
+        return None
+    where = f"the redaction file {path}"
+    if not path.is_file():
+        raise RedactionFileInvalid(f"{where} is not a file")
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise RedactionFileInvalid(f"{where} cannot be read as UTF-8 text") from exc
+    try:
+        raw = yaml.safe_load(text)
+    except yaml.YAMLError as exc:
+        mark = getattr(exc, "problem_mark", None)
+        at = f" at line {mark.line + 1}" if mark is not None else ""
+        raise RedactionFileInvalid(f"{where} is not valid YAML{at}") from None
+    if raw is None:
+        return []
+    if not isinstance(raw, dict):
+        raise RedactionFileInvalid(
+            f"{where} is not a mapping; it holds the one key names (names: [...])"
+        )
+    if "names" in raw and raw["names"] is None:
+        raw = {**raw, "names": []}
+    try:
+        listed = Redaction.model_validate(raw)
+    except ValidationError as exc:
+        extra = sorted(
+            str(error["loc"][0]) for error in exc.errors() if error["type"] == "extra_forbidden"
+        )
+        problem = (
+            f"holds keys besides names: {', '.join(extra)}"
+            if extra
+            else "gives names that is not a list of strings"
+        )
+        raise RedactionFileInvalid(f"{where} {problem}") from None
+    return list(listed.names)
 
 
 class Manifest(BaseModel):
@@ -357,9 +413,17 @@ class Manifest(BaseModel):
         self._directory = directory
         return self
 
-    redaction: Redaction | None = None
-    """The names a Change record never carries (decision 6); left out of `run.json`'s
+    redaction: str | Redaction | None = None
+    """Where the names a Change record never carries live (ADR-0015 §4): a path relative to
+    the Target directory, `redaction.yaml` when absent. An inline `Redaction` is what an
+    older Manifest wrote; it loads, and `validate` names the move. Left out of `run.json`'s
     snapshot when absent, so a Run of a Manifest without it records what it did before."""
+
+    @property
+    def redaction_file(self) -> str:
+        """The redaction file's pointer: the `redaction` key when it is a path, else the
+        default beside the Manifest."""
+        return self.redaction if isinstance(self.redaction, str) else REDACTION_NAME
 
     @model_serializer(mode="wrap")
     def _without_absent_redaction(self, handler: SerializerFunctionWrapHandler) -> Any:
@@ -569,9 +633,9 @@ class _Pointed(NamedTuple):
 
 def _pointers(manifest: Manifest) -> list[_Pointed]:
     """Every path the Manifest names; `observed` names none. A retired Suite's path is a
-    path all the same, though its file is never checked. `records` and `judge_notes` get
-    only the where-it-points rule. A key that becomes a path (`redaction` as a file, say)
-    is one more entry here."""
+    path all the same, though its file is never checked. `records`, `judge_notes` and
+    `redaction` (when it is a path) get only the where-it-points rule here; `manifest_report`
+    reads the redaction file itself, since an absent one is a warning."""
     pointers: list[_Pointed] = []
     for name, prompt in manifest.prompts.items():
         if isinstance(prompt, PromptPointer):
@@ -596,10 +660,12 @@ def _pointers(manifest: Manifest) -> list[_Pointed]:
     pointers.append(_Pointed("records", "the Change records directory", manifest.records, False))
     if manifest.judge_notes is not None:
         pointers.append(_Pointed("judge_notes", "the Judge notes", manifest.judge_notes, False))
+    if isinstance(manifest.redaction, str):
+        pointers.append(_Pointed("redaction", "the redaction file", manifest.redaction, False))
     return pointers
 
 
-def _pointer_problem(target: TargetPaths, what: str, path: str) -> str | None:
+def pointer_refusal(target: TargetPaths, what: str, path: str) -> str | None:
     """Why `path` may not be a Manifest pointer, or None. Lexical, so the answer is the same
     on every machine: no symlink is followed and no file is read."""
     directory = target.directory.relative_to(target.root).as_posix()
@@ -625,7 +691,7 @@ def pointer_problems(target: TargetPaths, manifest: Manifest) -> list[tuple[str,
     exists here, `local_only` included: the rule is where it points."""
     problems: list[tuple[str, str]] = []
     for pointed in _pointers(manifest):
-        problem = _pointer_problem(target, pointed.what, pointed.path)
+        problem = pointer_refusal(target, pointed.what, pointed.path)
         if problem is not None:
             problems.append((pointed.where, problem))
     return problems
@@ -641,8 +707,10 @@ def manifest_report(
     unless it is `local_only`, when it is a warning; an unknown Suite status is an error
     (the shape refuses it, and this names the entry); a Suppression whose `until` precedes
     its `from` is an error, and one naming a mechanical Eval a warning, since mechanical
-    Evals ignore Suppressions in v1 (decision 16). `path` checks another file as the
-    Target's Manifest (`validate --manifest`).
+    Evals ignore Suppressions in v1 (decision 16). The redaction file (ADR-0015 §4) is
+    read unless its pointer was refused: absent, a warning; of the wrong shape, an error;
+    names listed inline in the Manifest, an error naming the move. `path` checks another
+    file as the Target's Manifest (`validate --manifest`).
     """
     report = ManifestReport(file=target.manifest if path is None else path)
     try:
@@ -663,7 +731,7 @@ def manifest_report(
         for where, message in manifest_problems(manifest)
     )
     for pointed in _pointers(manifest):
-        problem = _pointer_problem(target, pointed.what, pointed.path)
+        problem = pointer_refusal(target, pointed.what, pointed.path)
         if problem is not None:
             report.errors.append(ManifestProblem(path=pointed.where, message=problem))
             report.refused.append(pointed.where)
@@ -673,6 +741,7 @@ def manifest_report(
                 message=f"{pointed.what} {pointed.path} does not exist under {target.directory}",
             )
             (report.warnings if pointed.local_only else report.errors).append(missing)
+    _redaction_problems(target, manifest, report)
     for index, suppression in enumerate(manifest.suppressions):
         where = f"suppressions[{index}]"
         if suppression.until < suppression.from_:
@@ -700,6 +769,106 @@ def manifest_report(
     return report, manifest
 
 
+INLINE_NAMES = (
+    "the names to redact are committed with the Manifest; move them to "
+    f"{REDACTION_NAME} beside it (gitignored by init) and drop the key, or point at that "
+    "file with redaction: <path>"
+)
+INLINE_EMPTY = (
+    "the key is now a pointer to the redaction file, relative to the Target directory "
+    f"({REDACTION_NAME} when absent); an empty inline list redacts nothing, so drop the key"
+)
+REDACTION_WHAT = "the redaction file"
+
+
+def redaction_file_names(target: TargetPaths, pointer: str | None) -> list[str] | None:
+    """The names of the Target's redaction file: the one `pointer` (the Manifest's
+    `redaction` key) names, else `redaction.yaml` beside the Manifest, which may be absent
+    (None). A pointer the ADR-0015 §2 rule refuses is never read, and it and a pointer to
+    nothing are `RedactionFileInvalid` with the message `validate` prints."""
+    if pointer is not None:
+        refusal = pointer_refusal(target, REDACTION_WHAT, pointer)
+        if refusal is not None:
+            raise RedactionFileInvalid(refusal)
+        if not target.relative(pointer).is_file():
+            raise RedactionFileInvalid(
+                f"{REDACTION_WHAT} {pointer} the Manifest points at does not exist as a file "
+                f"under the Target directory {target.directory}"
+            )
+    return read_redaction_file(target.relative(pointer or REDACTION_NAME))
+
+
+def _ignored_by_init(target: TargetPaths, pointer: str) -> bool:
+    """Whether `pointer` lands where `init`'s gitignore line reaches: a Target directory's
+    `redaction.yaml`. Lexical, as the pointer rule is."""
+    directory = target.directory.relative_to(target.root).as_posix()
+    parts = posixpath.normpath(f"{directory}/{pointer.replace(chr(92), '/')}").split("/")
+    pattern = GITIGNORE_REDACTION_LINE.split("/")
+    return len(parts) == len(pattern) and all(
+        fnmatch.fnmatchcase(part, glob) for part, glob in zip(parts, pattern, strict=True)
+    )
+
+
+def _gitignore_holds_the_line(target: TargetPaths) -> bool:
+    gitignore = target.root / ".gitignore"
+    try:
+        lines = gitignore.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError):
+        return False
+    return GITIGNORE_REDACTION_LINE in (line.strip() for line in lines)
+
+
+def _redaction_problems(target: TargetPaths, manifest: Manifest, report: ManifestReport) -> None:
+    """The names to redact are local (ADR-0015 §4). Names listed inline are an error (and
+    redacted all the same, so no absent-file warning follows); a pointer that names nothing
+    or a file of the wrong shape is an error; the default file absent is a warning a clone
+    shows. Inside a git repository, a present file git would commit is a warning: the
+    Workspace `.gitignore` lacks `init`'s line, or the pointer leads outside it."""
+    inline = manifest.redaction
+    inline_names = isinstance(inline, Redaction) and bool(inline.names)
+    if isinstance(inline, Redaction):
+        if inline.names:
+            report.errors.append(ManifestProblem(path="redaction.names", message=INLINE_NAMES))
+        else:
+            report.warnings.append(ManifestProblem(path="redaction", message=INLINE_EMPTY))
+    if "redaction" in report.refused:
+        return
+    pointer = inline if isinstance(inline, str) else None
+    try:
+        names = redaction_file_names(target, pointer)
+    except RedactionFileInvalid as invalid:
+        report.errors.append(ManifestProblem(path="redaction", message=str(invalid)))
+        return
+    if names is None:
+        if not inline_names:
+            report.warnings.append(
+                ManifestProblem(
+                    path="redaction",
+                    message=(
+                        f"{REDACTION_WHAT} {REDACTION_NAME} is absent, so Change records redact "
+                        "e-mail addresses and phone numbers and no names; write it (names: "
+                        "[...]); `agentdiag init` adds the .gitignore line that keeps it local"
+                    ),
+                )
+            )
+        return
+    if find_repository(target.root) is None:
+        return  # a Workspace need not be a repository; a .gitignore means nothing outside one
+    if pointer is not None and not _ignored_by_init(target, pointer):
+        message = (
+            f"{REDACTION_WHAT} {pointer} is outside init's .gitignore line; keep it out of git "
+            "yourself"
+        )
+    elif not _gitignore_holds_the_line(target):
+        message = (
+            f"the Workspace .gitignore does not cover {GITIGNORE_REDACTION_LINE}; add that "
+            "line, as `agentdiag init` writes it, so the names stay out of git"
+        )
+    else:
+        return
+    report.warnings.append(ManifestProblem(path="redaction", message=message))
+
+
 __all__ = [
     "DEFAULT_ENVIRONMENT_KEY",
     "DEFAULT_TURN_TIMEOUT_S",
@@ -720,6 +889,7 @@ __all__ = [
     "Pointer",
     "PromptPointer",
     "Redaction",
+    "RedactionFileInvalid",
     "SuiteEntry",
     "Suppression",
     "TargetSection",
@@ -729,5 +899,8 @@ __all__ = [
     "manifest_if_it_loads",
     "manifest_report",
     "pointer_problems",
+    "pointer_refusal",
     "protected_by_name",
+    "read_redaction_file",
+    "redaction_file_names",
 ]

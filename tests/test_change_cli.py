@@ -49,6 +49,7 @@ from agentdiag.change.record import (
 from agentdiag.cli import app
 from agentdiag.eval.score import Score, ScoresFile
 from agentdiag.examples.toy import SYSTEM_PROMPT
+from agentdiag.run.manifest import Manifest, Redaction
 from agentdiag.run.scorecard import Scorecard, aggregate
 from agentdiag.sync.fingerprint import Fingerprint
 from agentdiag.types import Verdict, VerificationResult
@@ -1027,3 +1028,204 @@ def test_target_show_prints_the_open_records_and_not_the_closed_ones(tmp_path: P
     assert [record["id"] for record in json.loads(as_json.stdout)["change_records"]] == sorted(
         [kept, closed]
     )
+
+
+# --- the names to redact are local (ADR-0015 §4) ---
+
+INLINE_NAMES = '\nredaction:\n  names: ["Dana Whitfield"]\n'
+MOVE_THE_NAMES = (
+    "redaction.names: the names to redact are committed with the Manifest; move them to "
+    "redaction.yaml beside it (gitignored by init) and drop the key, or point at that file "
+    "with redaction: <path>"
+)
+
+
+def open_titled(root: Path, title: str) -> Any:
+    return change(
+        root, "open", "--from", f"{BASE}/{DELIVERED}/1", "--layer", "rules", "--title", title
+    )
+
+
+def test_a_name_the_redaction_file_lists_never_reaches_a_record_opened_from_a_trial(
+    tmp_path: Path,
+) -> None:
+    root = toy(tmp_path, BASE)
+    the_target(root).redaction.write_text('names: ["Dana Whitfield"]\n', encoding="utf-8")
+
+    record_id = opened_id(open_titled(root, "Dana Whitfield was told it cannot be cancelled"))
+
+    text = (the_target(root).changes / f"{record_id}.md").read_text(encoding="utf-8")
+    assert "Dana" not in text and "Whitfield" not in text
+    assert record_of(root, record_id).title == "[name] was told it cannot be cancelled"
+    assert "dana" not in record_id
+
+
+def test_names_still_listed_in_the_manifest_redact_and_validate_names_the_move(
+    tmp_path: Path,
+) -> None:
+    root = toy(tmp_path, BASE)
+    manifest = the_target(root).manifest
+    manifest.write_text(manifest.read_text(encoding="utf-8") + INLINE_NAMES, encoding="utf-8")
+
+    record_id = opened_id(open_titled(root, "Dana Whitfield was told it cannot be cancelled"))
+    validated = runner.invoke(app, ["validate", "--root", str(root)])
+
+    assert record_of(root, record_id).title == "[name] was told it cannot be cancelled"
+    assert validated.exit_code == 3, validated.stdout
+    assert f"error: {manifest}: {MOVE_THE_NAMES}" in validated.stdout.splitlines()
+
+
+@pytest.mark.parametrize(
+    ("written", "problem"),
+    [
+        (
+            'names: ["Zebulon Quist"]\nemails: [zq@example.org]\n',
+            "holds keys besides names: emails",
+        ),
+        ("names: Zebulon Quist\n", "gives names that is not a list of strings"),
+        ("names: [Zebulon Quist\n", "is not valid YAML at line 2"),
+        ("- Zebulon Quist\n", "is not a mapping; it holds the one key names (names: [...])"),
+    ],
+    ids=["extra-key", "names-not-a-list", "not-yaml", "not-a-mapping"],
+)
+def test_a_redaction_file_of_the_wrong_shape_refuses_a_change_command_and_fails_validate(
+    written: str, problem: str, tmp_path: Path
+) -> None:
+    root = toy(tmp_path, BASE)
+    redaction = the_target(root).redaction
+    redaction.write_text(written, encoding="utf-8")
+
+    opened = open_titled(root, "Dana Whitfield was told it cannot be cancelled")
+    validated = runner.invoke(app, ["validate", "--root", str(root)])
+
+    assert opened.exit_code == 3, opened.output
+    assert opened.output == f"error: the redaction file {redaction} {problem}\n"
+    assert not the_target(root).changes.exists() or not any(the_target(root).changes.iterdir())
+    assert validated.exit_code == 3, validated.stdout
+    (line,) = [line for line in validated.stdout.splitlines() if ": redaction: " in line]
+    assert line.startswith(f"error: {the_target(root).manifest}: redaction: the redaction file ")
+    assert line.endswith(f": redaction: the redaction file {redaction} {problem}")
+    assert "Zebulon" not in validated.stdout and "zq@" not in validated.stdout
+
+
+def test_the_redaction_file_and_names_still_listed_inline_are_both_redacted(
+    tmp_path: Path,
+) -> None:
+    root = toy(tmp_path, BASE)
+    the_target(root).redaction.write_text('names: ["Smith"]\n', encoding="utf-8")
+    manifest = the_target(root).manifest
+    manifest.write_text(manifest.read_text(encoding="utf-8") + INLINE_NAMES, encoding="utf-8")
+
+    record_id = opened_id(open_titled(root, "Dana Whitfield and Smith were told no"))
+
+    assert record_of(root, record_id).title == "[name] and [name] were told no"
+
+
+def manifest_with(root: Path, text: str) -> None:
+    manifest = the_target(root).manifest
+    manifest.write_text(manifest.read_text(encoding="utf-8") + text, encoding="utf-8")
+
+
+def validate_line(root: Path) -> tuple[int, str]:
+    validated = runner.invoke(app, ["validate", "--root", str(root)])
+    (line,) = [line for line in validated.stdout.splitlines() if ": redaction: " in line]
+    return validated.exit_code, line
+
+
+@pytest.mark.parametrize(
+    ("pointer", "message"),
+    [
+        (
+            "/abs/x.yaml",
+            "the redaction file /abs/x.yaml is absolute; a Manifest pointer is relative to the "
+            f"Target directory .agentdiag/targets/{SLUG}",
+        ),
+        (
+            "../../../../x.yaml",
+            "the redaction file ../../../../x.yaml leaves the Workspace root (it normalises to "
+            "../x.yaml); move the file under the root and point at it relative to the Target "
+            "directory",
+        ),
+    ],
+    ids=["absolute", "leaves-the-root"],
+)
+def test_a_refused_redaction_pointer_refuses_change_open_with_validates_message(
+    pointer: str, message: str, tmp_path: Path
+) -> None:
+    root = toy(tmp_path, BASE)
+    (tmp_path / "x.yaml").write_text('names: ["Dana Whitfield"]\n', encoding="utf-8")
+    manifest_with(root, f"\nredaction: {pointer}\n")
+
+    opened = open_titled(root, "Dana Whitfield was told no")
+    code, line = validate_line(root)
+
+    assert opened.exit_code == 3, opened.output
+    assert opened.output == f"error: {message}\n"
+    assert code == 3 and line == f"error: {the_target(root).manifest}: redaction: {message}"
+
+
+def test_a_redaction_pointer_to_nothing_fails_validate_and_refuses_change_open(
+    tmp_path: Path,
+) -> None:
+    root = toy(tmp_path, BASE)
+    manifest_with(root, "\nredaction: private/names.yaml\n")
+    message = (
+        "the redaction file private/names.yaml the Manifest points at does not exist as a "
+        f"file under the Target directory {the_target(root).directory}"
+    )
+
+    opened = open_titled(root, "Dana Whitfield was told no")
+    code, line = validate_line(root)
+
+    assert opened.exit_code == 3 and opened.output == f"error: {message}\n"
+    assert code == 3 and line == f"error: {the_target(root).manifest}: redaction: {message}"
+
+
+@pytest.mark.parametrize("loads", [True, False], ids=["manifest-loads", "manifest-does-not-load"])
+def test_a_redaction_pointer_elsewhere_under_the_root_is_honoured(
+    loads: bool, tmp_path: Path
+) -> None:
+    root = toy(tmp_path, BASE)
+    (root / "private").mkdir()
+    (root / "private" / "names.yaml").write_text('names: ["Dana Whitfield"]\n', encoding="utf-8")
+    manifest_with(root, "\nredaction: ../../../private/names.yaml\n")
+    if not loads:
+        manifest_with(root, "schema_version: [not, a, number]\n")
+        assert runner.invoke(app, ["validate", "--root", str(root)]).exit_code == 3
+
+    record_id = opened_id(
+        change(
+            root,
+            "open",
+            "--complaint",
+            str(complaint_file(tmp_path)),
+            "--layer",
+            "rules",
+            "--title",
+            "Dana Whitfield was told no",
+        )
+    )
+
+    assert record_of(root, record_id).title == "[name] was told no"
+
+
+def complaint_file(tmp_path: Path) -> Path:
+    path = tmp_path / "complaint.md"
+    path.write_text("# Told no\n\nDana Whitfield asked twice.\n", encoding="utf-8")
+    return path
+
+
+def test_an_older_run_snapshot_carrying_names_inline_still_loads(tmp_path: Path) -> None:
+    root = toy(tmp_path, BASE)
+    run_json = the_target(root).runs / BASE / "run.json"
+    snapshot = json.loads(run_json.read_text(encoding="utf-8"))
+    snapshot["manifest"]["redaction"] = {"names": ["Dana Whitfield"]}
+    run_json.write_text(json.dumps(snapshot), encoding="utf-8")
+
+    shown = runner.invoke(app, ["show", BASE, DELIVERED, "--root", str(root)])
+
+    assert shown.exit_code == 0, shown.output
+    manifest = Manifest.model_validate(snapshot["manifest"])
+    assert isinstance(manifest.redaction, Redaction)
+    assert manifest.redaction.names == ["Dana Whitfield"]
+    assert manifest.model_dump(mode="json")["redaction"] == {"names": ["Dana Whitfield"]}

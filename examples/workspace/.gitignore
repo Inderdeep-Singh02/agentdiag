@@ -1,5 +1,7 @@
 # Runs, Restore points, in-process platform stores and the index are output, not source: written by `agentdiag run`, a push and `agentdiag index rebuild`.
+# Each Target's redaction.yaml is local: the names it lists are never committed.
 .agentdiag/targets/*/runs/
 .agentdiag/targets/*/restore-points/
 .agentdiag/targets/*/platform/
 .agentdiag/index.sqlite
+.agentdiag/targets/*/redaction.yaml

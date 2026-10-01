@@ -51,7 +51,7 @@ from agentdiag.change.record import (
 from agentdiag.exits import USAGE_EXIT
 from agentdiag.overwrite import GIT_TIMEOUT_SECONDS
 from agentdiag.run.directory import is_run_id
-from agentdiag.run.manifest import Manifest, manifest_if_it_loads
+from agentdiag.run.manifest import Manifest, RedactionFileInvalid, manifest_if_it_loads
 from agentdiag.table import render_table
 from agentdiag.timestamps import now_utc
 from agentdiag.types import ChangeStatus, Layer
@@ -83,9 +83,10 @@ def _refused(problem: Exception) -> ChangeExit:
     return ChangeExit(code=USAGE_EXIT, message=f"error: {problem}")
 
 
-REFUSALS = (ChangeRefused, ChangeRecordInvalid, ChangeRecordNotFound)
+REFUSALS = (ChangeRefused, ChangeRecordInvalid, ChangeRecordNotFound, RedactionFileInvalid)
 """Every refusal a command reports as `error: …`, exit 3: the lifecycle's (a transition, a
-close, an expectation), a record file, a missing record."""
+close, an expectation), a record file, a missing record, a redaction file of the wrong shape
+(ADR-0015 §4)."""
 
 
 # --- open ---

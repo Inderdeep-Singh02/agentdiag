@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import subprocess
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -102,17 +103,18 @@ WARNINGS = {
 
 
 def root_with(tmp_path: Path, fixture: str) -> Path:
-    """A Phase 4 root whose Manifest is the fixture, beside the example's Suites and notes."""
+    """A root whose Manifest is the fixture, beside the example's Suites, notes and redaction
+    file."""
     root = tmp_path / "toy"
     directory = root / ".agentdiag" / "targets" / "toy-order-desk"
     shutil.copytree(
         EXAMPLE / ".agentdiag" / "targets" / "toy-order-desk" / "suites", directory / "suites"
     )
     shutil.copytree(MANIFESTS / "suites", directory / "suites", dirs_exist_ok=True)
-    shutil.copy(
-        EXAMPLE / ".agentdiag" / "targets" / "toy-order-desk" / "judge_notes.md",
-        directory / "judge_notes.md",
-    )
+    for local in ("judge_notes.md", "redaction.yaml"):
+        shutil.copy(
+            EXAMPLE / ".agentdiag" / "targets" / "toy-order-desk" / local, directory / local
+        )
     shutil.copy(MANIFESTS / f"{fixture}.yaml", directory / "manifest.yaml")
     return root
 
@@ -578,6 +580,11 @@ def test_a_suite_that_leaves_the_workspace_root_is_refused_once_and_never_read(
             "prompts.system",
             absolute("the prompt file", "//srv/share/x.md"),
         ),
+        (
+            {"redaction": "/etc/agentdiag/redaction.yaml"},
+            "redaction",
+            absolute("the redaction file", "/etc/agentdiag/redaction.yaml"),
+        ),
     ],
     ids=[
         "judge-notes-up",
@@ -588,6 +595,7 @@ def test_a_suite_that_leaves_the_workspace_root_is_refused_once_and_never_read(
         "backslash-up",
         "windows-drive",
         "unc-share",
+        "redaction-absolute",
     ],
 )
 def test_every_pointer_that_is_absolute_or_escapes_is_one_error_and_no_warning(
@@ -639,3 +647,107 @@ def test_a_target_directory_that_is_a_symlink_validates_clean(tmp_path: Path) ->
 
     assert result.exit_code == 0, result.stdout
     assert "error:" not in result.stdout
+
+
+# --- the names to redact are local (ADR-0015 §4) ---
+
+REDACTION_ABSENT = (
+    "redaction: the redaction file redaction.yaml is absent, so Change records redact e-mail "
+    "addresses and phone numbers and no names; write it (names: [...]); `agentdiag init` adds "
+    "the .gitignore line that keeps it local"
+)
+UNCOVERED = (
+    "redaction: the Workspace .gitignore does not cover .agentdiag/targets/*/redaction.yaml; "
+    "add that line, as `agentdiag init` writes it, so the names stay out of git"
+)
+
+
+def warnings_of(result: Any) -> list[str]:
+    return [line for line in result.stdout.splitlines() if line.startswith("warning:")]
+
+
+def a_repository(root: Path) -> None:
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+
+
+def test_a_target_without_its_redaction_file_validates_with_one_warning(tmp_path: Path) -> None:
+    root, directory = root_pointing(tmp_path)
+    (directory / "redaction.yaml").unlink()
+
+    result = validate(root)
+
+    assert result.exit_code == 0, result.stdout
+    assert warnings_of(result) == [f"warning: {directory / 'manifest.yaml'}: {REDACTION_ABSENT}"]
+
+
+def test_names_listed_inline_are_an_error_and_no_absent_file_warning(tmp_path: Path) -> None:
+    root, directory = root_pointing(tmp_path, redaction={"names": ["Dana Whitfield"]})
+    (directory / "redaction.yaml").unlink()
+
+    result = validate(root)
+
+    assert result.exit_code == 3, result.stdout
+    assert warnings_of(result) == []
+    assert [line for line in errors_of(result) if ": redaction" in line] == [
+        f"error: {directory / 'manifest.yaml'}: redaction.names: the names to redact are "
+        "committed with the Manifest; move them to redaction.yaml beside it (gitignored by "
+        "init) and drop the key, or point at that file with redaction: <path>"
+    ]
+
+
+@pytest.mark.parametrize("pointer", ["private/names.yaml", "suites"], ids=["absent", "a-dir"])
+def test_a_redaction_pointer_to_no_file_is_an_error_naming_the_pointer(
+    pointer: str, tmp_path: Path
+) -> None:
+    root, _ = root_pointing(tmp_path, redaction=pointer)
+
+    result = validate(root)
+
+    assert result.exit_code == 3, result.stdout
+    (line,) = [line for line in errors_of(result) if ": redaction: " in line]
+    assert f": redaction: the redaction file {pointer}" in line
+    assert warnings_of(result) == []
+
+
+def test_an_inline_empty_redaction_list_is_a_warning_that_the_key_is_a_pointer(
+    tmp_path: Path,
+) -> None:
+    root, directory = root_pointing(tmp_path, redaction={"names": []})
+
+    result = validate(root)
+
+    assert result.exit_code == 0, result.stdout
+    (line,) = warnings_of(result)
+    assert line.startswith(f"warning: {directory / 'manifest.yaml'}: redaction: ")
+    assert "now a pointer" in line
+
+
+def test_in_a_repository_a_gitignore_without_the_redaction_line_warns(tmp_path: Path) -> None:
+    root, directory = root_pointing(tmp_path)
+    a_repository(root)
+    (root / ".gitignore").write_text(".agentdiag/targets/*/runs/\n", encoding="utf-8")
+
+    uncovered = validate(root)
+    (root / ".gitignore").write_text(".agentdiag/targets/*/redaction.yaml\n", encoding="utf-8")
+    covered = validate(root)
+
+    assert uncovered.exit_code == 0, uncovered.stdout
+    assert warnings_of(uncovered) == [f"warning: {directory / 'manifest.yaml'}: {UNCOVERED}"]
+    assert covered.exit_code == 0 and warnings_of(covered) == [], covered.stdout
+
+
+def test_in_a_repository_a_redaction_pointer_outside_inits_line_warns_once(
+    tmp_path: Path,
+) -> None:
+    root, directory = root_pointing(tmp_path, redaction="private/names.yaml")
+    a_repository(root)
+    (directory / "private").mkdir()
+    (directory / "private" / "names.yaml").write_text("names: []\n", encoding="utf-8")
+
+    result = validate(root)
+
+    assert result.exit_code == 0, result.stdout
+    assert warnings_of(result) == [
+        f"warning: {directory / 'manifest.yaml'}: redaction: the redaction file "
+        "private/names.yaml is outside init's .gitignore line; keep it out of git yourself"
+    ]

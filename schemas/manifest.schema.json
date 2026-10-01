@@ -192,7 +192,7 @@
     },
     "Redaction": {
       "additionalProperties": false,
-      "description": "What never reaches a committed Change record beyond e-mail addresses and phone\nnumbers (phase-7 decision 6): the names `agentdiag.change.redact` replaces, its one\nreader.",
+      "description": "The names a Change record never carries, as an older Manifest listed them inline\n(phase-7 decision 6). Kept so a `run.json` snapshot that carried them still loads, and so\nan un-migrated Manifest still redacts; `validate` reports the inline list as an error\n(ADR-0015 §4), since the names now live in the Target's local `redaction.yaml`.",
       "properties": {
         "names": {
           "items": {
@@ -455,13 +455,17 @@
     "redaction": {
       "anyOf": [
         {
+          "type": "string"
+        },
+        {
           "$ref": "#/$defs/Redaction"
         },
         {
           "type": "null"
         }
       ],
-      "default": null
+      "default": null,
+      "title": "Redaction"
     },
     "schema_version": {
       "default": 1,

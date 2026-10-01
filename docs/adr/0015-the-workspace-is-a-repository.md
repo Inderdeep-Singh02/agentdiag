@@ -64,7 +64,12 @@ one machine:
    that file, relative to the Target directory and `redaction.yaml` by default; a Manifest
    that still lists names inline is a `validate` error naming the move. A clone without the
    file redacts e-mail addresses and phone numbers as before and no names, and `validate`
-   warns that the file is absent, so an author knows the list is theirs to supply.
+   warns that the file is absent, so an author knows the list is theirs to supply; it warns
+   too when the Workspace `.gitignore` lacks the line that keeps the file local. A pointer
+   the author set that names no file, a file of the wrong shape, or a pointer §2 refuses is
+   an error, and every command that writes a Change record refuses on it before it writes
+   anything (a push reads the names before the Connector writes). No message ever quotes
+   the file's contents: the file exists to keep them out of committed text.
 
 ## Considered options
 

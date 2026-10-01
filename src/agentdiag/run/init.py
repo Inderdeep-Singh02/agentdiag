@@ -20,7 +20,9 @@ Two rules shape everything here:
   not source (ADR-0005 §2): re-scaffolding a Target is not permission to delete one. Nor
   the calibration notes: `judge_notes.md` (ticket 05) is written when absent and left
   alone when present, because notes are what an author learned about judging the Target,
-  and a starter file is no replacement for them.
+  and a starter file is no replacement for them. The same holds for `redaction.yaml`, the
+  Target's local list of names a Change record never carries (ADR-0015 §4), which `init`
+  writes as an empty starter and gitignores.
 
 The text itself lives in `templates.py`, which the checked-in examples are rendered from
 (`examples/toy/`, `examples/workspace/`), so they stay the truth of what this command writes.
@@ -40,11 +42,13 @@ from agentdiag.run.templates import (
     custom_scaffold,
     render_judge_notes,
     render_manifest,
+    render_redaction,
     render_suite,
 )
 from agentdiag.workspace import (
     AGENTDIAG_DIR,
     DEFAULT_SLUG,
+    GITIGNORE_REDACTION_LINE,
     INDEX_FILE,
     RESTORE_POINTS_DIRNAME,
     RUNS_DIRNAME,
@@ -82,6 +86,7 @@ GITIGNORE_LINES = (
     GITIGNORE_RESTORE_POINTS_LINE,
     GITIGNORE_PLATFORM_LINE,
     GITIGNORE_INDEX_LINE,
+    GITIGNORE_REDACTION_LINE,
 )
 
 LEGACY_GITIGNORE_RUNS_LINE = f"{AGENTDIAG_DIR}/{RUNS_DIRNAME}/"
@@ -92,7 +97,8 @@ KNOWN_GITIGNORE_LINES = (LEGACY_GITIGNORE_RUNS_LINE, *GITIGNORE_LINES)
 
 GITIGNORE_COMMENT = (
     "# Runs, Restore points, in-process platform stores and the index are output, not "
-    "source: written by `agentdiag run`, a push and `agentdiag index rebuild`."
+    "source: written by `agentdiag run`, a push and `agentdiag index rebuild`.\n"
+    "# Each Target's redaction.yaml is local: the names it lists are never committed."
 )
 
 ADAPTER_PREFIX = "python:"
@@ -221,8 +227,14 @@ def scaffold_target(options: InitOptions) -> InitResult:
     manifest = target.manifest
     suite = target.relative(scaffold.suite_path)
     notes = target.judge_notes
+    redaction = target.redaction
     try:
-        rendered = (render_manifest(scaffold), render_suite(scaffold), render_judge_notes(scaffold))
+        rendered = (
+            render_manifest(scaffold),
+            render_suite(scaffold),
+            render_judge_notes(scaffold),
+            render_redaction(scaffold),
+        )
     except UnwritableValue as unwritable:
         # Rendered before anything is created: a value that cannot be written must not
         # leave half a scaffold behind (the preflight habit, D32).
@@ -233,9 +245,10 @@ def scaffold_target(options: InitOptions) -> InitResult:
     manifest.write_text(rendered[0], encoding="utf-8")
     suite.write_text(rendered[1], encoding="utf-8")
     created = [manifest, suite]
-    if not notes.exists():
-        notes.write_text(rendered[2], encoding="utf-8")
-        created.append(notes)
+    for kept, text in ((notes, rendered[2]), (redaction, rendered[3])):
+        if not kept.exists():
+            kept.write_text(text, encoding="utf-8")
+            created.append(kept)
 
     others = [other for other in existing if other.slug != slug]
     result = InitResult(root=root, scaffold=scaffold, created=created, several_targets=bool(others))
@@ -329,6 +342,7 @@ __all__ = [
     "GITIGNORE_INDEX_LINE",
     "GITIGNORE_LINES",
     "GITIGNORE_NAME",
+    "GITIGNORE_REDACTION_LINE",
     "GITIGNORE_RESTORE_POINTS_LINE",
     "GITIGNORE_RUNS_LINE",
     "INIT_EXIT",

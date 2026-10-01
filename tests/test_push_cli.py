@@ -939,3 +939,30 @@ def test_a_restore_point_outside_the_restore_points_directory_is_refused(
 
     assert result.exit_code == 3
     assert "is not under .agentdiag/targets/toy-order-desk/restore-points" in result.stdout
+
+
+def test_a_redaction_file_that_does_not_read_refuses_the_push_before_any_write(
+    tmp_path: Path, fake: FakeConnector
+) -> None:
+    """ADR-0015 §4: the push event is written redacted, so a redaction file of the wrong
+    shape refuses the push before the Connector writes, and its contents are never echoed."""
+    root = ready(tmp_path)
+    record = open_proposed(root)
+    redaction = target_dir(root) / "redaction.yaml"
+    redaction.write_text("names: Zebulon Quist\n", encoding="utf-8")
+
+    result = invoke("push", "--root", root, "--env", "local", "--push", "--change", record)
+
+    assert result.exit_code == 3, result.output
+    assert f"the redaction file {redaction} gives names that is not a list of strings" in (
+        result.stderr
+    )
+    assert "Zebulon" not in result.output
+    nothing_written(fake, root)
+    assert restore_points(root) == []
+    leaked = [
+        path
+        for path in root.rglob("*")
+        if path.is_file() and path != redaction and b"Zebulon" in path.read_bytes()
+    ]
+    assert leaked == []

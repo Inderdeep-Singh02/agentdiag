@@ -26,6 +26,7 @@ from agentdiag.run.templates import (
     EXAMPLE_SCAFFOLD,
     render_judge_notes,
     render_manifest,
+    render_redaction,
     render_suite,
 )
 from agentdiag.scenario.load import load_suite
@@ -45,6 +46,7 @@ GITIGNORED = [
     ".agentdiag/targets/*/restore-points/",
     ".agentdiag/targets/*/platform/",
     ".agentdiag/index.sqlite",
+    ".agentdiag/targets/*/redaction.yaml",
 ]
 
 TOY_SCENARIO = "cancel-processing-order"
@@ -213,6 +215,7 @@ def test_the_example_directory_holds_only_the_files_init_writes() -> None:
     assert sorted(path.name for path in EXAMPLE.iterdir() if path.name not in DERIVED) == [
         "judge_notes.md",
         "manifest.yaml",
+        "redaction.yaml",
         "suites",
     ]
 
@@ -262,6 +265,41 @@ def test_force_keeps_the_calibration_notes_an_author_wrote(tmp_path: Path) -> No
     assert (
         notes.read_text() == "A refund amount the cancel tool returned is data, not an invention.\n"
     )
+
+
+# --- the redaction starter (ADR-0015 §4) ---
+
+
+def test_init_writes_a_redaction_starter_listing_no_names_and_the_manifest_needs_no_key(
+    tmp_path: Path,
+) -> None:
+    init(tmp_path)
+
+    starter = target_dir(tmp_path) / "redaction.yaml"
+    assert yaml.safe_load(starter.read_text(encoding="utf-8")) == {"names": []}
+    text = starter.read_text(encoding="utf-8")
+    assert text.startswith("#")
+    assert "gitignored" in text and "never committed" in text
+    assert "redaction" not in manifest_of(tmp_path)
+    assert "redaction.yaml" in (target_dir(tmp_path) / "manifest.yaml").read_text(encoding="utf-8")
+
+
+def test_the_example_redaction_file_is_what_init_writes_byte_for_byte() -> None:
+    assert render_redaction(EXAMPLE_SCAFFOLD) == (EXAMPLE / "redaction.yaml").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_force_keeps_the_redaction_file_an_author_wrote(tmp_path: Path) -> None:
+    """The names are the author's to keep: a re-scaffold never empties the list."""
+    init(tmp_path)
+    redaction = target_dir(tmp_path) / "redaction.yaml"
+    redaction.write_text('names: ["Dana Whitfield"]\n', encoding="utf-8")
+
+    result = init(tmp_path, "--force")
+
+    assert result.exit_code == 0, result.stdout
+    assert redaction.read_text(encoding="utf-8") == 'names: ["Dana Whitfield"]\n'
 
 
 def test_the_scaffold_and_the_checked_in_example_say_the_same_thing(tmp_path: Path) -> None:
@@ -437,6 +475,7 @@ def test_a_fresh_gitignore_says_why_its_lines_are_there(tmp_path: Path) -> None:
     assert (tmp_path / ".gitignore").read_text(encoding="utf-8") == (
         "# Runs, Restore points, in-process platform stores and the index are output, not "
         "source: written by `agentdiag run`, a push and `agentdiag index rebuild`.\n"
+        "# Each Target's redaction.yaml is local: the names it lists are never committed.\n"
         + "".join(f"{line}\n" for line in GITIGNORED)
     )
 

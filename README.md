@@ -46,6 +46,7 @@ Wrote the scaffold into /tmp/agentdiag-demo:
   .agentdiag/targets/default/manifest.yaml
   .agentdiag/targets/default/suites/sample.yaml
   .agentdiag/targets/default/judge_notes.md
+  .agentdiag/targets/default/redaction.yaml
   .gitignore
 
 Target default (toy-order-desk), driven by the agentdiag.examples.toy:make_target factory.
@@ -119,7 +120,8 @@ environment variable and never by value. See
 
 Everything agentdiag writes lives under one `.agentdiag/` directory, the **Workspace**, with
 one directory per Target. Runs, Restore points, the Index and the in-process Connector's
-platform store are output and gitignored; everything else is source.
+platform store are output and gitignored, as is each Target's `redaction.yaml`, the names a
+Change record never carries; everything else is source.
 
 ```
 .agentdiag/
@@ -127,6 +129,7 @@ platform store are output and gitignored; everything else is source.
 └── targets/<slug>/                   one Target; a Workspace holds as many as you keep
     ├── manifest.yaml                 the Target's identity document: pointers, not copies
     ├── judge_notes.md                the Judge's calibration notes for this Target
+    ├── redaction.yaml                gitignored: the names a Change record never carries
     ├── suites/*.yaml                 Suites: the Scenarios written for this Target
     ├── changes/*.md                  Change records: one recorded fix each
     ├── fingerprint.json              the deployed set's hashes at the last Sync

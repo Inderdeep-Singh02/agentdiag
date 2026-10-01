@@ -29,7 +29,7 @@ import yaml
 
 from agentdiag.eval.notes import JUDGE_NOTES_MAX_WORDS
 from agentdiag.types import ToolKind
-from agentdiag.workspace import DEFAULT_SLUG, JUDGE_NOTES_NAME
+from agentdiag.workspace import DEFAULT_SLUG, JUDGE_NOTES_NAME, REDACTION_NAME
 
 TOY_FACTORY = "agentdiag.examples.toy:make_target"
 TOY_TOOLS = "agentdiag.examples.toy:make_tools"
@@ -252,6 +252,25 @@ def render_judge_notes(scaffold: Scaffold) -> str:
     return JUDGE_NOTES_STARTER
 
 
+REDACTION_STARTER = """\
+# The names a Change record of this Target never carries (ADR-0015 section 4): each is
+# replaced by [name], beside the e-mail addresses and phone numbers every record loses.
+#
+# This file is local and gitignored by `agentdiag init`, so the names it lists are
+# never committed and a clone starts without them. List a customer's name here when it
+# must not reach a record; `agentdiag validate` warns when the file is absent.
+names: []
+"""
+"""What `init` writes as the Target's `redaction.yaml`: the one key, and no names yet
+(`agentdiag.change.redact`)."""
+
+
+def render_redaction(scaffold: Scaffold) -> str:
+    """The redaction starter: the same for every Target until an author lists a name."""
+    del scaffold  # one starter for every Target: the names are the author's to add
+    return REDACTION_STARTER
+
+
 EVAL_PARAMETERS_COMMENT = """\
 # Eval parameters, read by the Evals and never shown to the Judge: a default threshold for
 # the latency Evals, and the JSON type each tool argument must have. Forbidden phrases stay
@@ -383,6 +402,8 @@ def render_manifest(scaffold: Scaffold) -> str:
 # false-fail patterns, at most {words} words, read verbatim by every judged Eval and part of
 # each judged Score's Judge Fingerprint (ADR-0003 section 8).
 judge_notes: {scalar(JUDGE_NOTES_NAME)}
+# The names a Change record never carries are in {REDACTION_NAME} beside this file: local and
+# gitignored, so a key here is needed only to point elsewhere (redaction: <path>).
 
 """
     middle = render_connector(scaffold) + tools_section + notes_section + EVAL_PARAMETERS_COMMENT
@@ -490,6 +511,7 @@ __all__ = [
     "FAMILY_COMMENT",
     "JUDGE_NOTES_STARTER",
     "PLACEHOLDER_DESCRIPTION",
+    "REDACTION_STARTER",
     "SAMPLE_SUITE_NAME",
     "TARGET_COMMENT",
     "TOOLS_COMMENT",
@@ -503,6 +525,7 @@ __all__ = [
     "render_family",
     "render_judge_notes",
     "render_manifest",
+    "render_redaction",
     "render_suite",
     "scalar",
     "suites_comment",

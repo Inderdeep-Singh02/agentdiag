@@ -1,0 +1,7 @@
+# The names a Change record of this Target never carries (ADR-0015 section 4): each is
+# replaced by [name], beside the e-mail addresses and phone numbers every record loses.
+#
+# This file is local and gitignored by `agentdiag init`, so the names it lists are
+# never committed and a clone starts without them. List a customer's name here when it
+# must not reach a record; `agentdiag validate` warns when the file is absent.
+names: []

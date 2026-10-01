@@ -179,6 +179,7 @@ def test_the_gitignore_covers_every_targets_runs_restore_points_and_the_index(
         ".agentdiag/targets/*/restore-points/",
         ".agentdiag/targets/*/platform/",
         ".agentdiag/index.sqlite",
+        ".agentdiag/targets/*/redaction.yaml",
     ):
         assert lines.count(line) == 1, line
 

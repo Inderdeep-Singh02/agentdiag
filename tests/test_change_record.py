@@ -2,8 +2,8 @@
 
 A record is one markdown file under the Target's `changes/` with its head between `---`
 lines; it round-trips through `write_record` and `load_record`, and customer identifiers
-(an e-mail address, a phone number, a name the Manifest's redaction list gives) never reach
-the file. `validate` checks every record's shape and its status against its fields.
+(an e-mail address, a phone number, a name the Target's local `redaction.yaml` lists, ADR-0015
+§4) never reach the file. `validate` checks every record's shape and its status against its fields.
 """
 
 from __future__ import annotations
@@ -74,12 +74,9 @@ def toy(tmp_path: Path, *, names: list[str] | None = None) -> Path:
     root = tmp_path / "toy"
     shutil.copytree(EXAMPLE, root, ignore=shutil.ignore_patterns("runs", "index.sqlite"))
     if names is not None:
-        manifest = root / ".agentdiag" / "targets" / SLUG / "manifest.yaml"
         quoted = ", ".join(f'"{name}"' for name in names)
-        manifest.write_text(
-            manifest.read_text(encoding="utf-8") + f"\nredaction:\n  names: [{quoted}]\n",
-            encoding="utf-8",
-        )
+        redaction = root / ".agentdiag" / "targets" / SLUG / "redaction.yaml"
+        redaction.write_text(f"names: [{quoted}]\n", encoding="utf-8")
     return root
 
 
