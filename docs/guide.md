@@ -1423,7 +1423,8 @@ deployed-set convention the in-process Connector reads, HTTP routes, and data-so
 and `*_URL`/`*_DSN`/`*_DB` variables. The draft goes to `manifest.draft.yaml` in the Target
 directory (or an `--out` inside the Workspace), never over `manifest.yaml`, and every
 guess sits under a `# REVIEW:` line saying why it was guessed. A new `--target` slug
-creates the Target directory in an existing Workspace:
+creates the Target directory in an existing Workspace, with the local `redaction.yaml`
+starter `init` would have written beside the draft:
 
 ```bash
 uv run agentdiag init --root /tmp/agentdiag-discover
@@ -1433,6 +1434,7 @@ uv run agentdiag discover --root /tmp/agentdiag-discover --target toy-order-desk
 ```
 Scanned src/agentdiag/examples/toy: 1 prompt, 2 tools, 0 data sources.
 Wrote /tmp/agentdiag-discover/.agentdiag/targets/toy-order-desk/manifest.draft.yaml, 15 lines marked REVIEW.
+  wrote /tmp/agentdiag-discover/.agentdiag/targets/toy-order-desk/redaction.yaml (local, gitignored)
 
 Next: accept or rewrite every REVIEW line, then
   agentdiag validate --root /tmp/agentdiag-discover --target toy-order-desk --manifest /tmp/agentdiag-discover/.agentdiag/targets/toy-order-desk/manifest.draft.yaml

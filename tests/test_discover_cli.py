@@ -130,6 +130,30 @@ def test_every_guessed_line_of_the_scan_draft_carries_a_review_line(tmp_path: Pa
     assert "REVIEW:" not in header
 
 
+def test_a_new_target_gets_the_redaction_starter_beside_its_draft(tmp_path: Path) -> None:
+    """A Target `discover` creates is as complete as one `init` scaffolds (ADR-0015 §4): the
+    local, gitignored `redaction.yaml` is written beside the draft, named in the summary,
+    and `validate --manifest` has no absent-file warning. A file an author wrote is kept."""
+    root = workspace(tmp_path)
+    result = invoke("discover", "--root", str(root), "--target", "toy", "--scan", str(TOY_SOURCE))
+    assert result.exit_code == 0, result.output
+    redaction = target_dir(root, "toy") / "redaction.yaml"
+    assert redaction.is_file()
+    assert yaml.safe_load(redaction.read_text(encoding="utf-8")) == {"names": []}
+    assert f"  wrote {redaction} (local, gitignored)" in result.stdout
+    checked = invoke(
+        "validate", "--root", str(root), "--target", "toy", "--manifest", str(draft_of(root, "toy"))
+    )
+    assert checked.exit_code == 0, checked.output
+    assert "0 errors, 0 warnings" in checked.stdout
+
+    redaction.write_text("names: [Dana Whitfield]\n", encoding="utf-8")
+    again = invoke("discover", "--root", str(root), "--target", "toy", "--scan", str(TOY_SOURCE))
+    assert again.exit_code == 0, again.output
+    assert redaction.read_text(encoding="utf-8") == "names: [Dana Whitfield]\n"
+    assert "redaction.yaml" not in again.stdout
+
+
 def test_the_draft_validates_and_an_accepted_draft_syncs(tmp_path: Path) -> None:
     root = workspace(tmp_path)
     invoke("discover", "--root", str(root), "--target", "toy", "--scan", str(TOY_SOURCE))

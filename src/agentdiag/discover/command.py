@@ -66,6 +66,7 @@ from agentdiag.run.templates import (
     EVAL_PARAMETERS_COMMENT,
     FAMILY_COMMENT,
     PLACEHOLDER_DESCRIPTION,
+    REDACTION_STARTER,
 )
 from agentdiag.sync.observe import connector_failure
 from agentdiag.sync.pointed import render_schema
@@ -164,10 +165,17 @@ def _discover(options: DiscoverOptions) -> DiscoverExit:
     files = deployed.files(target) if deployed is not None else {}
     files[out] = text
     _refuse_overwrites(files, options.force)
+    # A Target this draft creates gets the local redaction starter `init` writes (ADR-0015
+    # §4), so it is as complete as a scaffolded one; an author's file is never touched.
+    starter = existing is None and not target.redaction.exists()
+    if starter:
+        files[target.redaction] = REDACTION_STARTER
     written = _write(files)
     return DiscoverExit(
         code=0,
-        message=_summary(options, findings, deployed, out, reviews, written, scan_directory),
+        message=_summary(
+            options, findings, deployed, out, reviews, written, scan_directory, starter=starter
+        ),
         draft=out,
         written=written,
     )
@@ -798,6 +806,8 @@ def _summary(
     reviews: int,
     written: list[Path],
     scan_directory: Path | None,
+    *,
+    starter: bool = False,
 ) -> str:
     lines: list[str] = []
     if findings is not None and scan_directory is not None:
@@ -816,6 +826,8 @@ def _summary(
             lines.append(f"  {state} {path}")
     state = "Wrote" if out in written else "Unchanged:"
     lines.append(f"{state} {out}, {_count(reviews, 'line')} marked REVIEW.")
+    if starter:
+        lines.append(f"  wrote {options.target.redaction} (local, gitignored)")
     naming = f" --target {options.target.slug}" if options.several_targets else ""
     root = options.target.root
     lines += [

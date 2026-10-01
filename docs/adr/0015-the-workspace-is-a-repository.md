@@ -59,8 +59,8 @@ one machine:
    stands in for a Connector that cannot *read* (a missing credential, decision 25 of phase
    6); it never stands in for one that cannot *exist*.
 4. **The names to redact are local, not committed.** They live in `redaction.yaml` beside
-   the Manifest (`names: [...]`), which `init` writes as an empty starter and whose line
-   `init` adds to the Workspace `.gitignore`. The Manifest's `redaction` key is a pointer to
+   the Manifest (`names: [...]`), which `init` writes as an empty starter (and `discover`,
+   for a Target it creates) and whose line `init` adds to the Workspace `.gitignore`. The Manifest's `redaction` key is a pointer to
    that file, relative to the Target directory and `redaction.yaml` by default; a Manifest
    that still lists names inline is a `validate` error naming the move. A clone without the
    file redacts e-mail addresses and phone numbers as before and no names, and `validate`
