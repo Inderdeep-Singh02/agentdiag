@@ -40,9 +40,14 @@ one machine:
 2. **Every Manifest pointer is relative and resolves inside the Workspace root.** A pointer
    (`prompts.*`, `tools.*.schema`, `suites[].path`, `records`, `judge_notes`, `redaction`)
    that is absolute (a leading `/`, a drive letter, a UNC path) or that resolves outside the
-   Workspace root is a `validate` error naming the pointer and where it resolves. A pointer
-   may name another Target's directory under the same root; it may not leave the root. The
-   in-process `store` keeps its stricter rule (inside the Target directory).
+   Workspace root is a `validate` error naming the pointer and where it leads, and the same
+   problem refuses `run`, `run --dry-run` and `rescore` in the preflight. The check is
+   lexical: separators normalised, the pointer joined to the Target directory's path under
+   the root and normalised, never resolved through the filesystem, so a symlink or a NUL
+   byte on one machine cannot change the answer and a committed pointer means the same in
+   every clone. A pointer may name another Target's directory under the same root; it may
+   not leave the root. The in-process `store` keeps its stricter rule (inside the Target
+   directory).
 3. **An unknown kind is refused wherever a Manifest is read to act on it.** `run`,
    `run --dry-run` and the preflight a `rescore` runs refuse a Manifest whose `adapter.kind`
    no installed distribution registers, and whose `connector.kind` none registers when that
@@ -80,7 +85,8 @@ one machine:
   `find_repository` moves to `agentdiag.workspace`, the one definition of "enclosing
   repository".
 - `manifest_report` gains the pointer rules before its existence checks; a pointer refused
-  for leaving the root is not also reported missing.
+  for leaving the root is not also reported missing, and `validate` never reads a Suite it
+  refused; `preflight` renders the same problems beside the kind problems.
 - `preflight` gains the kind check at its top, short-circuiting as the missing-Manifest case
   does.
 - `TargetPaths.redaction`, the gitignore line, the starter file, and `redaction_names`

@@ -19,15 +19,18 @@ loads unchanged; unknown keys are carried rather than refused.
 
 Where the file is belongs to `agentdiag.workspace` (ADR-0013): `load_manifest` takes the
 `TargetPaths` a Workspace resolved, never a bare root. What is wrong with a Manifest beyond
-its shape — a pointer to a missing file, a Suppression whose window ends before it starts —
-is `manifest_report`'s, which `validate` prints before it checks any Suite.
+its shape — a pointer that is absolute or leaves the Workspace root (ADR-0015 §2,
+`pointer_problems`), a pointer to a missing file, a Suppression whose window ends before it
+starts — is `manifest_report`'s, which `validate` prints before it checks any Suite.
 """
 
 from __future__ import annotations
 
+import posixpath
+import re
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Any, Literal, NamedTuple, cast
 
 import yaml
 from pydantic import (
@@ -526,6 +529,9 @@ class ManifestReport(BaseModel):
     file: Path
     errors: list[ManifestProblem] = Field(default_factory=list)
     warnings: list[ManifestProblem] = Field(default_factory=list)
+    refused: list[str] = Field(default_factory=list)
+    """Where each pointer that is absolute or leaves the Workspace root sits (`suites[0]`):
+    `validate` reads no Suite named here."""
 
     @property
     def ok(self) -> bool:
@@ -542,16 +548,101 @@ class ManifestReport(BaseModel):
         ]
 
 
+_DRIVE = re.compile(r"^[A-Za-z]:[\\/]")
+
+
+def _is_absolute(pointer: str) -> bool:
+    """Absolute on any machine: a leading separator once `\\` is `/` (a POSIX root, a UNC
+    share), or a drive letter and a separator. `v:2.md` is a relative name."""
+    return pointer.replace("\\", "/").startswith("/") or bool(_DRIVE.match(pointer))
+
+
+class _Pointed(NamedTuple):
+    """One path the Manifest names, and whether `validate` checks it exists here."""
+
+    where: str
+    what: str
+    path: str
+    exists_checked: bool
+    local_only: bool = False
+
+
+def _pointers(manifest: Manifest) -> list[_Pointed]:
+    """Every path the Manifest names; `observed` names none. A retired Suite's path is a
+    path all the same, though its file is never checked. `records` and `judge_notes` get
+    only the where-it-points rule. A key that becomes a path (`redaction` as a file, say)
+    is one more entry here."""
+    pointers: list[_Pointed] = []
+    for name, prompt in manifest.prompts.items():
+        if isinstance(prompt, PromptPointer):
+            pointers.append(
+                _Pointed(f"prompts.{name}", "the prompt file", prompt.path, True, prompt.local_only)
+            )
+    for name, entry in manifest.tools.items():
+        schema = entry.schema_
+        if isinstance(schema, PromptPointer):
+            pointers.append(
+                _Pointed(
+                    f"tools.{name}.schema",
+                    "the tool schema file",
+                    schema.path,
+                    True,
+                    schema.local_only,
+                )
+            )
+    read = manifest.read_suites
+    for index, suite in enumerate(manifest.suites):
+        pointers.append(_Pointed(f"suites[{index}]", "the Suite", suite.path, suite in read))
+    pointers.append(_Pointed("records", "the Change records directory", manifest.records, False))
+    if manifest.judge_notes is not None:
+        pointers.append(_Pointed("judge_notes", "the Judge notes", manifest.judge_notes, False))
+    return pointers
+
+
+def _pointer_problem(target: TargetPaths, what: str, path: str) -> str | None:
+    """Why `path` may not be a Manifest pointer, or None. Lexical, so the answer is the same
+    on every machine: no symlink is followed and no file is read."""
+    directory = target.directory.relative_to(target.root).as_posix()
+    if _is_absolute(path):
+        return (
+            f"{what} {path} is absolute; a Manifest pointer is relative to the Target "
+            f"directory {directory}"
+        )
+    forward = path.replace("\\", "/")
+    normalised = posixpath.normpath(f"{directory}/{forward}")
+    if normalised == ".." or normalised.startswith("../"):
+        return (
+            f"{what} {path} leaves the Workspace root (it normalises to {normalised}); move "
+            "the file under the root and point at it relative to the Target directory"
+        )
+    return None
+
+
+def pointer_problems(target: TargetPaths, manifest: Manifest) -> list[tuple[str, str]]:
+    """Every pointer that is absolute or leaves the Workspace root, as (where, message)
+    (ADR-0015 §2): a committed Manifest never depends on one machine's layout. Another
+    Target's directory under the same root is inside it. An error whether or not the file
+    exists here, `local_only` included: the rule is where it points."""
+    problems: list[tuple[str, str]] = []
+    for pointed in _pointers(manifest):
+        problem = _pointer_problem(target, pointed.what, pointed.path)
+        if problem is not None:
+            problems.append((pointed.where, problem))
+    return problems
+
+
 def manifest_report(
     target: TargetPaths, path: Path | None = None
 ) -> tuple[ManifestReport, Manifest | None]:
     """The Manifest checked: its shape, then every pointer and every Suppression.
 
-    A missing pointer is an error, unless it is `local_only`, when it is a warning; an
-    unknown Suite status is an error (the shape refuses it, and this names the entry); a
-    Suppression whose `until` precedes its `from` is an error, and one naming a mechanical
-    Eval a warning, since mechanical Evals ignore Suppressions in v1 (decision 16). `path`
-    checks another file as the Target's Manifest (`validate --manifest`).
+    A pointer that is absolute or leaves the Workspace root is an error
+    (`pointer_problems`), and the existence check skips it; a missing pointer is an error,
+    unless it is `local_only`, when it is a warning; an unknown Suite status is an error
+    (the shape refuses it, and this names the entry); a Suppression whose `until` precedes
+    its `from` is an error, and one naming a mechanical Eval a warning, since mechanical
+    Evals ignore Suppressions in v1 (decision 16). `path` checks another file as the
+    Target's Manifest (`validate --manifest`).
     """
     report = ManifestReport(file=target.manifest if path is None else path)
     try:
@@ -565,32 +656,23 @@ def manifest_report(
         report.errors.append(ManifestProblem(path="", message=str(exc)))
         return report, None
 
-    def pointed(where: str, pointer: Pointer | None, what: str) -> None:
-        if not isinstance(pointer, PromptPointer) or target.relative(pointer.path).is_file():
-            return
-        problem = ManifestProblem(
-            path=where, message=f"{what} {pointer.path} does not exist under {target.directory}"
-        )
-        (report.warnings if pointer.local_only else report.errors).append(problem)
-
     from agentdiag.run.manifest_checks import manifest_problems  # it imports this module
 
     report.errors.extend(
         ManifestProblem(path=where, message=message)
         for where, message in manifest_problems(manifest)
     )
-    for name, pointer in manifest.prompts.items():
-        pointed(f"prompts.{name}", pointer, "the prompt file")
-    for name, entry in manifest.tools.items():
-        pointed(f"tools.{name}.schema", entry.schema_, "the tool schema file")
-    for index, suite in enumerate(manifest.suites):
-        if suite in manifest.read_suites and not target.relative(suite.path).is_file():
-            report.errors.append(
-                ManifestProblem(
-                    path=f"suites[{index}]",
-                    message=f"the Suite {suite.path} does not exist under {target.directory}",
-                )
+    for pointed in _pointers(manifest):
+        problem = _pointer_problem(target, pointed.what, pointed.path)
+        if problem is not None:
+            report.errors.append(ManifestProblem(path=pointed.where, message=problem))
+            report.refused.append(pointed.where)
+        elif pointed.exists_checked and not target.relative(pointed.path).is_file():
+            missing = ManifestProblem(
+                path=pointed.where,
+                message=f"{pointed.what} {pointed.path} does not exist under {target.directory}",
             )
+            (report.warnings if pointed.local_only else report.errors).append(missing)
     for index, suppression in enumerate(manifest.suppressions):
         where = f"suppressions[{index}]"
         if suppression.until < suppression.from_:
@@ -646,5 +728,6 @@ __all__ = [
     "load_manifest",
     "manifest_if_it_loads",
     "manifest_report",
+    "pointer_problems",
     "protected_by_name",
 ]

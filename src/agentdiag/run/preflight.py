@@ -133,6 +133,7 @@ from agentdiag.run.manifest import (
     ManifestNotFound,
     PromptPointer,
     load_manifest,
+    pointer_problems,
 )
 from agentdiag.run.manifest_checks import kind_problems
 from agentdiag.run.record import Defaulted, SyncSection
@@ -358,6 +359,9 @@ def preflight(
     # Everything that does not need the Adapter is still collected below.
     unknown = unknown_kinds(manifest, connector=check_sync or reads_tool_truth(manifest))
     problems.extend(unknown)
+    # Every pointer relative and inside the Workspace root (ADR-0015 §2): `validate`'s
+    # problem, word for word, so `run` refuses what `validate` refuses.
+    problems.extend(f"{where}: {message}" for where, message in pointer_problems(target, manifest))
 
     suites, warnings, suite_problems = load_suites(target, manifest)
     problems.extend(suite_problems)

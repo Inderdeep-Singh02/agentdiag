@@ -337,7 +337,12 @@ def validate(
         if not files:
             for entry in manifest.retired_suites:
                 typer.echo(f"skipped: {chosen.relative(entry.path)}: Suite status: retired")
-            files = [chosen.relative(entry.path) for entry in manifest.read_suites]
+            files = [
+                chosen.relative(entry.path)
+                for index, entry in enumerate(manifest.suites)
+                if entry in manifest.read_suites
+                and f"suites[{index}]" not in manifest_check.refused
+            ]
 
     reports = [validate_suite(path, facts=facts) for path in files]
     for report in reports:

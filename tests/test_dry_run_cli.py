@@ -227,3 +227,23 @@ def test_friction_27_a_declaration_that_does_not_parse_fails_the_dry_run() -> No
     assert count == 1
     (problem,) = problems
     assert problem.startswith("error: Scenario 'a': goal: ")
+
+
+def test_a_dry_run_refuses_an_absolute_prompt_pointer_as_validate_does(tmp_path: Path) -> None:
+    """ADR-0015 §2: `run` refuses what `validate` refuses, in `validate`'s words."""
+    root = toy_root(tmp_path)
+    path = root / ".agentdiag" / "targets" / "toy-order-desk" / "manifest.yaml"
+    manifest = yaml.safe_load(path.read_text(encoding="utf-8"))
+    manifest["prompts"] = {"system": "/etc/system.md"}
+    path.write_text(yaml.safe_dump(manifest), encoding="utf-8")
+    problem = (
+        "prompts.system: the prompt file /etc/system.md is absolute; a Manifest pointer is "
+        "relative to the Target directory .agentdiag/targets/toy-order-desk"
+    )
+
+    checked = runner.invoke(app, ["validate", "--root", str(root)])
+    result = dry_run(root, "--scenario", "cancel-processing-order")
+
+    assert f"error: {path}: {problem}" in checked.stdout.splitlines()
+    assert result.exit_code == 3, result.stdout
+    assert problem in result.stdout.splitlines(), result.stdout

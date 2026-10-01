@@ -1125,6 +1125,9 @@ uv run agentdiag validate path/to/suite.yaml other.yaml       # or the files nam
 
 Each problem is one line, `error: <file>: <path>: <message>` or `warning: ...`, then one
 summary line. Any error exits 3; warnings (an Eval name this agentdiag does not know) exit 0.
+The Manifest is checked first: a pointer to a missing file is an error (a warning when it is
+`local_only`), and a pointer that is absolute or resolves outside the Workspace root is an
+error, so a committed Manifest never depends on one machine's layout.
 
 A Suite in a legacy shape (an extended `scenarios.json` with `first_turn`, or a per-case CI
 file) is refused by `validate`, naming the shape: `this is a legacy <shape> Suite shape;

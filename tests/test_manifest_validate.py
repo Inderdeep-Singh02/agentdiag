@@ -8,11 +8,14 @@ wrong and where; the passing one must say nothing at all. A warning exits 0.
 
 from __future__ import annotations
 
+import os
 import shutil
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 import pytest
+import yaml
 from typer.testing import CliRunner
 
 from agentdiag.cli import app
@@ -462,3 +465,177 @@ def test_validate_of_a_manifest_imports_no_sdk_and_no_target_code() -> None:
         [sys.executable, "-c", probe], capture_output=True, text=True, check=True, cwd=REPO
     )
     assert completed.stdout.strip().splitlines()[-1] == "leaked:"
+
+
+# --- where a pointer points (ADR-0015 §2) ---
+
+TARGET_DIRECTORY = ".agentdiag/targets/toy-order-desk"
+
+
+def root_pointing(tmp_path: Path, **blocks: object) -> tuple[Path, Path]:
+    """The passing prompt fixture's root with `blocks` written over its Manifest; returns the
+    root and the Target directory."""
+    root = root_with(tmp_path, "prompt-pointer-missing.pass")
+    directory = root / TARGET_DIRECTORY
+    written = yaml.safe_load((directory / "manifest.yaml").read_text(encoding="utf-8"))
+    written.update(blocks)
+    (directory / "manifest.yaml").write_text(yaml.safe_dump(written), encoding="utf-8")
+    return root, directory
+
+
+def errors_of(result: Any) -> list[str]:
+    return [line for line in result.stdout.splitlines() if line.startswith("error:")]
+
+
+def absolute(what: str, path: str) -> str:
+    return (
+        f"{what} {path} is absolute; a Manifest pointer is relative to the Target directory "
+        f"{TARGET_DIRECTORY}"
+    )
+
+
+def leaves(what: str, path: str, normalised: str) -> str:
+    return (
+        f"{what} {path} leaves the Workspace root (it normalises to {normalised}); move the "
+        "file under the root and point at it relative to the Target directory"
+    )
+
+
+def test_an_absolute_prompt_pointer_is_a_validate_error(tmp_path: Path) -> None:
+    system = tmp_path / "system.md"
+    system.write_text("You are a desk.\n", encoding="utf-8")
+    root, _ = root_pointing(tmp_path, prompts={"system": str(system)})
+
+    result = validate(root)
+
+    assert result.exit_code == 3, result.stdout
+    (line,) = errors_of(result)
+    assert line.endswith(f": prompts.system: {absolute('the prompt file', str(system))}")
+
+
+@pytest.mark.parametrize("present", [True, False], ids=["present", "missing"])
+def test_a_suite_that_leaves_the_workspace_root_is_refused_once_and_never_read(
+    present: bool, tmp_path: Path
+) -> None:
+    escape = "../../../../elsewhere/suite.yaml"
+    root, _ = root_pointing(tmp_path, suites=[escape, "suites/orders.yaml"])
+    if present:
+        outside = tmp_path / "elsewhere" / "suite.yaml"
+        outside.parent.mkdir()
+        outside.write_text("not: [a Suite\n", encoding="utf-8")  # read, it would be an error
+
+    result = validate(root)
+
+    assert result.exit_code == 3, result.stdout
+    (line,) = errors_of(result)
+    assert line.endswith(f": suites[0]: {leaves('the Suite', escape, '../elsewhere/suite.yaml')}")
+    assert "does not exist" not in result.stdout
+    assert result.stdout.splitlines()[-1] == (
+        "validated the Manifest and 1 Suite: 1 error, 0 warnings"
+    )
+
+
+@pytest.mark.parametrize(
+    ("blocks", "where", "message"),
+    [
+        (
+            {"judge_notes": "../../../../notes.md"},
+            "judge_notes",
+            leaves("the Judge notes", "../../../../notes.md", "../notes.md"),
+        ),
+        (
+            {"records": "../../../../changes"},
+            "records",
+            leaves("the Change records directory", "../../../../changes", "../changes"),
+        ),
+        (
+            {"tools": {"lookup_order": {"schema": "/etc/lookup_order.json"}}},
+            "tools.lookup_order.schema",
+            absolute("the tool schema file", "/etc/lookup_order.json"),
+        ),
+        (
+            {"prompts": {"system": {"path": "/etc/rules.local.md", "local_only": True}}},
+            "prompts.system",
+            absolute("the prompt file", "/etc/rules.local.md"),
+        ),
+        (
+            {"suites": [{"path": "../../../../retired.yaml", "status": "retired"}]},
+            "suites[0]",
+            leaves("the Suite", "../../../../retired.yaml", "../retired.yaml"),
+        ),
+        (
+            {"prompts": {"system": "..\\..\\..\\..\\x.md"}},
+            "prompts.system",
+            leaves("the prompt file", "..\\..\\..\\..\\x.md", "../x.md"),
+        ),
+        (
+            {"prompts": {"system": "C:\\prompts\\system.md"}},
+            "prompts.system",
+            absolute("the prompt file", "C:\\prompts\\system.md"),
+        ),
+        (
+            {"prompts": {"system": "//srv/share/x.md"}},
+            "prompts.system",
+            absolute("the prompt file", "//srv/share/x.md"),
+        ),
+    ],
+    ids=[
+        "judge-notes-up",
+        "records-up",
+        "tool-schema-absolute",
+        "local-only-absolute",
+        "retired-suite-up",
+        "backslash-up",
+        "windows-drive",
+        "unc-share",
+    ],
+)
+def test_every_pointer_that_is_absolute_or_escapes_is_one_error_and_no_warning(
+    blocks: dict[str, object], where: str, message: str, tmp_path: Path
+) -> None:
+    root, _ = root_pointing(tmp_path, **blocks)
+
+    result = validate(root)
+
+    assert result.exit_code == 3, result.stdout
+    assert [line for line in errors_of(result) if f": {where}: " in line] == [
+        f"error: {root / TARGET_DIRECTORY / 'manifest.yaml'}: {where}: {message}"
+    ], result.stdout
+    assert "warning:" not in result.stdout
+
+
+@pytest.mark.parametrize(
+    ("pointer", "file"),
+    [
+        ("../other/prompts/system.md", "../other/prompts/system.md"),
+        ("../toy-order-desk/prompts/system.md", "prompts/system.md"),
+        ("prompts\\system.md", "prompts/system.md"),
+        ("v:2.md", "v:2.md"),
+    ],
+    ids=["sibling-target", "up-and-back", "backslash-inside", "colon-name"],
+)
+def test_a_relative_pointer_inside_the_root_validates(
+    pointer: str, file: str, tmp_path: Path
+) -> None:
+    root, directory = root_pointing(tmp_path, prompts={"system": pointer})
+    (directory / file).parent.mkdir(parents=True, exist_ok=True)
+    (directory / file).write_text("You are a desk.\n", encoding="utf-8")
+    if pointer == "prompts\\system.md":  # a POSIX name with a backslash in it
+        shutil.copy(directory / file, directory / pointer)
+
+    result = runner.invoke(app, ["validate", "--root", str(root), "--target", "toy-order-desk"])
+
+    assert result.exit_code == 0, result.stdout
+    assert "error:" not in result.stdout
+
+
+def test_a_target_directory_that_is_a_symlink_validates_clean(tmp_path: Path) -> None:
+    root, directory = root_pointing(tmp_path / "workspace")
+    elsewhere = tmp_path / "kept-elsewhere"
+    shutil.move(directory, elsewhere)
+    os.symlink(elsewhere, directory, target_is_directory=True)
+
+    result = validate(root)
+
+    assert result.exit_code == 0, result.stdout
+    assert "error:" not in result.stdout
