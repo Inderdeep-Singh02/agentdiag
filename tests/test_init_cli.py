@@ -26,6 +26,7 @@ from agentdiag.run.templates import (
     EXAMPLE_ONLY,
     EXAMPLE_SCAFFOLD,
     render_judge_notes,
+    render_maintainer_notes,
     render_manifest,
     render_redaction,
     render_suite,
@@ -104,6 +105,7 @@ def test_the_scaffolded_manifest_holds_target_adapter_tools_and_suites(tmp_path:
         "connector",
         "tools",
         "judge_notes",
+        "maintainer_notes",
         "suites",
     }
     assert document["prompts"] == {"system": "observed"}
@@ -203,6 +205,7 @@ def test_the_example_directory_holds_only_the_files_init_writes() -> None:
     assert [path.name for path in (workspace / "targets").iterdir()] == ["toy-order-desk"]
     assert sorted(path.name for path in EXAMPLE.iterdir() if path.name not in DERIVED) == [
         "judge_notes.md",
+        "maintainer_notes.md",
         "manifest.yaml",
         "redaction.yaml",
         "suites",
@@ -238,6 +241,9 @@ def test_the_notes_starter_carries_the_guidance_as_a_comment_the_judge_never_rea
 
 def test_the_example_notes_are_what_init_writes_byte_for_byte() -> None:
     assert render_judge_notes(EXAMPLE_SCAFFOLD) == (EXAMPLE / "judge_notes.md").read_text(
+        encoding="utf-8"
+    )
+    assert render_maintainer_notes(EXAMPLE_SCAFFOLD) == (EXAMPLE / "maintainer_notes.md").read_text(
         encoding="utf-8"
     )
 

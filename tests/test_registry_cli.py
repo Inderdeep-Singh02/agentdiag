@@ -154,13 +154,13 @@ def test_target_show_prints_the_manifest_notes_fingerprint_breaks_and_change_rec
     assert result.exit_code == 0, output(result)
     lines = result.stdout.splitlines()
     assert lines[0] == "Target a: toy-order-desk"
-    assert "directory       .agentdiag/targets/a" in lines
+    assert "directory         .agentdiag/targets/a" in lines
     assert any(
-        line.startswith("notes           judge_notes.md, 0 words, fingerprint ") for line in lines
+        line.startswith("notes             judge_notes.md, 0 words, fingerprint ") for line in lines
     )
-    assert "fingerprint     none" in lines
-    assert "sync breaks     none" in lines
-    assert "change records  none" in lines
+    assert "fingerprint       none" in lines
+    assert "sync breaks       none" in lines
+    assert "change records    none" in lines
     assert "Manifest as loaded:" in lines
     assert "    name: toy-order-desk" in lines
 
@@ -241,4 +241,4 @@ def test_friction_13_the_table_marks_a_suite_that_does_not_run(tmp_path: Path) -
     rows = {line.split()[0]: line for line in table.stdout.splitlines()[1:]}
     assert "sample (retired)" in rows["a"]
     assert "sample, next (draft)" in rows["b"]
-    assert "suites          suites/sample.yaml (retired)" in shown.stdout.splitlines()
+    assert "suites            suites/sample.yaml (retired)" in shown.stdout.splitlines()

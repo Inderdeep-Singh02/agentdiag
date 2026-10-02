@@ -26,7 +26,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-import yaml
 from typer.testing import CliRunner
 
 from agentdiag.cli import app
@@ -39,6 +38,7 @@ from agentdiag.sync.compare import RECORD_IS_STALE
 from agentdiag.sync.fingerprint import Fingerprint
 from agentdiag.sync.observe import NOT_IN_READ
 from tests.fakes.fake_connector import FAKE_KIND, FakeConnector
+from tests.fakes.workspace import edit_manifest
 
 REPO = Path(__file__).resolve().parents[1]
 EXAMPLE = REPO / "examples" / "toy"
@@ -75,19 +75,12 @@ def fake() -> Iterator[FakeConnector]:
         yield connector
 
 
+TOY = "toy-order-desk"
+"""The slug of the example's one Target, which every test here edits."""
+
+
 def manifest_path(root: Path) -> Path:
     return root / ".agentdiag" / "targets" / "toy-order-desk" / "manifest.yaml"
-
-
-def edit_manifest(root: Path, **blocks: Any) -> None:
-    path = manifest_path(root)
-    manifest = yaml.safe_load(path.read_text(encoding="utf-8"))
-    for key, value in blocks.items():
-        if value is None:
-            manifest.pop(key, None)
-        else:
-            manifest[key] = value
-    path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
 
 
 def target_root(tmp_path: Path, *, path_pointer: bool = True, **connector: Any) -> Path:
@@ -100,9 +93,9 @@ def target_root(tmp_path: Path, *, path_pointer: bool = True, **connector: Any) 
         prompts = root / ".agentdiag" / "targets" / "toy-order-desk" / "prompts"
         prompts.mkdir()
         (prompts / "system.md").write_text(PROMPT, encoding="utf-8")
-        edit_manifest(root, connector=block, prompts={"system": "prompts/system.md"})
+        edit_manifest(root, TOY, connector=block, prompts={"system": "prompts/system.md"})
     else:
-        edit_manifest(root, connector=block)
+        edit_manifest(root, TOY, connector=block)
     return root
 
 
@@ -225,7 +218,7 @@ def test_an_observed_prompt_the_read_omits_is_not_covered_with_its_reason(
     tmp_path: Path, fake: FakeConnector
 ) -> None:
     root = target_root(tmp_path)
-    edit_manifest(root, prompts={"system": "prompts/system.md", "greeting": "observed"})
+    edit_manifest(root, TOY, prompts={"system": "prompts/system.md", "greeting": "observed"})
 
     result = sync(root)
 
@@ -625,8 +618,8 @@ def test_the_registry_counts_open_breaks_and_a_sync_closes_them(
     assert entry["sync"]["open_breaks"] == 2
     assert "broken (2 open Sync breaks)" in table.stdout
     lines = shown.stdout.splitlines()
-    assert "sync            broken (2 open Sync breaks)" in lines
-    assert "sync breaks     2 open; run `agentdiag sync` to re-record the Fingerprint" in lines
+    assert "sync              broken (2 open Sync breaks)" in lines
+    assert "sync breaks       2 open; run `agentdiag sync` to re-record the Fingerprint" in lines
     assert any(
         line.strip().startswith(".agentdiag/targets/toy-order-desk/sync-breaks/")
         and line.endswith("prompt.system#rules deployed_ahead")
@@ -749,7 +742,7 @@ def test_a_manifest_with_no_connector_is_fingerprinted_by_the_adapters_probe(
     tmp_path: Path,
 ) -> None:
     root = toy(tmp_path)
-    edit_manifest(root, connector=None)
+    edit_manifest(root, TOY, connector=None)
 
     result = sync(root)
 
@@ -761,7 +754,7 @@ def test_the_toy_through_its_connector_and_through_the_probe_hash_alike(tmp_path
     """The in-process Connector reads what the running module sends: one Fingerprint id."""
     through_connector = toy(tmp_path / "c")
     through_probe = toy(tmp_path / "p")
-    edit_manifest(through_probe, connector=None)
+    edit_manifest(through_probe, TOY, connector=None)
 
     sync(through_connector)
     sync(through_probe)

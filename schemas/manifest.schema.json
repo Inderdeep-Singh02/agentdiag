@@ -432,6 +432,18 @@
       "default": null,
       "title": "Judge Notes"
     },
+    "maintainer_notes": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Maintainer Notes"
+    },
     "prompts": {
       "additionalProperties": {
         "anyOf": [

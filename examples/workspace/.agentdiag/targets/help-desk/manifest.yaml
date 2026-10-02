@@ -93,6 +93,9 @@ tools:
 # The Judge's calibration notes: the Target runs on claude-sonnet-5 and the Judge on
 # claude-opus-5, so no same-model note is needed.
 judge_notes: judge_notes.md
+# The Maintainer notes, relative to this Target directory: read in full by every agentdiag
+# skill before its first step, and never by the Judge (ADR-0016 section 5).
+maintainer_notes: maintainer_notes.md
 
 # Eval parameters, read by the Evals and never shown to the Judge: a default threshold for
 # the latency Evals, and the JSON type each tool argument must have. Forbidden phrases stay

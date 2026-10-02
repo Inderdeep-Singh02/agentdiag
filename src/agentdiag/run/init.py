@@ -26,8 +26,9 @@ Two rules shape everything here:
   not source (ADR-0005 §2): re-scaffolding a Target is not permission to delete one. Nor
   the calibration notes: `judge_notes.md` (ticket 05) is written when absent and left
   alone when present, because notes are what an author learned about judging the Target,
-  and a starter file is no replacement for them. The same holds for `redaction.yaml`, the
-  Target's local list of names a Change record never carries (ADR-0015 §4), which `init`
+  and a starter file is no replacement for them. The same holds for `maintainer_notes.md`,
+  what a maintainer learned about the Target itself (ADR-0016 §5), and for `redaction.yaml`,
+  the Target's local list of names a Change record never carries (ADR-0015 §4), which `init`
   writes as an empty starter and gitignores.
 
 After the Target's files, `init` writes the Orientation page, its two import files and the
@@ -49,14 +50,13 @@ from agentdiag.exits import USAGE_EXIT
 from agentdiag.run.manifest_checks import review_count
 from agentdiag.run.templates import (
     DEFAULT_MODEL,
+    STARTERS,
     TOY_SCAFFOLD,
     Scaffold,
     UnwritableValue,
     custom_scaffold,
     pending_scaffold,
-    render_judge_notes,
     render_manifest,
-    render_redaction,
     render_suite,
 )
 from agentdiag.workspace import (
@@ -291,15 +291,8 @@ def scaffold_target(options: InitOptions) -> InitResult:
     scaffold = replace(scaffold_for(options), slug=slug)
     manifest = target.manifest
     suite = target.relative(scaffold.suite_path)
-    notes = target.judge_notes
-    redaction = target.redaction
     try:
-        manifest_text, suite_text, notes_text, redaction_text = (
-            render_manifest(scaffold),
-            render_suite(scaffold),
-            render_judge_notes(scaffold),
-            render_redaction(scaffold),
-        )
+        manifest_text, suite_text = render_manifest(scaffold), render_suite(scaffold)
     except UnwritableValue as unwritable:
         # Rendered before anything is created: a value that cannot be written must not
         # leave half a scaffold behind (the preflight habit, D32).
@@ -310,9 +303,10 @@ def scaffold_target(options: InitOptions) -> InitResult:
     manifest.write_text(manifest_text, encoding="utf-8")
     suite.write_text(suite_text, encoding="utf-8")
     created = [manifest, suite]
-    for kept, text in ((notes, notes_text), (redaction, redaction_text)):
+    for starter in STARTERS:
+        kept = starter.path(target)
         if not kept.exists():
-            kept.write_text(text, encoding="utf-8")
+            kept.write_text(starter.text, encoding="utf-8")
             created.append(kept)
 
     others = [other for other in existing if other.slug != slug]

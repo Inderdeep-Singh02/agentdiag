@@ -129,6 +129,30 @@
       "title": "Fingerprint",
       "type": "object"
     },
+    "MaintainerNotesSummary": {
+      "description": "The Maintainer notes as `target show` reports them (ADR-0016 §5): where they are and\nhow long, counted outside the HTML comment as the Calibration Notes are.",
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "words": {
+          "title": "Words",
+          "type": "integer"
+        },
+        "written": {
+          "default": true,
+          "title": "Written",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "path",
+        "words"
+      ],
+      "title": "MaintainerNotesSummary",
+      "type": "object"
+    },
     "NotCovered": {
       "description": "A section the Manifest names that nothing observed, and why (ADR-0007 §1).",
       "properties": {
@@ -848,6 +872,17 @@
       "anyOf": [
         {
           "$ref": "#/$defs/Fingerprint"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "maintainer_notes": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MaintainerNotesSummary"
         },
         {
           "type": "null"

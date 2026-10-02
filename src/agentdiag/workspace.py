@@ -45,6 +45,7 @@ a shell, a URL and a `--target` all carry unchanged."""
 MANIFEST_NAME = "manifest.yaml"
 FINGERPRINT_NAME = "fingerprint.json"
 JUDGE_NOTES_NAME = "judge_notes.md"
+MAINTAINER_NOTES_NAME = "maintainer_notes.md"
 REDACTION_NAME = "redaction.yaml"
 RUNS_DIRNAME = "runs"
 SYNC_BREAKS_DIRNAME = "sync-breaks"
@@ -160,6 +161,13 @@ class TargetPaths:
     def judge_notes(self) -> Path:
         """Where `init` puts the Calibration Notes; the Manifest's `judge_notes` names them."""
         return self.directory / JUDGE_NOTES_NAME
+
+    @property
+    def maintainer_notes(self) -> Path:
+        """Where `init` and `discover` put the Maintainer notes (ADR-0016 §5): what every skill
+        reads before its first step and the Judge never does; the Manifest's
+        `maintainer_notes` names them."""
+        return self.directory / MAINTAINER_NOTES_NAME
 
     @property
     def redaction(self) -> Path:
@@ -370,6 +378,7 @@ __all__ = [
     "GITIGNORE_REDACTION_LINE",
     "INDEX_FILE",
     "JUDGE_NOTES_NAME",
+    "MAINTAINER_NOTES_NAME",
     "MANIFEST_NAME",
     "PUSHES_DIRNAME",
     "REDACTION_NAME",

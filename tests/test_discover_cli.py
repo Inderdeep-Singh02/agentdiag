@@ -25,6 +25,7 @@ from agentdiag.connector.plugins import registered
 from agentdiag.discover.draft import REVIEW
 from agentdiag.examples.toy import SYSTEM_PROMPT, TOOL_SCHEMAS, deployed_set
 from tests.fakes.fake_connector import FAKE_KIND, FakeConnector
+from tests.fakes.workspace import edit_manifest
 
 REPO = Path(__file__).resolve().parents[1]
 TOY_SOURCE = REPO / "src" / "agentdiag" / "examples" / "toy"
@@ -64,13 +65,6 @@ def loaded(path: Path) -> dict[str, Any]:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     assert isinstance(data, dict)
     return data
-
-
-def edit_manifest(root: Path, **blocks: Any) -> None:
-    path = target_dir(root) / "manifest.yaml"
-    manifest = yaml.safe_load(path.read_text(encoding="utf-8"))
-    manifest.update(blocks)
-    path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
 
 
 def reviewed(path: Path, key: str) -> str:
@@ -198,7 +192,7 @@ def test_the_existing_manifest_s_facts_are_kept_without_review_lines(tmp_path: P
         "pattern": "refund",
         "why": "known",
     }
-    edit_manifest(root, family="order-desk", channel="chat", suppressions=[suppression])
+    edit_manifest(root, "default", family="order-desk", channel="chat", suppressions=[suppression])
 
     invoke("discover", "--root", str(root), "--scan", str(TOY_SOURCE))
 
@@ -223,7 +217,7 @@ def test_a_rescan_keeps_every_existing_entry_and_adds_only_what_is_absent(
     environments["prod"] = {"factory": "desk.live:make_target", "protected": True}
     del environments["local"]["tools"]
     manifest["tools"]["cancel_order"] = {"kind": "action", "side_effects": "live"}
-    edit_manifest(root, adapter=manifest["adapter"], tools=manifest["tools"])
+    edit_manifest(root, "default", adapter=manifest["adapter"], tools=manifest["tools"])
 
     result = invoke("discover", "--root", str(root), "--scan", str(TOY_SOURCE))
 
@@ -399,6 +393,7 @@ def fake_workspace(tmp_path: Path) -> Path:
     root = workspace(tmp_path)
     edit_manifest(
         root,
+        "default",
         connector={"kind": FAKE_KIND, "environments": {"dev": {"site": "desk-dev"}}},
     )
     return root
@@ -460,6 +455,7 @@ def test_from_connector_with_a_missing_credential_names_the_variable(
     monkeypatch.delenv("DESK_DEV_TOKEN", raising=False)
     edit_manifest(
         root,
+        "default",
         connector={
             "kind": FAKE_KIND,
             "environments": {"dev": {"credentials": {"token": "DESK_DEV_TOKEN"}}},
@@ -475,7 +471,7 @@ def test_from_connector_with_a_missing_credential_names_the_variable(
 
 def test_from_connector_with_no_connector_anywhere_is_refused(tmp_path: Path) -> None:
     root = workspace(tmp_path)
-    edit_manifest(root, connector=None)
+    edit_manifest(root, "default", connector=None)
 
     result = invoke("discover", "--root", str(root), "--from-connector", "--env", "local")
 
@@ -615,7 +611,7 @@ def test_from_connector_never_builds_the_connector_the_scan_only_guessed(
     tmp_path: Path,
 ) -> None:
     root = workspace(tmp_path)
-    edit_manifest(root, connector=None)
+    edit_manifest(root, "default", connector=None)
 
     result = invoke(
         "discover",

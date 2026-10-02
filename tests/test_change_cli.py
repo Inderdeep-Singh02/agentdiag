@@ -1022,8 +1022,8 @@ def test_target_show_prints_the_open_records_and_not_the_closed_ones(tmp_path: P
 
     assert shown.exit_code == 0, shown.output
     lines = shown.stdout.splitlines()
-    assert "change records  1 open" in lines
-    assert f"                {kept} open: kept" in lines
+    assert "change records    1 open" in lines
+    assert f"                  {kept} open: kept" in lines
     assert closed not in shown.stdout
     assert [record["id"] for record in json.loads(as_json.stdout)["change_records"]] == sorted(
         [kept, closed]

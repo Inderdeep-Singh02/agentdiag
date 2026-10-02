@@ -68,6 +68,9 @@ tools:
 # false-fail patterns, at most 600 words, read verbatim by every judged Eval and part of
 # each judged Score's Judge Fingerprint (ADR-0003 section 8).
 judge_notes: judge_notes.md
+# The Maintainer notes, relative to this Target directory: read in full by every agentdiag
+# skill before its first step, and never by the Judge (ADR-0016 section 5).
+maintainer_notes: maintainer_notes.md
 # The names a Change record never carries are in redaction.yaml beside this file: local and
 # gitignored, so a key here is needed only to point elsewhere (redaction: <path>).
 

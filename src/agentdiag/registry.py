@@ -34,15 +34,18 @@ import yaml
 from pydantic import BaseModel, Field
 
 from agentdiag.change.record import is_closed, load_records, unreadable_records
-from agentdiag.eval.notes import JudgeNotesProblem, read_judge_notes, word_count
+from agentdiag.eval.notes import JudgeNotesProblem, author_text, read_judge_notes, word_count
 from agentdiag.run.manifest import (
     DEFAULT_ENVIRONMENT_KEY,
+    MAINTAINER_NOTES_WHAT,
     Manifest,
     ManifestError,
     ManifestNotFound,
     SuiteEntry,
     load_manifest,
+    pointer_refusal,
 )
+from agentdiag.run.templates import MAINTAINER_NOTES_STARTER
 from agentdiag.sync.breaks import SyncBreak, SyncBreakError, load_breaks, open_breaks
 from agentdiag.sync.fingerprint import (
     NONE_SHOWN,
@@ -114,6 +117,20 @@ class CalibrationNotesSummary(BaseModel):
     fingerprint: str
 
 
+class MaintainerNotesSummary(BaseModel):
+    """The Maintainer notes as `target show` reports them (ADR-0016 §5): where they are and
+    how long, counted outside the HTML comment as the Calibration Notes are."""
+
+    path: str
+    """As the Manifest names it, relative to the Target directory."""
+
+    words: int
+
+    written: bool = True
+    """False while the text outside the HTML comment is still the starter's (its headings and
+    placeholders): `target show` says `not written yet` rather than count them."""
+
+
 class OpenSyncBreak(BaseModel):
     """One open Sync break as `target show` lists it: its file and what it recorded."""
 
@@ -160,6 +177,10 @@ class TargetView(BaseModel):
     """The Manifest as loaded; None when it did not load (the entry says why)."""
 
     calibration_notes: CalibrationNotesSummary | None = None
+    maintainer_notes: MaintainerNotesSummary | None = None
+    """The Maintainer notes the Manifest names; None when it names none or the file is
+    missing (the entry's problems say which)."""
+
     fingerprint: Fingerprint | None = None
     """The Target's `fingerprint.json` (phase-6 decision 9); None until `agentdiag sync`
     or a re-syncing Run writes one."""
@@ -228,31 +249,72 @@ def target_view(workspace: Workspace, slug: str | None) -> TargetView:
     slugs there are."""
     target = workspace.resolve(slug)
     entry, manifest = _entry(target)
-    notes: CalibrationNotesSummary | None = None
-    if manifest is not None and manifest.judge_notes is not None:
-        try:
-            read = read_judge_notes(target.directory, manifest.judge_notes)
-        except (JudgeNotesProblem, OSError) as exc:
-            entry.problems.append(str(exc))
-        else:
-            notes = CalibrationNotesSummary(
-                path=read.path, words=word_count(read.text), fingerprint=read.fingerprint
-            )
+    calibration_notes = _calibration_notes(target, manifest, entry)
+    maintainer_notes = _maintainer_notes(target, manifest, entry)
     entry, fingerprint, still_open, pushes = _with_sync(target, entry)
+    change_records = _change_records(target, entry)
     return TargetView(
         entry=entry,
         directory=target.relative_of(target.directory),
         manifest=manifest.model_dump(mode="json") if manifest is not None else None,
-        calibration_notes=notes,
+        calibration_notes=calibration_notes,
+        maintainer_notes=maintainer_notes,
         fingerprint=fingerprint,
         sync_breaks=[
             OpenSyncBreak(path=target.relative_of(path), sync_break=each)
             for path, each in still_open
         ],
-        change_records=_change_records(target, entry),
+        change_records=change_records,
         pushes=[
             PushSummary(path=target.relative_of(path), push=each) for path, each in reversed(pushes)
         ][:SHOWN_PUSHES],
+    )
+
+
+def _calibration_notes(
+    target: TargetPaths, manifest: Manifest | None, entry: RegistryEntry
+) -> CalibrationNotesSummary | None:
+    """The Calibration Notes the Manifest names, as the Judge would read them; notes that
+    cannot reach the Judge (missing, over budget) are a problem of the entry."""
+    if manifest is None or manifest.judge_notes is None:
+        return None
+    try:
+        read = read_judge_notes(target.directory, manifest.judge_notes)
+    except (JudgeNotesProblem, OSError) as exc:
+        entry.problems.append(str(exc))
+        return None
+    return CalibrationNotesSummary(
+        path=read.path, words=word_count(read.text), fingerprint=read.fingerprint
+    )
+
+
+def _maintainer_notes(
+    target: TargetPaths, manifest: Manifest | None, entry: RegistryEntry
+) -> MaintainerNotesSummary | None:
+    """The Maintainer notes the Manifest names, counted (ADR-0016 §5). The pointer rule of
+    ADR-0015 §2 holds here as in `validate`: a pointer that is absolute or leaves the root is
+    a problem of the entry and its file is never read; a named file that is not there is a
+    problem too, in `validate`'s words. Read here and never by `agentdiag.eval`."""
+    if manifest is None or manifest.maintainer_notes is None:
+        return None
+    pointer = manifest.maintainer_notes
+    refusal = pointer_refusal(target, MAINTAINER_NOTES_WHAT, pointer)
+    if refusal is not None:
+        entry.problems.append(f"maintainer_notes: {refusal}")
+        return None
+    path = target.relative(pointer)
+    try:
+        text = author_text(path.read_text(encoding="utf-8"))
+    except OSError:
+        entry.problems.append(
+            f"maintainer_notes: {MAINTAINER_NOTES_WHAT} {pointer} does not exist under "
+            f"{target.directory}"
+        )
+        return None
+    return MaintainerNotesSummary(
+        path=pointer,
+        words=word_count(text),
+        written=text != author_text(MAINTAINER_NOTES_STARTER),
     )
 
 
@@ -290,6 +352,7 @@ def _entry(target: TargetPaths) -> tuple[RegistryEntry, Manifest | None]:
             connector=manifest.connector_kind,
             suites=list(manifest.suites),
             problems=problems,
+            maintainer_notes=manifest.maintainer_notes,
         ),
         manifest,
     )
@@ -365,11 +428,12 @@ def suite_shown(name: str, suite: SuiteEntry) -> str:
 
 
 def render_target(view: TargetView) -> str:
-    """One Target: its Registry entry, its Calibration Notes, its Fingerprint, its open Sync
-    breaks and Change records (each `none` rather than left out, decision 5), then the
-    Manifest as loaded."""
+    """One Target: its Registry entry, its Calibration Notes and Maintainer notes (ADR-0016
+    §5), its Fingerprint, its open Sync breaks and Change records (each `none` rather than
+    left out, decision 5), then the Manifest as loaded."""
     entry = view.entry
     notes = view.calibration_notes
+    maintainer = view.maintainer_notes
     opened = [record for record in view.change_records if record.is_open]
     rows = [
         ("directory", view.directory),
@@ -386,6 +450,10 @@ def render_target(view: TargetView) -> str:
             f"{notes.path}, {notes.words} words, fingerprint {short(notes.fingerprint)}"
             if notes is not None
             else "none",
+        ),
+        (
+            "maintainer notes",
+            _maintainer_shown(maintainer),
         ),
         ("fingerprint", _fingerprint(view.fingerprint)),
         ("sync", render_sync(entry.sync)),
@@ -410,6 +478,13 @@ def render_target(view: TargetView) -> str:
         )
         lines += ["", "Manifest as loaded:", *(f"  {line}" for line in dumped.splitlines())]
     return "\n".join(lines)
+
+
+def _maintainer_shown(notes: MaintainerNotesSummary | None) -> str:
+    """`maintainer_notes.md, 120 words`, `maintainer_notes.md, not written yet`, or `none`."""
+    if notes is None:
+        return "none"
+    return f"{notes.path}, " + (f"{notes.words} words" if notes.written else "not written yet")
 
 
 SETTLE_HINT = "run `agentdiag sync` to re-record the Fingerprint"

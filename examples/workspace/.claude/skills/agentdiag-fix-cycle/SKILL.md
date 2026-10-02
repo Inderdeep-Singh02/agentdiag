@@ -12,6 +12,7 @@ Take one failure of a Target — a Diagnosis in a Run, or a complaint about a re
 
 ## Budgets
 
+- **Maintainer notes first.** Before step 1, read the Target's Maintainer notes, `maintainer_notes.md` beside the Manifest, in full: what it does, who it serves, its environments, its traps, where its evidence lives; with none yet, write them as you learn these.
 - **Two evidence commands.** The evidence for the Diagnosis is what two commands print: the one that makes or brings in the Trace (`run --scenario`, or `import`) and `show`. A third means the trigger is not yet specific: go back to step 1.
 - **One read bundle.** Read the Target once, as one bundle, before you edit: `target show` (the section ids) and every file the sections you will touch live in (`prompts/<name>.md`, `tools/<name>.json`), in full.
 - **Diff first.** Before a command that writes anything outside the Change record — `change propose`, `push --push`, a commit — print the diff it will carry (`git diff`, the `push` preview) and read it.

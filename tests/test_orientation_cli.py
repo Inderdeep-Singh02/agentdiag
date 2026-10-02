@@ -372,8 +372,9 @@ def test_the_packaged_vocabulary_is_the_repositorys_byte_for_byte() -> None:
 
 
 def test_the_read_set_fits_the_budget(tmp_path: Path) -> None:
-    """The page as `registry --write` writes it for ten Targets, the vocabulary copy and the
-    longest installed skill (ADR-0016 §1)."""
+    """The page as `registry --write` writes it for ten Targets, the vocabulary copy, the
+    longest installed skill and one Target's Maintainer notes at their 600-word ceiling, since
+    the page names the notes in the read set (ADR-0016 §1, amended decision 9)."""
     root = tmp_path / "shop"
     init(root, "--target", "customer-support-desk-00")
     for number in range(1, 10):
@@ -387,8 +388,15 @@ def test_the_read_set_fits_the_budget(tmp_path: Path) -> None:
         key=len,
     )
     vocabulary = (root / ".agentdiag" / "CONTEXT.md").read_text(encoding="utf-8")
+    notes = root / ".agentdiag" / "targets" / "customer-support-desk-00" / "maintainer_notes.md"
+    notes.write_text(
+        notes.read_text(encoding="utf-8") + " ".join(["environment"] * 600) + "\n",
+        encoding="utf-8",
+    )
+    maintainer = notes.read_text(encoding="utf-8")
 
-    assert len(page + vocabulary + longest) // 4 <= READ_SET_BUDGET_TOKENS
+    read_set = page + vocabulary + longest + maintainer
+    assert len(read_set) // 4 <= READ_SET_BUDGET_TOKENS, len(read_set) // 4
 
 
 # --- what the reviews found (amended contract, 2026-10-02) ---

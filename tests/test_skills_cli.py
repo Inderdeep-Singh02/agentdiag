@@ -7,6 +7,7 @@ refuses to overwrite one an author edited unless `--force`.
 
 from __future__ import annotations
 
+import re
 from importlib.resources import files
 from pathlib import Path
 
@@ -15,6 +16,7 @@ import yaml
 from typer.testing import CliRunner
 
 from agentdiag.cli import app
+from agentdiag.run.skills import packaged_skills
 
 runner = CliRunner()
 
@@ -181,6 +183,40 @@ def test_every_eval_the_generation_skill_names_is_in_the_catalogue() -> None:
     assert {"must_not_say", "must_say_any", "expect_tools_order", "prompt_adherence"} <= named
     assert "scenario-reference.md" in table
     assert "equals" not in table, "the operators are the reference's to list"
+
+
+MAINTAINER_NOTES_FIRST = (
+    "Before step 1, read the Target's Maintainer notes, `maintainer_notes.md` beside the "
+    "Manifest, in full: what it does, who it serves, its environments, its traps, where its "
+    "evidence lives; with none yet, write them as you learn these."
+)
+
+
+@pytest.mark.parametrize("name", sorted(packaged_skills()))
+def test_every_skill_reads_the_maintainer_notes_before_its_step_1(name: str) -> None:
+    """ADR-0016 §5, 0.1.2-interfaces decision 18: one sentence before step 1, in the Budgets
+    block where there is one, and the step numbers unchanged."""
+    body = files("agentdiag").joinpath("skills", name, "SKILL.md").read_text("utf-8")
+    first_step = body.index("\n1. **")
+
+    assert MAINTAINER_NOTES_FIRST in body[:first_step]
+    assert body.index("maintainer_notes.md") < first_step
+    if "## Budgets" in body:
+        budgets = body[body.index("## Budgets") : body.index("## Steps")]
+        assert MAINTAINER_NOTES_FIRST in budgets
+    steps = body[body.index("## Steps") :]
+    steps = steps[: steps.find("\n## ", 1)] if "\n## " in steps[1:] else steps
+    numbers = [int(match) for match in re.findall(r"^(\d+)\. \*\*", steps, re.MULTILINE)]
+    assert numbers and numbers == list(range(1, len(numbers) + 1)), numbers
+
+
+def test_discover_writes_the_notes_first_headings_and_generate_names_the_pending_refusal() -> None:
+    discover = files("agentdiag").joinpath("skills", "discover", "SKILL.md").read_text("utf-8")
+    identity = next(line for line in discover.splitlines() if "**the Target's identity**" in line)
+    assert "`## What the Target does`, `## Who it serves`" in identity
+    generate = files("agentdiag").joinpath("skills", "generate", "SKILL.md").read_text("utf-8")
+    step_9 = next(line for line in generate.splitlines() if line.startswith("9. "))
+    assert "still `pending` the dry run refuses by name" in step_9
 
 
 def workspace(tmp_path: Path) -> Path:

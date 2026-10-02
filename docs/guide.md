@@ -99,6 +99,7 @@ Wrote the scaffold into /tmp/agentdiag-demo:
   .agentdiag/targets/default/manifest.yaml
   .agentdiag/targets/default/suites/sample.yaml
   .agentdiag/targets/default/judge_notes.md
+  .agentdiag/targets/default/maintainer_notes.md
   .agentdiag/targets/default/redaction.yaml
   AGENTS.md
   CLAUDE.md
@@ -115,7 +116,7 @@ Next:
 A judged Eval needs credentials: a Claude Code login (claude auth login) or export ANTHROPIC_API_KEY=….
 ```
 
-A Workspace with one Target, `default`: four files of the Target, three a coding agent reads
+A Workspace with one Target, `default`: five files of the Target, three a coding agent reads
 at the root and the vocabulary copy under `.agentdiag/`, and the gitignore:
 
 - **`.agentdiag/targets/default/manifest.yaml`** — the Target's identity document. Pointers,
@@ -127,6 +128,10 @@ at the root and the vocabulary copy under `.agentdiag/`, and the gitignore:
 - **`.agentdiag/targets/default/judge_notes.md`** — the Judge's calibration notes for this
   Target, empty but for a comment saying what belongs there
   ([`docs/judge-notes.md`](judge-notes.md)).
+- **`.agentdiag/targets/default/maintainer_notes.md`** — the Maintainer notes: what whoever
+  maintains the Target must know before touching it, under five headings to fill. Every
+  skill reads them before its first step; the Judge never does
+  ([Operate it with a coding agent](#operate-it-with-a-coding-agent)).
 - **`.agentdiag/targets/default/redaction.yaml`** — the names a Change record of this Target
   never carries, `names: []` until you list one. Local and gitignored, so the names never
   reach the Workspace's history or a clone of it; `validate` warns where the file is absent.
@@ -1229,8 +1234,10 @@ order-desk  toy-order-desk  northwind  chat     local         inprocess  sample 
 
 `--json` prints the same entries as JSON (`schemas/registry.schema.json`) and `--target
 <slug>` shows one. `target show` prints one Target in full: where it lives, its
-Calibration Notes, its Fingerprint and Sync state, open Sync breaks and open Change records
-(`none` until a Sync or a fix records one), and its Manifest as loaded. The toy's scaffold
+Calibration Notes, its Maintainer notes (`not written yet` while they are still the
+starter's headings and placeholders, then their length in words), its Fingerprint and Sync
+state, open Sync breaks and open Change records (`none` until a Sync or a fix records one),
+and its Manifest as loaded. The toy's scaffold
 names its in-process Connector; a Target `init` has only been pointed at gets the
 `connector` block as a comment to fill in, never a guess:
 
@@ -1240,18 +1247,19 @@ uv run agentdiag target show help-desk --root /tmp/agentdiag-shop
 
 ```
 Target help-desk: helpdesk
-directory       .agentdiag/targets/help-desk
-family          -
-channel         -
-environments    local
-connector       -
-suites          suites/sample.yaml
-notes           judge_notes.md, 0 words, fingerprint e3b0c442
-fingerprint     none
-sync            not_checked
-sync breaks     none
-change records  none
-pushes          none
+directory         .agentdiag/targets/help-desk
+family            -
+channel           -
+environments      local
+connector         -
+suites            suites/sample.yaml
+notes             judge_notes.md, 0 words, fingerprint e3b0c442
+maintainer notes  maintainer_notes.md, not written yet
+fingerprint       none
+sync              not_checked
+sync breaks       none
+change records    none
+pushes            none
 
 Manifest as loaded:
   schema_version: 1
@@ -1276,6 +1284,7 @@ Manifest as loaded:
     status: runnable
   records: changes
   judge_notes: judge_notes.md
+  maintainer_notes: maintainer_notes.md
   suppressions: []
 ```
 
@@ -1313,6 +1322,7 @@ Wrote the scaffold into /tmp/agentdiag-describe:
   .agentdiag/targets/desk/manifest.yaml
   .agentdiag/targets/desk/suites/sample.yaml
   .agentdiag/targets/desk/judge_notes.md
+  .agentdiag/targets/desk/maintainer_notes.md
   .agentdiag/targets/desk/redaction.yaml
   AGENTS.md
   CLAUDE.md
@@ -1384,8 +1394,8 @@ Settling the REVIEW lines is connecting it: an `inprocess` factory or an `http` 
 files under the Target directory, a Connector when a platform holds the deployed set, and
 the sample Suite rewritten and its `status: draft` dropped. A Workspace whose Targets were
 all written as the toy by an older `init` is repaired the same way, Target by Target, with
-`init --target <slug> --force` and the name flags; `--force` keeps `judge_notes.md` and
-`redaction.yaml`.
+`init --target <slug> --force` and the name flags; `--force` keeps `judge_notes.md`,
+`maintainer_notes.md` and `redaction.yaml`.
 
 ## Operate it with a coding agent
 
@@ -1465,8 +1475,8 @@ Manifest as loaded, the notes, the Fingerprint and the open records; `agentdiag 
 <!-- generated from the Manifests by agentdiag registry --write; a hand edit here is replaced -->
 | Target | Name | Family / channel | Default env | Protected | Suites | Connector | Maintainer notes |
 |---|---|---|---|---|---|---|---|
-| `help-desk` | helpdesk | - | local | - | sample | - | - |
-| `order-desk` | toy-order-desk | northwind / chat | local | - | sample | inprocess | - |
+| `help-desk` | helpdesk | - | local | - | sample | - | maintainer_notes.md |
+| `order-desk` | toy-order-desk | northwind / chat | local | - | sample | inprocess | maintainer_notes.md |
 <!-- /agentdiag:targets -->
 
 Generated from the Manifests by `agentdiag registry --write`, and `agentdiag validate` warns
@@ -1514,6 +1524,18 @@ page is named in a notice with the line to add. The vocabulary copy is agentdiag
 always rewritten. `init --skills` writes whichever of the three root files and the
 vocabulary copy is absent, because skills without the page that routes to them are half an
 install.
+
+The page's read set names one more file per Target: its **Maintainer notes**,
+`maintainer_notes.md` beside the Manifest, which the Manifest's `maintainer_notes` key points
+at and the table's last column lists. They hold what whoever maintains the Target must know
+before touching it, under five headings: `## What the Target does`, `## Who it serves`,
+`## Environments` (the default one, each protected one, and what each reaches), `## Known
+traps` and `## Where evidence lives`. Every packaged skill reads them in full before its
+first step, and writes them as it learns these when they are still the starter; the Judge
+never reads them, so nothing a maintainer writes there moves a Score. Rules for judging the
+Target belong in `judge_notes.md` instead. `init` writes the starter for every Target and
+`discover` for one it creates; `--force` keeps them; `validate` errors on a key naming no
+file; `target show` prints their length on its `maintainer notes` row.
 
 The table is a rendering of the Registry. A command that writes under `.agentdiag/targets/`
 (`init`, `generate` adding a Suite, `discover` creating a Target) refreshes it when the page
@@ -1691,8 +1713,9 @@ deployed-set convention the in-process Connector reads, HTTP routes, and data-so
 and `*_URL`/`*_DSN`/`*_DB` variables. The draft goes to `manifest.draft.yaml` in the Target
 directory (or an `--out` inside the Workspace), never over `manifest.yaml`, and every
 guess sits under a `# REVIEW:` line saying why it was guessed. A new `--target` slug
-creates the Target directory in an existing Workspace, with the local `redaction.yaml`
-starter `init` would have written beside the draft:
+creates the Target directory in an existing Workspace, with the Maintainer notes starter
+`maintainer_notes.md` and the local `redaction.yaml` starter `init` would have written beside
+the draft:
 
 ```bash
 uv run agentdiag init --root /tmp/agentdiag-discover
@@ -1702,6 +1725,7 @@ uv run agentdiag discover --root /tmp/agentdiag-discover --target toy-order-desk
 ```
 Scanned src/agentdiag/examples/toy: 1 prompt, 2 tools, 0 data sources.
 Wrote /tmp/agentdiag-discover/.agentdiag/targets/toy-order-desk/manifest.draft.yaml, 15 lines marked REVIEW.
+  wrote /tmp/agentdiag-discover/.agentdiag/targets/toy-order-desk/maintainer_notes.md (the Maintainer notes starter)
   wrote /tmp/agentdiag-discover/.agentdiag/targets/toy-order-desk/redaction.yaml (local, gitignored)
   wrote /tmp/agentdiag-discover/AGENTS.md (the Targets table)
 
@@ -2349,7 +2373,7 @@ and a route answers JSON; `GET /api/registry` over the example Workspace starts:
     "last_push": null
   },
   "problems": [],
-  "maintainer_notes": null
+  "maintainer_notes": "maintainer_notes.md"
 }
 ```
 
@@ -2451,6 +2475,7 @@ beside `runs/`: it is output, never source.
 └── targets/default/                  one Target directory; a Workspace holds one per Target
     ├── manifest.yaml                 the Target's identity document: pointers, not copies
     ├── judge_notes.md                the Judge's calibration notes for this Target
+    ├── maintainer_notes.md           what a maintainer must know first; never the Judge's
     ├── redaction.yaml                gitignored: the names a Change record never carries
     ├── suites/sample.yaml            one Suite: the Scenarios written for this Target
     └── runs/                         gitignored: Runs are output, never source

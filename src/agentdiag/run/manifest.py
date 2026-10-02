@@ -12,7 +12,8 @@ loads unchanged; unknown keys are carried rather than refused.
   prompt, note 7), `tools` (each with its `kind`, a schema pointer and a side-effect
   class), `data_sources` (an identity string). `agentdiag.sync` fingerprints them.
 - **What agentdiag reads for its own work**: `suites` (a path, or a path with a `status`),
-  `records` (the Change records directory), `judge_notes` (ADR-0003 §8),
+  `records` (the Change records directory), `judge_notes` (ADR-0003 §8), `maintainer_notes`
+  (ADR-0016 §5, every skill's first read and never the Judge's),
   `forbidden_phrases` (phase-5 decision 6), `eval_parameters` (the latency defaults and the
   tool argument types), `suppressions` (ADR-0003 §8, decision 16) and `redaction` (a pointer
   to the local, gitignored file of the names a Change record never carries, ADR-0015 §4).
@@ -398,6 +399,12 @@ class Manifest(BaseModel):
     §8): read verbatim into every judged prompt, budgeted, and part of every judged Score's
     Judge Fingerprint. A path named and missing refuses the Run."""
 
+    maintainer_notes: str | None = None
+    """Path to the Maintainer notes, relative to the Target directory (ADR-0016 §5): what
+    every skill reads before its first step and the Judge never does, so nothing under
+    `agentdiag.eval` reads this key. Named and missing is a `validate` error; absent is
+    nothing. Left out of `run.json`'s snapshot when absent, as `redaction` is."""
+
     eval_parameters: EvalParameters | None = None
     suppressions: list[Suppression] = Field(default_factory=list)
     _directory: Path | None = PrivateAttr(default=None)
@@ -426,10 +433,13 @@ class Manifest(BaseModel):
         return self.redaction if isinstance(self.redaction, str) else REDACTION_NAME
 
     @model_serializer(mode="wrap")
-    def _without_absent_redaction(self, handler: SerializerFunctionWrapHandler) -> Any:
+    def _without_absent_pointers(self, handler: SerializerFunctionWrapHandler) -> Any:
+        """`redaction` and `maintainer_notes` are left out when absent, so the snapshot of a
+        Manifest that names neither is what it was before either key existed."""
         dumped = handler(self)
-        if isinstance(dumped, dict) and dumped.get("redaction", ...) is None:
-            dumped.pop("redaction")
+        for key in ("redaction", "maintainer_notes"):
+            if isinstance(dumped, dict) and dumped.get(key, ...) is None:
+                dumped.pop(key)
         return dumped
 
     @field_validator("prompts", mode="before")
@@ -631,11 +641,17 @@ class _Pointed(NamedTuple):
     local_only: bool = False
 
 
+MAINTAINER_NOTES_WHAT = "the Maintainer notes"
+"""How `validate` names the file the `maintainer_notes` key points at."""
+
+
 def _pointers(manifest: Manifest) -> list[_Pointed]:
     """Every path the Manifest names; `observed` names none. A retired Suite's path is a
     path all the same, though its file is never checked. `records`, `judge_notes` and
     `redaction` (when it is a path) get only the where-it-points rule here; `manifest_report`
-    reads the redaction file itself, since an absent one is a warning."""
+    reads the redaction file itself, since an absent one is a warning. `maintainer_notes` is
+    checked to exist (ADR-0016 §5, decision 16): a skill told to read a file that is not
+    there reads nothing."""
     pointers: list[_Pointed] = []
     for name, prompt in manifest.prompts.items():
         if isinstance(prompt, PromptPointer):
@@ -660,6 +676,10 @@ def _pointers(manifest: Manifest) -> list[_Pointed]:
     pointers.append(_Pointed("records", "the Change records directory", manifest.records, False))
     if manifest.judge_notes is not None:
         pointers.append(_Pointed("judge_notes", "the Judge notes", manifest.judge_notes, False))
+    if manifest.maintainer_notes is not None:
+        pointers.append(
+            _Pointed("maintainer_notes", MAINTAINER_NOTES_WHAT, manifest.maintainer_notes, True)
+        )
     if isinstance(manifest.redaction, str):
         pointers.append(_Pointed("redaction", "the redaction file", manifest.redaction, False))
     return pointers
@@ -890,6 +910,7 @@ def _redaction_problems(target: TargetPaths, manifest: Manifest, report: Manifes
 __all__ = [
     "DEFAULT_ENVIRONMENT_KEY",
     "DEFAULT_TURN_TIMEOUT_S",
+    "MAINTAINER_NOTES_WHAT",
     "OBSERVED",
     "SYSTEM_PROMPT_POINTER",
     "AdapterSection",

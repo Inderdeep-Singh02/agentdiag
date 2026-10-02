@@ -10,6 +10,8 @@ Turn an unknown agentic system into a Target agentdiag can run: a Manifest of **
 
 `agentdiag <command> --help` is the reference for every flag; this skill names only the ones each step needs.
 
+Before step 1, read the Target's Maintainer notes, `maintainer_notes.md` beside the Manifest, in full: what it does, who it serves, its environments, its traps, where its evidence lives; with none yet, write them as you learn these.
+
 ## Which path
 
 - The Target's prompts and tools live in a **repository** (source files, string constants, JSON schemas): one pass, `--scan <repo>`, then steps 2 to 8.
@@ -26,7 +28,7 @@ Turn an unknown agentic system into a Target agentdiag can run: a Manifest of **
    `agentdiag discover --root <workspace> --target <slug> --scan <repo>` (and/or `--from-connector --env <name>`).
    Done when it exits 0 and prints the draft's path and its count of REVIEW lines. Exit 3 prints why: fix that and rerun.
 2. **judgement** — Open the draft and settle every `# REVIEW:` line, in file order. For each: read the code or record the comment cites, then either accept the line (delete the comment) or rewrite it (and delete the comment). A comment ending `proposed: <dotted.key.path>: <value>` means: to accept, write that value at that key (the line below the comment, or inside the one-line mapping there) and delete the comment. Decide in particular:
-   - **the Target's identity**: `target.name` is the slug, unless the Target's owners already call it something else (a Report and a comparison print it); `target.description` is one sentence saying what the Target does, never `init`'s placeholder;
+   - **the Target's identity**: `target.name` is the slug, unless the Target's owners already call it something else (a Report and a comparison print it); `target.description` is one sentence saying what the Target does, never `init`'s placeholder; write the first two headings of `maintainer_notes.md` (`## What the Target does`, `## Who it serves`) from what the review found;
    - **each prompt's pointer**: a path when a file on disk is the truth, and a path to the saved copy (`prompts/<name>.md`) when the prompt is a platform record `--from-connector` read. `observed` only when nothing on disk is the truth **and** no Connector reads it (a string the code builds). The path wins over `observed` whenever the Connector reads the prompt: the saved file is then the local side of the Sync and the Connector's read the deployed side, so `sync` can say which one moved (`local_ahead`, `deployed_ahead`, `diverged`), and a pull or a push has a file to write; with `observed` there is only one side. Tool schemas the same way: `schema: tools/<name>.json`;
    - **each tool's `kind`**: `retrieval` for a lookup, `action` for anything that changes state, whatever its name suggests;
    - **every `side_effects` class**, one of `none` (nothing outside this process changes), `sandboxed` (it writes only to a test system), `live` (real users or data; a Run is refused without a flag): the Adapter's, each environment's, and each tool's own (`tools.<name>.side_effects`) when one tool does more than the rest;

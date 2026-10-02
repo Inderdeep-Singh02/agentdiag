@@ -808,7 +808,7 @@ def test_the_registry_and_target_show_name_the_last_pushes(
 
     assert len(records) == 4
     assert entry["sync"]["last_push"] == records[-1].pushed_at
-    assert "pushes          last 3, newest first" in shown
+    assert "pushes            last 3, newest first" in shown
     listed = [line.strip() for line in shown if "/pushes/" in line]
     assert len(listed) == 3
     assert listed[0].startswith(".agentdiag/targets/toy-order-desk/pushes/")

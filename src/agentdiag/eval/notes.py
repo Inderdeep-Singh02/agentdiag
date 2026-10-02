@@ -60,9 +60,15 @@ class JudgeNotes(BaseModel):
         return not self.text
 
 
+def author_text(raw: str) -> str:
+    """A notes file without its authoring guidance: HTML comments removed, ends trimmed. What
+    the Judge reads of its notes, and what `target show` counts of any notes file."""
+    return AUTHOR_COMMENT.sub("", raw).strip()
+
+
 def judge_text(raw: str) -> str:
     """The part of a notes file the Judge reads: comments removed, ends trimmed."""
-    return AUTHOR_COMMENT.sub("", raw).strip()
+    return author_text(raw)
 
 
 def word_count(text: str) -> int:
@@ -98,6 +104,7 @@ __all__ = [
     "JUDGE_NOTES_MAX_WORDS",
     "JudgeNotes",
     "JudgeNotesProblem",
+    "author_text",
     "judge_text",
     "read_judge_notes",
     "word_count",

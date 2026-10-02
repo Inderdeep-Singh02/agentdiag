@@ -46,6 +46,7 @@ Wrote the scaffold into /tmp/agentdiag-demo:
   .agentdiag/targets/default/manifest.yaml
   .agentdiag/targets/default/suites/sample.yaml
   .agentdiag/targets/default/judge_notes.md
+  .agentdiag/targets/default/maintainer_notes.md
   .agentdiag/targets/default/redaction.yaml
   AGENTS.md
   CLAUDE.md
@@ -149,6 +150,7 @@ CLAUDE.md, GEMINI.md                  one line each importing it, for Claude Cod
 └── targets/<slug>/                   one Target; a Workspace holds as many as you keep
     ├── manifest.yaml                 the Target's identity document: pointers, not copies
     ├── judge_notes.md                the Judge's calibration notes for this Target
+    ├── maintainer_notes.md           what a maintainer must know first; never the Judge's
     ├── redaction.yaml                gitignored: the names a Change record never carries
     ├── suites/*.yaml                 Suites: the Scenarios written for this Target
     ├── changes/*.md                  Change records: one recorded fix each

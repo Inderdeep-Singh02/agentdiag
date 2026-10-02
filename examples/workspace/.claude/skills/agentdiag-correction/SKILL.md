@@ -12,6 +12,7 @@ A **correction** changes how a Target is judged, never the Target: the Score was
 
 ## Budgets
 
+- **Maintainer notes first.** Before step 1, read the Target's Maintainer notes, `maintainer_notes.md` beside the Manifest, in full: what it does, who it serves, its environments, its traps, where its evidence lives; with none yet, write them as you learn these.
 - **Two evidence commands.** `agentdiag show <run> <scenario> --trial <n>` for the Score and its Trace, and one more at most (`agentdiag target show` for the notes and the Manifest as loaded).
 - **One read bundle.** Read `judge_notes.md` and the Manifest's `eval_parameters` and `suppressions` once, in full, before you edit.
 - **Diff first.** Before the rescore, `git diff` the one file you edited and read it.

@@ -39,8 +39,8 @@ Manifest as loaded, the notes, the Fingerprint and the open records; `agentdiag 
 <!-- generated from the Manifests by agentdiag registry --write; a hand edit here is replaced -->
 | Target | Name | Family / channel | Default env | Protected | Suites | Connector | Maintainer notes |
 |---|---|---|---|---|---|---|---|
-| `help-desk` | help-desk | northwind / chat | local | staging | generated | inprocess | - |
-| `order-desk` | toy-order-desk | northwind / chat | local | - | sample | inprocess | - |
+| `help-desk` | help-desk | northwind / chat | local | staging | generated | inprocess | maintainer_notes.md |
+| `order-desk` | toy-order-desk | northwind / chat | local | - | sample | inprocess | maintainer_notes.md |
 <!-- /agentdiag:targets -->
 
 Generated from the Manifests by `agentdiag registry --write`, and `agentdiag validate` warns

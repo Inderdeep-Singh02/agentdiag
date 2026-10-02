@@ -37,6 +37,7 @@ Connector is built only when `--from-connector` asks, and the in-process one imp
 from __future__ import annotations
 
 import os
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -65,14 +66,17 @@ from agentdiag.run.manifest import DEFAULT_ENVIRONMENT_KEY, OBSERVED, Manifest
 from agentdiag.run.templates import (
     EVAL_PARAMETERS_COMMENT,
     FAMILY_COMMENT,
+    MAINTAINER_NOTES_COMMENT,
     PLACEHOLDER_DESCRIPTION,
-    REDACTION_STARTER,
+    STARTERS,
+    Starter,
 )
 from agentdiag.sync.observe import connector_failure
 from agentdiag.sync.pointed import render_schema
 from agentdiag.workspace import (
     DEFAULT_SLUG,
     JUDGE_NOTES_NAME,
+    MAINTAINER_NOTES_NAME,
     SUITES_DIRNAME,
     TargetPaths,
     Workspace,
@@ -86,9 +90,13 @@ LOCAL_ENVIRONMENT = "local"
 """The Adapter environment a scanned draft names: the one a developer runs on their own
 machine, as `init`'s scaffold names it."""
 
+DISCOVER_STARTERS = frozenset({"maintainer_notes", "redaction"})
+"""The starters (`templates.STARTERS`) a Target this command creates gets beside its draft;
+the Calibration Notes are `init`'s, and the draft names them only when they are there."""
+
 DRAFTED_KEYS = frozenset(
     {"schema_version", "target", "family", "channel", "adapter", "prompts", "connector"}
-    | {"tools", "data_sources", "suites", "judge_notes"}
+    | {"tools", "data_sources", "suites", "judge_notes", "maintainer_notes"}
 )
 """The top-level keys the draft writes itself; every other key of an existing Manifest is
 copied after them as written."""
@@ -165,11 +173,19 @@ def _discover(options: DiscoverOptions) -> DiscoverExit:
     files = deployed.files(target) if deployed is not None else {}
     files[out] = text
     _refuse_overwrites(files, options.force)
-    # A Target this draft creates gets the local redaction starter `init` writes (ADR-0015
-    # §4), so it is as complete as a scaffolded one; an author's file is never touched.
-    starter = existing is None and not target.redaction.exists()
-    if starter:
-        files[target.redaction] = REDACTION_STARTER
+    # A Target this draft creates gets the starters `init` writes beside a Manifest that
+    # `discover` drafts rather than writes: the Maintainer notes (ADR-0016 §5) and the local
+    # redaction file (ADR-0015 §4), so it is as complete as a scaffolded one; an author's file
+    # is never touched.
+    starters = [
+        starter
+        for starter in STARTERS
+        if existing is None
+        and starter.attribute in DISCOVER_STARTERS
+        and not starter.path(target).exists()
+    ]
+    for starter in starters:
+        files[starter.path(target)] = starter.text
     written = _write(files)
     refreshed = _refresh_table(target)
     if refreshed is not None:
@@ -184,7 +200,7 @@ def _discover(options: DiscoverOptions) -> DiscoverExit:
             reviews,
             written,
             scan_directory,
-            starter=starter,
+            starters=starters,
             refreshed=refreshed,
         ),
         draft=out,
@@ -367,7 +383,7 @@ def compose(
         if (line := built.get(key) or _copied_fact(kept, key)) is not None
     ]
     lines[1:1] = _family_lines(kept, families or {})
-    lines += _suites_and_notes(target, kept)
+    lines += _suites_and_notes(target, kept, creates=existing is None)
     lines += [copied(key, value) for key, value in kept.items() if key not in DRAFTED_KEYS]
     return Draft(lines=lines)
 
@@ -766,7 +782,12 @@ def _mapping(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
-def _suites_and_notes(target: TargetPaths, kept: dict[str, Any]) -> list[DraftLine]:
+def _suites_and_notes(
+    target: TargetPaths, kept: dict[str, Any], *, creates: bool
+) -> list[DraftLine]:
+    """The Suites, the Calibration Notes and the Maintainer notes: as the existing Manifest names
+    them, else as the Target directory holds them. A Target this draft creates gets the
+    Maintainer notes starter beside it, so its draft names the file (ADR-0016 §5)."""
     lines: list[DraftLine] = []
     suites = kept.get("suites")
     if suites is None:
@@ -780,6 +801,11 @@ def _suites_and_notes(target: TargetPaths, kept: dict[str, Any]) -> list[DraftLi
         notes = JUDGE_NOTES_NAME
     if notes is not None:
         lines.append(DraftLine("judge_notes", notes))
+    maintainer = kept.get("maintainer_notes")
+    if maintainer is None and (creates or target.maintainer_notes.is_file()):
+        maintainer = MAINTAINER_NOTES_NAME
+    if maintainer is not None:
+        lines.append(DraftLine("maintainer_notes", maintainer, comment=MAINTAINER_NOTES_COMMENT))
     if "eval_parameters" not in kept:
         lines.append(DraftLine("", comment=EVAL_PARAMETERS_COMMENT))
     return lines
@@ -829,7 +855,7 @@ def _summary(
     written: list[Path],
     scan_directory: Path | None,
     *,
-    starter: bool = False,
+    starters: Sequence[Starter] = (),
     refreshed: Path | None = None,
 ) -> str:
     lines: list[str] = []
@@ -849,8 +875,11 @@ def _summary(
             lines.append(f"  {state} {path}")
     state = "Wrote" if out in written else "Unchanged:"
     lines.append(f"{state} {out}, {_count(reviews, 'line')} marked REVIEW.")
-    if starter:
-        lines.append(f"  wrote {options.target.redaction} (local, gitignored)")
+    lines += [
+        f"  wrote {path} ({starter.note})"
+        for starter in starters
+        if (path := starter.path(options.target)) in written
+    ]
     if refreshed is not None:
         lines.append(f"  wrote {refreshed} (the Targets table)")
     naming = f" --target {options.target.slug}" if options.several_targets else ""

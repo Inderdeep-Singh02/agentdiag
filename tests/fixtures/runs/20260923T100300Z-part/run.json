@@ -87,6 +87,7 @@
     "family": "northwind",
     "forbidden_phrases": null,
     "judge_notes": "judge_notes.md",
+    "maintainer_notes": "maintainer_notes.md",
     "prompts": {
       "system": "observed"
     },

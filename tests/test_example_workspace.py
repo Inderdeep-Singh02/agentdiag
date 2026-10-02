@@ -38,8 +38,10 @@ from agentdiag.run.init import GITIGNORE_LINES, ignore_outputs
 from agentdiag.run.skills import CLAUDE_SKILLS, INSTALLED_PREFIX, _contents, packaged_skills
 from agentdiag.run.templates import (
     JUDGE_NOTES_STARTER,
+    MAINTAINER_NOTES_STARTER,
     TOY_SCAFFOLD,
     render_judge_notes,
+    render_maintainer_notes,
     render_manifest,
     render_suite,
 )
@@ -118,12 +120,20 @@ def test_the_order_desk_is_what_init_target_order_desk_renders_byte_for_byte() -
     assert (ORDER_DESK / "judge_notes.md").read_text(encoding="utf-8") == render_judge_notes(
         ORDER_DESK_SCAFFOLD
     )
+    assert (ORDER_DESK / "maintainer_notes.md").read_text(
+        encoding="utf-8"
+    ) == render_maintainer_notes(ORDER_DESK_SCAFFOLD)
     written = sorted(
         str(p.relative_to(ORDER_DESK))
         for p in ORDER_DESK.rglob("*")
         if p.is_file() and not set(p.relative_to(ORDER_DESK).parts) & set(USED)
     )
-    assert written == ["judge_notes.md", "manifest.yaml", "suites/sample.yaml"]
+    assert written == [
+        "judge_notes.md",
+        "maintainer_notes.md",
+        "manifest.yaml",
+        "suites/sample.yaml",
+    ]
 
 
 def test_the_order_desk_is_the_chat_channel_of_the_northwind_family() -> None:
@@ -176,6 +186,7 @@ def test_the_help_desk_holds_what_the_walkthrough_left_and_nothing_else() -> Non
         "drafts/generated.yaml",
         "fingerprint.json",
         "judge_notes.md",
+        "maintainer_notes.md",
         "manifest.yaml",
         "prompts/system.md",
         "suites/generated.yaml",
@@ -184,6 +195,9 @@ def test_the_help_desk_holds_what_the_walkthrough_left_and_nothing_else() -> Non
         "tools/search_articles.json",
     ]
     assert (HELP_DESK / "judge_notes.md").read_text(encoding="utf-8") == JUDGE_NOTES_STARTER
+    assert (HELP_DESK / "maintainer_notes.md").read_text(encoding="utf-8") == (
+        MAINTAINER_NOTES_STARTER
+    )
 
 
 def test_the_help_desk_manifest_prompts_and_tools_are_what_discover_writes_byte_for_byte(

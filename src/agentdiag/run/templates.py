@@ -6,8 +6,10 @@ created, and a dumped mapping teaches nobody what `side_effects` means or why `t
 pointer; the comments here are what make the skeleton something a developer can extend
 instead of a shape they have to look up.
 
-`init` writes three files into a Target directory, `.agentdiag/targets/<slug>/` (ADR-0013):
-the Manifest, the sample Suite, and the Judge's calibration-notes starter (ticket 05). The
+`init` writes its files into a Target directory, `.agentdiag/targets/<slug>/` (ADR-0013):
+the Manifest, the sample Suite, the Calibration Notes starter (ticket 05), the
+Maintainer notes starter every skill reads first and the Judge never does (ADR-0016 §5),
+and the local redaction starter (ADR-0015 §4). The
 checked-in `examples/toy/.agentdiag/targets/toy-order-desk/` is what this module renders from
 `EXAMPLE_SCAFFOLD`, byte for byte, and `examples/workspace/`'s `order-desk` is what `init
 --target order-desk --adapter toy` renders (phase-6 decision 47); `tests/test_init_cli.py`
@@ -33,13 +35,22 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
+from pathlib import Path
+from typing import NamedTuple, cast
 
 import yaml
 
 from agentdiag.eval.notes import JUDGE_NOTES_MAX_WORDS
 from agentdiag.run.manifest_checks import PENDING_KIND, REVIEW
 from agentdiag.types import ToolKind
-from agentdiag.workspace import DEFAULT_SLUG, JUDGE_NOTES_NAME, MANIFEST_NAME, REDACTION_NAME
+from agentdiag.workspace import (
+    DEFAULT_SLUG,
+    JUDGE_NOTES_NAME,
+    MAINTAINER_NOTES_NAME,
+    MANIFEST_NAME,
+    REDACTION_NAME,
+    TargetPaths,
+)
 
 TOY_FACTORY = "agentdiag.examples.toy:make_target"
 TOY_TOOLS = "agentdiag.examples.toy:make_tools"
@@ -389,6 +400,91 @@ def render_redaction(scaffold: Scaffold) -> str:
     return REDACTION_STARTER
 
 
+MAINTAINER_NOTES_STARTER = """<!--
+Maintainer notes (ADR-0016 section 5): what whoever maintains this Target needs before
+touching it. Every agentdiag skill reads this file before its first step; the Judge never
+does.
+
+What belongs here: the facts a maintenance cycle needs and nothing else records — what the
+Target does and for whom, which environment is the default and which reach real users, the
+traps a previous cycle fell into, where its evidence (conversations, logs, Flow runs) is
+kept and how it is read. What does not: rules for judging it (judge_notes.md, which the
+Judge reads), anything the Manifest already says (point at it instead), and any credential
+value (a Manifest names the variable; the value lives in ~/.agentdiag/env or the shell).
+
+At most 600 words: this file is part of a read set budgeted at 10k tokens.
+-->
+
+## What the Target does
+
+_The job, in its owners' words._
+
+## Who it serves
+
+_The users and the business; the language, hours and channel they expect._
+
+## Environments
+
+_The default environment and what it reaches; each protected one and why; the one a fix is
+verified on._
+
+## Known traps
+
+_What misled a previous cycle: a stale snapshot, a tool that answers differently per
+environment, a name that changed._
+
+## Where evidence lives
+
+_Each Evidence store by kind and the command that reads it; what a store lacks (a truncated
+body, no end time)._
+"""
+"""What `init` (every scaffold) and `discover` (for a Target it creates) write as the Target's
+`maintainer_notes.md` (ADR-0016 §5, decision 15): the guidance as an HTML comment, then the
+five headings a maintenance cycle needs, each with one italic placeholder. Read by every
+skill before its first step, never by the Judge, so nothing under `agentdiag.eval` names it;
+`target show` says `not written yet` while the text outside the comment is still this."""
+
+
+def render_maintainer_notes(scaffold: Scaffold) -> str:
+    """The Maintainer notes starter: the same for every Target until a maintainer fills it."""
+    del scaffold  # one starter for every Target: the facts are the maintainer's to write
+    return MAINTAINER_NOTES_STARTER
+
+
+MAINTAINER_NOTES_COMMENT = """\
+# The Maintainer notes, relative to this Target directory: read in full by every agentdiag
+# skill before its first step, and never by the Judge (ADR-0016 section 5).
+"""
+"""The two lines above the Manifest's `maintainer_notes` key: who reads the file and who never
+does. `discover` writes the same comment above the key in a draft for a Target it creates."""
+
+
+class Starter(NamedTuple):
+    """One file of a Target written when absent and kept on `--force`, because what an author
+    writes there is work nothing else records (ADR-0003 §8, ADR-0015 §4, ADR-0016 §5)."""
+
+    attribute: str
+    """The `TargetPaths` property naming where the file goes."""
+
+    text: str
+    """The starter: the same for every Target."""
+
+    note: str
+    """What `discover`'s summary says beside the path when it writes the file."""
+
+    def path(self, target: TargetPaths) -> Path:
+        """Where the file goes in `target`."""
+        return cast(Path, getattr(target, self.attribute))
+
+
+STARTERS = (
+    Starter("judge_notes", JUDGE_NOTES_STARTER, "the Calibration Notes starter"),
+    Starter("maintainer_notes", MAINTAINER_NOTES_STARTER, "the Maintainer notes starter"),
+    Starter("redaction", REDACTION_STARTER, "local, gitignored"),
+)
+"""The starters, in the order `init` lists them; `discover` writes the subset it names."""
+
+
 EVAL_PARAMETERS_COMMENT = """\
 # Eval parameters, read by the Evals and never shown to the Judge: a default threshold for
 # the latency Evals, and the JSON type each tool argument must have. Forbidden phrases stay
@@ -529,6 +625,7 @@ def render_manifest(scaffold: Scaffold) -> str:
 # false-fail patterns, at most {words} words, read verbatim by every judged Eval and part of
 # each judged Score's Judge Fingerprint (ADR-0003 section 8).
 judge_notes: {scalar(JUDGE_NOTES_NAME)}
+{MAINTAINER_NOTES_COMMENT}maintainer_notes: {scalar(MAINTAINER_NOTES_NAME)}
 # The names a Change record never carries are in {REDACTION_NAME} beside this file: local and
 # gitignored, so a key here is needed only to point elsewhere (redaction: <path>).
 
@@ -711,6 +808,8 @@ __all__ = [
     "EXAMPLE_SCAFFOLD",
     "FAMILY_COMMENT",
     "JUDGE_NOTES_STARTER",
+    "MAINTAINER_NOTES_COMMENT",
+    "MAINTAINER_NOTES_STARTER",
     "PENDING_ENVIRONMENT",
     "PLACEHOLDER_DESCRIPTION",
     "REDACTION_STARTER",
@@ -722,11 +821,13 @@ __all__ = [
     "REVIEW_PROMPTS",
     "REVIEW_SCENARIO",
     "SAMPLE_SUITE_NAME",
+    "STARTERS",
     "TARGET_COMMENT",
     "TOOLS_COMMENT",
     "TOY_DEPLOYED",
     "TOY_SCAFFOLD",
     "Scaffold",
+    "Starter",
     "UnwritableValue",
     "custom_scaffold",
     "pending_scaffold",
@@ -735,6 +836,7 @@ __all__ = [
     "render_family",
     "render_inprocess_adapter",
     "render_judge_notes",
+    "render_maintainer_notes",
     "render_manifest",
     "render_pending_adapter",
     "render_redaction",

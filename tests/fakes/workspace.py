@@ -56,6 +56,19 @@ def manifest_of(root: Path, slug: str = "default") -> Any:
     return yaml.safe_load((target_dir(root, slug) / "manifest.yaml").read_text(encoding="utf-8"))
 
 
+def edit_manifest(root: Path, slug: str, **keys: Any) -> None:
+    """Write `keys` over the Target's `manifest.yaml`, each top-level key replaced, and a key
+    given as None removed: a hand edit, as a developer makes one between commands."""
+    path = target_dir(root, slug) / "manifest.yaml"
+    manifest = yaml.safe_load(path.read_text(encoding="utf-8"))
+    for key, value in keys.items():
+        if value is None:
+            manifest.pop(key, None)
+        else:
+            manifest[key] = value
+    path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
+
+
 def suite_of(root: Path, slug: str = "default") -> Any:
     """The Target's sample Suite, `suites/sample.yaml`, as YAML reads it."""
     path = target_dir(root, slug) / "suites" / "sample.yaml"
@@ -84,6 +97,7 @@ __all__ = [
     "TOY_RECORDING",
     "TOY_SCENARIO",
     "TOY_SLUG",
+    "edit_manifest",
     "greeting_recording",
     "manifest_of",
     "suite_of",
