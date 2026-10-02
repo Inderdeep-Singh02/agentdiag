@@ -8,6 +8,10 @@ decision 47).
 two skills. As `examples/toy/` is, it is asserted byte for byte against what the templates
 render, so a template change the example does not follow fails here rather than drifting.
 
+At the root it carries the Orientation page, its two import files and the vocabulary copy,
+as `init` and `init --skills` write them (ticket 45, ADR-0016 §1-§2), gated against what
+`orientation` renders over the example's own Registry.
+
 The help desk is gated by the commands that write it: `discover --from-connector` drafts its
 Manifest (with nothing to add) and saves its prompt and tool schemas, `generate --from
 drafts/generated.yaml` writes its Suite, and `sync` its Fingerprint, each byte for byte.
@@ -22,6 +26,13 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 from agentdiag.cli import app
+from agentdiag.orientation import (
+    CLAUDE_IMPORT_LINE,
+    GEMINI_IMPORT_LINE,
+    render_page,
+    vocabulary_text,
+)
+from agentdiag.registry import registry
 from agentdiag.run.init import GITIGNORE_LINES, ignore_outputs
 from agentdiag.run.skills import CLAUDE_SKILLS, INSTALLED_PREFIX, _contents, packaged_skills
 from agentdiag.run.templates import (
@@ -60,7 +71,40 @@ def test_the_workspace_holds_the_order_desk_and_the_help_desk_and_nothing_else()
         "order-desk",
     ]
     held = sorted(p.name for p in (WORKSPACE / ".agentdiag").iterdir() if p.name not in OUTPUT)
-    assert held == ["targets"]
+    assert held == ["CONTEXT.md", "targets"]
+    assert sorted(p.name for p in WORKSPACE.iterdir()) == [
+        ".agentdiag",
+        ".claude",
+        ".gitignore",
+        "AGENTS.md",
+        "CLAUDE.md",
+        "GEMINI.md",
+    ]
+
+
+def test_the_orientation_page_and_its_imports_are_what_init_writes_byte_for_byte() -> None:
+    """The page over the example's two Targets, the one-line imports and the vocabulary: a
+    Manifest edited here without `registry --write`, or a page text changed in the package
+    and not regenerated here, fails."""
+    page = render_page(registry(Workspace.find(WORKSPACE)))
+
+    assert (WORKSPACE / "AGENTS.md").read_bytes() == page.encode("utf-8")
+    assert (WORKSPACE / "CLAUDE.md").read_bytes() == f"{CLAUDE_IMPORT_LINE}\n".encode()
+    assert (WORKSPACE / "GEMINI.md").read_bytes() == f"{GEMINI_IMPORT_LINE}\n".encode()
+    assert (WORKSPACE / ".agentdiag" / "CONTEXT.md").read_bytes() == vocabulary_text().encode(
+        "utf-8"
+    )
+
+
+def test_validate_finds_the_example_page_current(tmp_path: Path) -> None:
+    """The example has skills installed, so an absent or stale page would be warned of."""
+    root = help_desk_copy(tmp_path)
+
+    for slug in ("help-desk", "order-desk"):
+        result = CliRunner().invoke(app, ["validate", "--root", str(root), "--target", slug])
+        assert result.exit_code == 0, result.output
+        assert "AGENTS.md" not in result.stdout
+        assert "CONTEXT.md" not in result.stdout
 
 
 def test_the_order_desk_is_what_init_target_order_desk_renders_byte_for_byte() -> None:

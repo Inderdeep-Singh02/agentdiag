@@ -27,6 +27,11 @@ INSTALLED_PREFIX = "agentdiag-"
 CLAUDE_SKILLS = Path(".claude") / "skills"
 """Where a project's skills live, under the Workspace root."""
 
+LAYOUTS = {"agents": Path(".agents") / "skills", "claude": CLAUDE_SKILLS}
+"""Each skills layout a Harness reads, by the name `installed_layouts` reports it under
+(0.1.2-interfaces decision 19): `.agents/skills/` for Codex and Gemini CLI, `.claude/skills/`
+for Claude Code."""
+
 
 class SkillsRefused(Exception):
     """An installed skill was edited and `--force` was not given; nothing was written."""
@@ -89,8 +94,24 @@ def install_skills(root: Path, *, force: bool = False) -> SkillsResult:
     return result
 
 
-def render_installed(result: SkillsResult) -> str:
-    """What `init --skills` prints: each file, written or unchanged, and how to invoke."""
+def installed_layouts(root: Path) -> set[str]:
+    """The layouts under `root` holding any `agentdiag-*` directory: whether agentdiag's
+    skills are installed here, which is when `validate` warns of an absent Orientation page
+    (ADR-0016 §3)."""
+    return {
+        name
+        for name, directory in LAYOUTS.items()
+        if (Path(root) / directory).is_dir()
+        and any(
+            entry.is_dir() and entry.name.startswith(INSTALLED_PREFIX)
+            for entry in (Path(root) / directory).iterdir()
+        )
+    }
+
+
+def render_installed(result: SkillsResult, orientation: str | None = None) -> str:
+    """What `init --skills` prints: each file, written or unchanged, the Orientation page's
+    one line when `orientation` gives it, and how to invoke."""
     lines = [f"Installed the agentdiag skills under {result.root / CLAUDE_SKILLS}:"]
     for path in sorted([*result.written, *result.unchanged]):
         state = "wrote" if path in result.written else "unchanged"
@@ -101,6 +122,8 @@ def render_installed(result: SkillsResult) -> str:
             for path in [*result.written, *result.unchanged]
         }
     )
+    if orientation is not None:
+        lines.append(orientation)
     lines += ["", "Invoke one in Claude Code by name: " + ", ".join(f"/{name}" for name in names)]
     return "\n".join(lines)
 
@@ -111,6 +134,7 @@ __all__ = [
     "SkillsRefused",
     "SkillsResult",
     "install_skills",
+    "installed_layouts",
     "packaged_skills",
     "render_installed",
 ]

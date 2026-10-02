@@ -182,14 +182,27 @@ def _generate(options: GenerateOptions) -> GenerateExit:
                 "commit or move it, or pass --force"
             ]
         )
+    refreshed: Path | None = None
     if not options.check:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(text, encoding="utf-8")
         if manifest_bytes is not None:
             target.manifest.write_bytes(manifest_bytes)
+            refreshed = _refresh_table(target)
     return GenerateExit(
-        code=0, message=_summary(options, out, relative, name, placed, adds, warnings)
+        code=0,
+        message=_summary(options, out, relative, name, placed, adds, warnings, refreshed),
     )
+
+
+def _refresh_table(target: TargetPaths) -> Path | None:
+    """The Suite added to the Manifest is a cell of the Orientation page's Targets table:
+    a command that writes a Manifest refreshes the table it changed (0.1.2-interfaces,
+    amended decision 4), and never writes an absent page."""
+    from agentdiag.orientation import refresh_targets_table
+    from agentdiag.workspace import Workspace
+
+    return refresh_targets_table(Workspace.at(target.root))
 
 
 # --- reading ---
@@ -589,6 +602,7 @@ def _summary(
     placed: list[_Placed],
     adds: bool,
     warnings: list[str],
+    refreshed: Path | None = None,
 ) -> str:
     counts = dict.fromkeys(("new", "kept", "re-keyed", "retired"), 0)
     for entry in placed:
@@ -605,6 +619,8 @@ def _summary(
         lines.append(
             f"{'Would add' if options.check else 'Added'} {relative} to the Manifest's suites."
         )
+    if refreshed is not None:
+        lines.append(f"Refreshed the Targets table in {refreshed}.")
     if options.check:
         lines.append("Nothing written (--check).")
         return "\n".join(lines)

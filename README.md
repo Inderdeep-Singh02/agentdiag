@@ -47,6 +47,10 @@ Wrote the scaffold into /tmp/agentdiag-demo:
   .agentdiag/targets/default/suites/sample.yaml
   .agentdiag/targets/default/judge_notes.md
   .agentdiag/targets/default/redaction.yaml
+  AGENTS.md
+  CLAUDE.md
+  GEMINI.md
+  .agentdiag/CONTEXT.md
   .gitignore
 
 Target default (toy-order-desk), driven by the agentdiag.examples.toy:make_target factory.
@@ -118,13 +122,19 @@ environment variable and never by value. See
 
 ## The Workspace
 
-Everything agentdiag writes lives under one `.agentdiag/` directory, the **Workspace**, with
-one directory per Target. Runs, Restore points, the Index and the in-process Connector's
-platform store are output and gitignored, as is each Target's `redaction.yaml`, the names a
-Change record never carries; everything else is source.
+Everything agentdiag writes about its Targets lives under one `.agentdiag/` directory, the
+**Workspace**, with one directory per Target. Runs, Restore points, the Index and the
+in-process Connector's platform store are output and gitignored, as is each Target's
+`redaction.yaml`, the names a Change record never carries; everything else is source. At the
+root, beside it, `init` writes the Orientation page a coding agent reads before its first
+command, and one-line imports of it for the Harnesses that read another file
+([guide](docs/guide.md#operate-it-with-a-coding-agent)).
 
 ```
+AGENTS.md                             the Orientation page: routing, the Targets table, the rules
+CLAUDE.md, GEMINI.md                  one line each importing it, for Claude Code and Gemini CLI
 .agentdiag/
+├── CONTEXT.md                        agentdiag's vocabulary, the words the page and skills use
 ├── index.sqlite                      gitignored: the derived Index `list` and the Dashboard read
 └── targets/<slug>/                   one Target; a Workspace holds as many as you keep
     ├── manifest.yaml                 the Target's identity document: pointers, not copies

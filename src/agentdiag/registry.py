@@ -100,6 +100,11 @@ class RegistryEntry(BaseModel):
     """Why this entry is incomplete: a Manifest that did not load, a default environment
     it does not name."""
 
+    maintainer_notes: str | None = None
+    """The Manifest's `maintainer_notes` pointer as written (ADR-0016 §5); None when the key
+    is absent. The Orientation page's Targets table lists it; the terminal table does not
+    (0.1.2-interfaces decision 5)."""
+
 
 class CalibrationNotesSummary(BaseModel):
     """The Calibration Notes as `target show` reports them: what the Judge would read."""
@@ -316,8 +321,7 @@ def _cells(entry: RegistryEntry) -> list[str]:
         entry.channel or NONE_SHOWN,
         _environments(entry),
         entry.connector or NONE_SHOWN,
-        ", ".join(_suite_shown(PurePosixPath(suite.path).stem, suite) for suite in entry.suites)
-        or NONE_SHOWN,
+        suites_shown(entry),
         render_sync(entry.sync),
     ]
 
@@ -347,7 +351,14 @@ def render_sync(sync: SyncSummary | None, *, in_words: bool = False) -> str:
     return f"{sync.status} ({', '.join(said)})" if said else sync.status
 
 
-def _suite_shown(name: str, suite: SuiteEntry) -> str:
+def suites_shown(entry: RegistryEntry) -> str:
+    """An entry's Suites as one cell, each by its file's stem and its status when it does
+    not run: what the terminal table and the Orientation page's table both print."""
+    shown = (suite_shown(PurePosixPath(suite.path).stem, suite) for suite in entry.suites)
+    return ", ".join(shown) or NONE_SHOWN
+
+
+def suite_shown(name: str, suite: SuiteEntry) -> str:
     """A Suite as the Registry prints it: its name, and its status when it does not run
     (walkthrough friction 13: a retired Suite listed bare looked runnable)."""
     return name if suite.status == "runnable" else f"{name} ({suite.status})"
@@ -368,7 +379,7 @@ def render_target(view: TargetView) -> str:
         ("connector", entry.connector or NONE_SHOWN),
         (
             "suites",
-            ", ".join(_suite_shown(suite.path, suite) for suite in entry.suites) or NONE_SHOWN,
+            ", ".join(suite_shown(suite.path, suite) for suite in entry.suites) or NONE_SHOWN,
         ),
         (
             "notes",
@@ -481,5 +492,7 @@ __all__ = [
     "render_registry",
     "render_sync",
     "render_target",
+    "suite_shown",
+    "suites_shown",
     "target_view",
 ]

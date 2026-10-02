@@ -367,6 +367,18 @@
           "default": null,
           "title": "Family"
         },
+        "maintainer_notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maintainer Notes"
+        },
         "name": {
           "anyOf": [
             {

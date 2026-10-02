@@ -171,14 +171,36 @@ def _discover(options: DiscoverOptions) -> DiscoverExit:
     if starter:
         files[target.redaction] = REDACTION_STARTER
     written = _write(files)
+    refreshed = _refresh_table(target)
+    if refreshed is not None:
+        written.append(refreshed)
     return DiscoverExit(
         code=0,
         message=_summary(
-            options, findings, deployed, out, reviews, written, scan_directory, starter=starter
+            options,
+            findings,
+            deployed,
+            out,
+            reviews,
+            written,
+            scan_directory,
+            starter=starter,
+            refreshed=refreshed,
         ),
         draft=out,
         written=written,
     )
+
+
+def _refresh_table(target: TargetPaths) -> Path | None:
+    """A Target directory this command created, or files saved under it, change the
+    Orientation page's Targets table: refreshed when the page holds the markers, never
+    written when absent (0.1.2-interfaces, amended decision 4). A Target with only a draft
+    is a row whose Name cell names the missing Manifest."""
+    from agentdiag.orientation import refresh_targets_table
+    from agentdiag.workspace import Workspace
+
+    return refresh_targets_table(Workspace.at(target.root))
 
 
 def _out(options: DiscoverOptions) -> Path:
@@ -808,6 +830,7 @@ def _summary(
     scan_directory: Path | None,
     *,
     starter: bool = False,
+    refreshed: Path | None = None,
 ) -> str:
     lines: list[str] = []
     if findings is not None and scan_directory is not None:
@@ -828,6 +851,8 @@ def _summary(
     lines.append(f"{state} {out}, {_count(reviews, 'line')} marked REVIEW.")
     if starter:
         lines.append(f"  wrote {options.target.redaction} (local, gitignored)")
+    if refreshed is not None:
+        lines.append(f"  wrote {refreshed} (the Targets table)")
     naming = f" --target {options.target.slug}" if options.several_targets else ""
     root = options.target.root
     lines += [

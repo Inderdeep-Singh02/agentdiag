@@ -259,14 +259,20 @@ def init(
     instead, and scaffold nothing.
     """
     if skills:
+        from agentdiag.orientation import write_orientation
         from agentdiag.run.skills import SkillsRefused, install_skills, render_installed
 
+        workspace = _workspace(root)
         try:
-            installed = install_skills(_workspace(root).root, force=force)
+            installed = install_skills(workspace.root, force=force)
         except SkillsRefused as refused:
             typer.echo(f"error: {refused}", err=True)
             raise typer.Exit(INIT_EXIT) from refused
-        typer.echo(render_installed(installed))
+        # Skills without the routing page is the gap ADR-0016 §6 closes.
+        orientation = write_orientation(workspace)
+        typer.echo(render_installed(installed, orientation.summary()))
+        for notice in orientation.notices:
+            typer.echo(notice, err=True)
         raise typer.Exit(0)
     if root is None and (outer := enclosing_workspace(Path("."))) is not None:
         typer.echo(
@@ -289,6 +295,8 @@ def init(
         typer.echo(str(refused), err=True)
         raise typer.Exit(INIT_EXIT) from refused
     typer.echo(render_created(result))
+    for notice in result.notices:
+        typer.echo(notice, err=True)
     raise typer.Exit(0)
 
 
@@ -324,11 +332,23 @@ def validate(
     counted = (0, 0)
     facts = NO_MANIFEST
     if not files or manifest_path is not None:
-        chosen = _target(_workspace(root), target)
+        workspace = _workspace(root)
+        chosen = _target(workspace, target)
+        whole = not files and manifest_path is None
+        orientation: list[str] = []
+        if whole:
+            from agentdiag.orientation import orientation_warnings
+
+            orientation = orientation_warnings(workspace)
+        for line in orientation:
+            typer.echo(line)
         manifest_check, manifest = manifest_report(chosen, manifest_path)
         for line in manifest_check.lines():
             typer.echo(line)
-        counted = (len(manifest_check.errors), len(manifest_check.warnings))
+        counted = (
+            len(manifest_check.errors),
+            len(manifest_check.warnings) + len(orientation),
+        )
         if manifest is None:
             typer.echo(summary_line([], manifest=counted))
             raise typer.Exit(VALIDATE_EXIT)
@@ -1194,17 +1214,45 @@ def registry(
     json_output: bool = typer.Option(
         False, "--json", help="Print the Registry as JSON entries instead of a table."
     ),
+    write: bool = typer.Option(
+        False,
+        "--write",
+        help=(
+            "Instead of printing the Registry, regenerate the Targets table between the "
+            "markers of AGENTS.md at the Workspace root; write the page and its import "
+            "files where absent, and the vocabulary copy always."
+        ),
+    ),
 ) -> None:
-    """List the Workspace's Targets, derived from their Manifests and never written down.
+    """List the Workspace's Targets, derived from their Manifests: the Registry is never a
+    file of its own.
 
     One line per Target: its slug, name, Family, channel, environments, Connector, Suites
     and Sync state. A Manifest that does not load is still a line, with its problem after
-    the table.
+    the table. With --write, regenerate the Orientation page's Targets table instead: the
+    text between its markers is regenerated and nothing else of the page; the page,
+    CLAUDE.md and GEMINI.md are written where absent, and .agentdiag/CONTEXT.md always.
     """
     from agentdiag.registry import registry as workspace_registry
     from agentdiag.registry import render_registry
 
+    if write and (json_output or target is not None):
+        clash = "--json" if json_output else "--target"
+        typer.echo(
+            f"error: --write writes every Target's table and prints no Registry; drop {clash}",
+            err=True,
+        )
+        raise typer.Exit(USAGE_EXIT)
     workspace = _workspace(root)
+    if write:
+        from agentdiag.orientation import write_orientation
+
+        orientation = write_orientation(workspace)
+        for line in orientation.lines():
+            typer.echo(line)
+        for notice in orientation.notices:
+            typer.echo(notice, err=True)
+        raise typer.Exit(0)
     named = _target(workspace, target) if target is not None else None
     entries = workspace_registry(workspace, named)
     if json_output:

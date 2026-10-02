@@ -550,3 +550,70 @@ def test_the_http_section_manifest_validates_and_drives_the_fake(
     for path in root.rglob("*"):
         if path.is_file():
             assert b"tok-readme-not-a-secret" not in path.read_bytes(), path
+
+
+ORIENTATION_SECTION = "## Operate it with a coding agent"
+FENCE = re.compile(r"^```", re.MULTILINE)
+
+
+def fenced_section(heading: str) -> str:
+    """The section under `heading`, to the next `## ` heading outside a fenced block: this
+    section shows the Orientation page, whose own `## ` headings sit inside a fence."""
+    text = GUIDE.read_text(encoding="utf-8")
+    start = text.index(heading)
+    inside = False
+    at = start + len(heading)
+    for line in text[at:].splitlines(keepends=True):
+        if FENCE.match(line):
+            inside = not inside
+        elif line.startswith("## ") and not inside:
+            return text[start:at]
+        at += len(line)
+    return text[start:]
+
+
+def test_the_orientation_walkthrough_prints_what_the_guide_shows(tmp_path: Path) -> None:
+    """ "Operate it with a coding agent" continues the Workspace walkthrough above it: those
+    `uv run agentdiag …` lines are typed first, as the setup, then this section's lines in
+    order (ticket 45). A `cat` line reads its files here, a `sed` line runs in a shell as
+    written, and each output block is what the bash block before it printed."""
+    import subprocess
+
+    root = tmp_path / "agentdiag-shop"
+
+    def typed(line: str) -> str:
+        words = [w.replace(DOCUMENTED_ROOT, root.as_posix()) for w in shlex.split(line)]
+        if words[0] == "cat":
+            return "".join(Path(w).read_text(encoding="utf-8") for w in words[1:])
+        if words[:3] != ["uv", "run", "agentdiag"]:
+            subprocess.run(
+                ["bash", "-c", line.replace(DOCUMENTED_ROOT, root.as_posix())],
+                check=True,
+                capture_output=True,
+            )
+            return ""
+        result = runner.invoke(app, words[3:])
+        assert result.exit_code == 0, f"`{line}` exited {result.exit_code}: {result.output}"
+        return result.stdout
+
+    for language, body in blocks():
+        if language == "bash":
+            for line in body.splitlines():
+                typed(line)
+
+    pending: str | None = None
+    compared = 0
+    for match in BLOCK.finditer(fenced_section(ORIENTATION_SECTION)):
+        language, body = match.group(1), match.group(2)
+        if language == "bash":
+            pending = "".join(typed(line) for line in body.strip().splitlines())
+        else:
+            assert pending is not None, "an output block before any command"
+            assert pending == body
+            compared += 1
+            pending = None
+    assert compared == 4
+    assert "Harness" in fenced_section(ORIENTATION_SECTION)
+    for harness, reads in (("Codex", "AGENTS.md"), ("Claude Code", "CLAUDE.md")):
+        assert f"| {harness} | `{reads}` |" in fenced_section(ORIENTATION_SECTION)
+    assert "| Gemini CLI | `GEMINI.md` |" in fenced_section(ORIENTATION_SECTION)

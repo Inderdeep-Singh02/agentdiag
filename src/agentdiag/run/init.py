@@ -24,6 +24,12 @@ Two rules shape everything here:
   Target's local list of names a Change record never carries (ADR-0015 §4), which `init`
   writes as an empty starter and gitignores.
 
+After the Target's files, `init` writes the Orientation page, its two import files and the
+vocabulary copy at the root through `orientation.write_orientation` (ADR-0016 §1-§3), whose
+own rule is the same: a page or an import file the user wrote keeps every byte, and only the
+marked Targets table is agentdiag's to regenerate. They are listed among the created paths
+only when written, so a second `init --target` names `AGENTS.md` because its table changed.
+
 The text itself lives in `templates.py`, which the checked-in examples are rendered from
 (`examples/toy/`, `examples/workspace/`), so they stay the truth of what this command writes.
 """
@@ -136,6 +142,9 @@ class InitResult:
     several_targets: bool = False
     """Whether the Workspace now holds more than this Target, so the next commands must
     name it with `--target`."""
+
+    notices: list[str] = field(default_factory=list)
+    """`notice: …` lines for stderr: what the Orientation page's writer left to the user."""
 
     @property
     def scenario_id(self) -> str:
@@ -252,6 +261,13 @@ def scaffold_target(options: InitOptions) -> InitResult:
 
     others = [other for other in existing if other.slug != slug]
     result = InitResult(root=root, scaffold=scaffold, created=created, several_targets=bool(others))
+    # Imported here, not at the top: orientation reaches the Registry, whose Sync breaks
+    # import `agentdiag.sync.sections`, which imports `slug` from this module (a cycle).
+    from agentdiag.orientation import write_orientation
+
+    orientation = write_orientation(workspace)
+    result.created += [root / name for name in orientation.written]
+    result.notices += orientation.notices
     gitignore = root / GITIGNORE_NAME
     if ignore_outputs(gitignore, GITIGNORE_LINES):
         result.created.append(gitignore)

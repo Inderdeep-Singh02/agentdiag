@@ -100,6 +100,10 @@ Wrote the scaffold into /tmp/agentdiag-demo:
   .agentdiag/targets/default/suites/sample.yaml
   .agentdiag/targets/default/judge_notes.md
   .agentdiag/targets/default/redaction.yaml
+  AGENTS.md
+  CLAUDE.md
+  GEMINI.md
+  .agentdiag/CONTEXT.md
   .gitignore
 
 Target default (toy-order-desk), driven by the agentdiag.examples.toy:make_target factory.
@@ -111,8 +115,8 @@ Next:
 A judged Eval needs credentials: a Claude Code login (claude auth login) or export ANTHROPIC_API_KEY=….
 ```
 
-A Workspace with one Target, `default`, and five files, each one explained in its own
-comments:
+A Workspace with one Target, `default`: four files of the Target, three a coding agent reads
+at the root and the vocabulary copy under `.agentdiag/`, and the gitignore:
 
 - **`.agentdiag/targets/default/manifest.yaml`** — the Target's identity document. Pointers,
   not copies: who the Target is, which factory the Adapter builds it from, which of its
@@ -126,6 +130,10 @@ comments:
 - **`.agentdiag/targets/default/redaction.yaml`** — the names a Change record of this Target
   never carries, `names: []` until you list one. Local and gitignored, so the names never
   reach the Workspace's history or a clone of it; `validate` warns where the file is absent.
+- **`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.agentdiag/CONTEXT.md`** — the Orientation page
+  a coding agent reads before its first command, its one-line imports for the Harnesses that
+  read another file, and agentdiag's vocabulary; a page or an import file you wrote yourself
+  is kept ([Operate it with a coding agent](#operate-it-with-a-coding-agent)).
 - **`.gitignore`** — five lines, `.agentdiag/targets/*/runs/`,
   `.agentdiag/targets/*/restore-points/`, `.agentdiag/targets/*/platform/`,
   `.agentdiag/index.sqlite` and `.agentdiag/targets/*/redaction.yaml`. Runs, Restore points
@@ -1281,6 +1289,168 @@ the one `northwind` Family. A root written by an older `init`, with its Manifest
 under `.agentdiag/`, is refused by every command with the move that fixes it: its files go
 into `.agentdiag/targets/default/`.
 
+## Operate it with a coding agent
+
+A coding agent runs in a Harness, and each Harness reads its project instructions from its
+own file at the root before the first command. `init` writes one page for all three, the
+**Orientation page** `AGENTS.md`, and gives the other two Harnesses a one-line import of it
+in their own spelling:
+
+| Harness | Reads | What `init` writes there |
+|---|---|---|
+| Codex | `AGENTS.md` | the Orientation page |
+| Claude Code | `CLAUDE.md` | `@AGENTS.md` |
+| Gemini CLI | `GEMINI.md` | `@./AGENTS.md` |
+
+So `init` writes three files at the root, and under `.agentdiag/` the vocabulary copy
+`CONTEXT.md`, taken from the installed package, so a clone with no network and no agentdiag
+checkout still has the words the page and the skills use; it lives under `.agentdiag/`
+because the root may be a repository with a `CONTEXT.md` of its own. For the Workspace of the walkthrough above:
+
+```bash
+cat /tmp/agentdiag-shop/CLAUDE.md /tmp/agentdiag-shop/GEMINI.md
+```
+
+```
+@AGENTS.md
+@./AGENTS.md
+```
+
+The page says what the repository is, what to read before the first command (itself, the
+Target's Maintainer notes, one skill), which skill a request routes to, the Targets, the
+rules and the commands. It names no platform: only the Targets table, between the
+`<!-- agentdiag:targets -->` markers, differs from one Workspace to the next.
+
+```bash
+cat /tmp/agentdiag-shop/AGENTS.md
+```
+
+```markdown
+# Orientation: an agentdiag Workspace
+
+This repository is an agentdiag **Workspace**: one `.agentdiag/targets/<slug>/` directory per
+**Target**, an agentic system under test, holding its Manifest (pointers to its prompts, tools
+and environments, never copies), its Suites of Scenarios, its Calibration Notes for the Judge,
+its Maintainer notes for you, and its Change records. `agentdiag` drives a Target through
+Scenarios, records each Trial as a Trace, judges the Trace with Evals, keeps the Target's local
+files and its deployed set in Sync, and records every fix as a Change record that closes only
+through `compare`.
+
+**Read before the first command of a session**: this page; `.agentdiag/targets/<slug>/maintainer_notes.md`
+for the Target the request names; the one `/agentdiag-*` skill the request routes to. Reference,
+on demand: `agentdiag <command> --help` for every flag, and `.agentdiag/CONTEXT.md` for every word
+used here (Target, Manifest, Suite, Scenario, Trace, Span, Eval, Verdict, Sync, Change record).
+That read set is budgeted at 10k tokens.
+
+## Routing
+
+Match the request to one skill and invoke it by name. Each skill marks its steps **code** (run
+it), **judgement** (decide it and say why) or **human** (hand it to the person and wait), and
+ends on a "Done when" list.
+
+| The request | Skill |
+|---|---|
+| A Target this Workspace has never described, whose prompts and tools live in a repository or on a platform | `/agentdiag-discover` |
+| A Target whose prompts, tests, judging rules and notes already live in another maintenance repository, with no Connector yet | `/agentdiag-migrate` |
+| "Write tests", "build a Suite", "cover rule N": Scenarios from a Target's prompt rules and tools | `/agentdiag-generate` |
+| A failure of the Target: a failing Trial, a Diagnosis, a complaint about a real conversation, taken to a verified or refuted Change record | `/agentdiag-fix-cycle` |
+| A Score that is wrong when the Target was right: the Judge or an Eval misjudged, and the judging configuration must change | `/agentdiag-correction` |
+
+A failure of the Target is a fix cycle; a failure of the judgement is a correction. Read a
+Target through its commands before its files: `agentdiag target show <slug>` prints the
+Manifest as loaded, the notes, the Fingerprint and the open records; `agentdiag show <run>
+<scenario>` prints a Trial as a story; `agentdiag list` the Runs.
+
+## Targets
+
+<!-- agentdiag:targets -->
+<!-- generated from the Manifests by agentdiag registry --write; a hand edit here is replaced -->
+| Target | Name | Family / channel | Default env | Protected | Suites | Connector | Maintainer notes |
+|---|---|---|---|---|---|---|---|
+| `help-desk` | helpdesk | - | local | - | sample | - | - |
+| `order-desk` | toy-order-desk | northwind / chat | local | - | sample | inprocess | - |
+<!-- /agentdiag:targets -->
+
+Generated from the Manifests by `agentdiag registry --write`, and `agentdiag validate` warns
+when it is stale. Every command takes `--target <slug>` when the Workspace holds more than
+one Target, and `--root <path>` from outside it.
+
+## Rules
+
+1. **Diff before push.** `agentdiag push --env <env>` previews; `--push` writes only after
+   the person has read that preview's diff.
+2. **A protected environment confirms by name.** Its name is typed by a person at the
+   terminal, or in the UI's confirm step; no flag stands in for it, so a session without a
+   terminal hands the person the exact command and waits.
+3. **Verdicts cite Spans.** A Score names the Spans it judged, and a cause written into a
+   Change record quotes a Span `agentdiag show` printed, never a summary of the conversation.
+4. **No credential value in any file.** A Manifest names the environment variable that holds
+   a credential; the value lives in `~/.agentdiag/env` or the shell, and in no file under this
+   repository, no Trace and no record.
+5. **Runs are output.** `runs/`, Restore points, the Index and each Target's `redaction.yaml`
+   are gitignored; Manifests, Suites, notes, Change records, Push records and
+   `fingerprint.json` are committed, a fix with the record and Fingerprint it belongs to.
+
+## Commands
+
+| To | Run |
+|---|---|
+| List the Targets; print one in full | `agentdiag registry`; `agentdiag target show <slug>` |
+| Check a Target offline | `agentdiag validate --target <slug>` (every Target: `--all`) |
+| See what a Run would do, then run it | `agentdiag run --target <slug> --dry-run`; drop `--dry-run`, add `--suite <name>` or `--scenario <id>` |
+| Read a Trial | `agentdiag show <run> <scenario>` |
+| Compare two Runs | `agentdiag compare <baseline> <run>` |
+| Check or record the deployed set | `agentdiag sync --target <slug>`, `--check` to check only |
+| Preview or make a push | `agentdiag push --target <slug> --env <env>`, then `--push --change <id>` |
+| Carry a fix | `agentdiag change open`, `expect`, `propose`, `close` |
+| Refresh this page's table | `agentdiag registry --write` |
+
+Skills this agentdiag ships, installed by `agentdiag init --skills`: /agentdiag-correction, /agentdiag-discover, /agentdiag-fix-cycle, /agentdiag-generate.
+```
+
+agentdiag never overwrites a file you own. A root `AGENTS.md` you wrote, without the
+markers, keeps every byte (its line endings too) and gains the marked table at its end, with
+a notice on stderr; once the markers are there, only the text between them is regenerated.
+`CLAUDE.md` and `GEMINI.md` are written only when absent, and one that does not import the
+page is named in a notice with the line to add. The vocabulary copy is agentdiag's and is
+always rewritten. `init --skills` writes whichever of the three root files and the
+vocabulary copy is absent, because skills without the page that routes to them are half an
+install.
+
+The table is a rendering of the Registry. A command that writes under `.agentdiag/targets/`
+(`init`, `generate` adding a Suite, `discover` creating a Target) refreshes it when the page
+holds the markers, and never writes an absent page; a Manifest edited by hand leaves it stale
+until `registry --write` regenerates it. Here the help desk joins the `northwind` Family, and
+`validate` says the table no longer matches; the warning does not fail the command:
+
+```bash
+perl -pi -e 's/^# family: your-persona$/family: northwind/; s/^# channel: chat$/channel: chat/' /tmp/agentdiag-shop/.agentdiag/targets/help-desk/manifest.yaml
+uv run agentdiag validate --root /tmp/agentdiag-shop --target help-desk
+```
+
+```
+warning: AGENTS.md: the Targets table is stale; agentdiag registry --write regenerates it
+validated the Manifest and 1 Suite: 0 errors, 1 warning
+```
+
+```bash
+uv run agentdiag registry --write --root /tmp/agentdiag-shop
+```
+
+```
+wrote AGENTS.md
+unchanged CLAUDE.md
+unchanged GEMINI.md
+unchanged .agentdiag/CONTEXT.md
+```
+
+Only the help desk's row changed, and `validate` is quiet again. A stale table is the one
+orientation warning every Workspace gets. Once the skills are installed (in either layout)
+`validate` also warns of a page without the markers, of `CLAUDE.md` or `GEMINI.md` without
+its import line, and of an absent page, import file or vocabulary copy; until then a
+Workspace in a corner of a repository with instruction files of its own is not told to
+change them.
+
 ## Keep the Target in Sync
 
 A Fingerprint is the hash of everything the Manifest points at, section by section: each
@@ -1435,6 +1605,7 @@ uv run agentdiag discover --root /tmp/agentdiag-discover --target toy-order-desk
 Scanned src/agentdiag/examples/toy: 1 prompt, 2 tools, 0 data sources.
 Wrote /tmp/agentdiag-discover/.agentdiag/targets/toy-order-desk/manifest.draft.yaml, 15 lines marked REVIEW.
   wrote /tmp/agentdiag-discover/.agentdiag/targets/toy-order-desk/redaction.yaml (local, gitignored)
+  wrote /tmp/agentdiag-discover/AGENTS.md (the Targets table)
 
 Next: accept or rewrite every REVIEW line, then
   agentdiag validate --root /tmp/agentdiag-discover --target toy-order-desk --manifest /tmp/agentdiag-discover/.agentdiag/targets/toy-order-desk/manifest.draft.yaml
@@ -1526,6 +1697,7 @@ Installed the agentdiag skills under /tmp/agentdiag-discover/.claude/skills:
   wrote .claude/skills/agentdiag-fix-cycle/SKILL.md
   wrote .claude/skills/agentdiag-generate/SKILL.md
   wrote .claude/skills/agentdiag-generate/scenario-reference.md
+Orientation page: unchanged AGENTS.md, CLAUDE.md, GEMINI.md, .agentdiag/CONTEXT.md
 
 Invoke one in Claude Code by name: /agentdiag-correction, /agentdiag-discover, /agentdiag-fix-cycle, /agentdiag-generate
 ```
@@ -1588,6 +1760,7 @@ Wrote /tmp/agentdiag-generate/.agentdiag/targets/default/suites/generated.yaml: 
   new      lookup-order-the-lookup-asks-for-the-order-the-customer       from tool:lookup_order
   new      cancel-order-a-customer-who-forgot-the-order-number-still     from tool:cancel_order
 Added suites/generated.yaml to the Manifest's suites.
+Refreshed the Targets table in /tmp/agentdiag-generate/AGENTS.md.
 
 Next:
   agentdiag validate --root /tmp/agentdiag-generate
@@ -2075,7 +2248,8 @@ and a route answers JSON; `GET /api/registry` over the example Workspace starts:
     "environment": "local",
     "last_push": null
   },
-  "problems": []
+  "problems": [],
+  "maintainer_notes": null
 }
 ```
 

@@ -61,6 +61,11 @@ GITIGNORE_REDACTION_LINE = f"{AGENTDIAG_DIR}/{TARGETS_DIRNAME}/*/{REDACTION_NAME
 
 SUITES_DIRNAME = "suites"
 
+VOCABULARY_FILE = "CONTEXT.md"
+"""Under `.agentdiag/`, the copy of agentdiag's vocabulary the Orientation page names
+(ADR-0016 §2): agentdiag's file, rewritten freely, kept off the root because the root may
+be a repository with a `CONTEXT.md` of its own."""
+
 INDEX_FILE = "index.sqlite"
 """The derived Index, one per Workspace (ADR-0005 §5): never inside a Target, never the
 truth."""
@@ -277,6 +282,11 @@ class Workspace:
     def index(self) -> Path:
         return self.agentdiag_dir / INDEX_FILE
 
+    @property
+    def vocabulary(self) -> Path:
+        """Where `init` and `registry --write` put the vocabulary copy (ADR-0016 §2)."""
+        return self.agentdiag_dir / VOCABULARY_FILE
+
     def targets(self) -> list[TargetPaths]:
         """Every Target, by slug.
 
@@ -369,6 +379,7 @@ __all__ = [
     "SUITES_DIRNAME",
     "SYNC_BREAKS_DIRNAME",
     "TARGETS_DIRNAME",
+    "VOCABULARY_FILE",
     "NotASlug",
     "TargetAmbiguous",
     "TargetNotFound",
