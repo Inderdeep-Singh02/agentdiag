@@ -193,6 +193,7 @@ agentdiag commands and never a platform's, invoked by name (in Claude Code,
 | Skill | Does |
 |-------|------|
 | `agentdiag-discover` | Draft, review and install the Manifest of a Target the Workspace has never described |
+| `agentdiag-migrate` | Bring in a Target whose prompts, tests, judging rules and notes another maintenance repository keeps, offline, with no Connector yet; its fix history stays there |
 | `agentdiag-generate` | Draft a Suite of Scenarios from a Target's prompt rules and tools, and write it with `generate` |
 | `agentdiag-fix-cycle` | Take one failure from its trigger to a verified or refuted Change record, through `change`, `push` and `compare` |
 | `agentdiag-correction` | Correct a Score the Judge or an Eval got wrong, through the Judge's notes, an Eval's parameters or a Suppression that sets a known false fail aside, and prove it with `rescore` and `compare` |
@@ -208,6 +209,7 @@ Installed the agentdiag skills under /tmp/agentdiag-demo/.agents/skills (the tra
   wrote .agents/skills/agentdiag-fix-cycle/SKILL.md
   wrote .agents/skills/agentdiag-generate/SKILL.md
   wrote .agents/skills/agentdiag-generate/scenario-reference.md
+  wrote .agents/skills/agentdiag-migrate/SKILL.md
 Where each Harness finds them:
   Codex and Gemini CLI read .agents/skills/ directly.
   Claude Code reads .claude/skills/:
@@ -215,9 +217,10 @@ Where each Harness finds them:
     linked .claude/skills/agentdiag-discover -> ../../.agents/skills/agentdiag-discover
     linked .claude/skills/agentdiag-fix-cycle -> ../../.agents/skills/agentdiag-fix-cycle
     linked .claude/skills/agentdiag-generate -> ../../.agents/skills/agentdiag-generate
+    linked .claude/skills/agentdiag-migrate -> ../../.agents/skills/agentdiag-migrate
 Orientation page: unchanged AGENTS.md, CLAUDE.md, GEMINI.md, .agentdiag/CONTEXT.md
 
-Invoke one by name (in Claude Code: /agentdiag-correction, /agentdiag-discover, /agentdiag-fix-cycle, /agentdiag-generate)
+Invoke one by name (in Claude Code: /agentdiag-correction, /agentdiag-discover, /agentdiag-fix-cycle, /agentdiag-generate, /agentdiag-migrate)
 ```
 
 The skills live in one tracked copy under `.agents/skills/`, which Codex and Gemini CLI read

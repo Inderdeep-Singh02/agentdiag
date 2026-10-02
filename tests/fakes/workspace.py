@@ -32,6 +32,13 @@ CUSTOM_SCENARIO = "first-turn"
 GREETING = "Hello! What can you help me with today?"
 """The Turn of the sample Scenario `init --adapter` writes."""
 
+PENDING_LINE = (
+    "adapter.kind: pending: nothing drives this Target yet; set the Adapter kind and its "
+    "environment block (the REVIEW lines in manifest.yaml name what to fill)"
+)
+"""The one spelling `validate`, `run` and `sync` share for a pending Adapter (ADR-0016 §4,
+0.1.2-interfaces decision 12)."""
+
 
 def two_target_workspace(root: Path) -> Path:
     """`init --target a --adapter toy`, then `init --target b --adapter …`, under `root`; the
@@ -44,6 +51,11 @@ def two_target_workspace(root: Path) -> Path:
         result = runner.invoke(app, ["init", "--root", str(root), *arguments])
         assert result.exit_code == 0, result.output
     return root
+
+
+def warnings_of(result: Any) -> list[str]:
+    """The `warning:` lines a command printed to stdout, in order."""
+    return [line for line in result.stdout.splitlines() if line.startswith("warning:")]
 
 
 def target_dir(root: Path, slug: str = "default") -> Path:

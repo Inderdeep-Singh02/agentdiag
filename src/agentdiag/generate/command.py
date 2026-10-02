@@ -71,6 +71,8 @@ from agentdiag.scenario.validate import (
     validate_rendered,
 )
 from agentdiag.sync.fingerprint import load_fingerprint
+from agentdiag.sync.pointed import PointedFile, pointed_file, read_text
+from agentdiag.sync.sections import prompt_id, prompt_sections
 from agentdiag.workspace import SLUG, SUITES_DIRNAME, TargetPaths
 
 DEFAULT_SUITE = "generated"
@@ -157,7 +159,7 @@ def _generate(options: GenerateOptions) -> GenerateExit:
     problems = _draft_problems(raw, manifest)
     if problems:
         raise GenerateRefused(_lines(drafts_file, problems))
-    warnings = _section_warnings(target, drafts)
+    warnings = _section_warnings(target, manifest, drafts)
 
     existing_raw = _existing(out, defaults)
     placed, not_run = _place(target, drafts, existing_raw)
@@ -314,12 +316,16 @@ def _provenance_problems(where: str, text: str, manifest: Manifest) -> list[Prob
     ]
 
 
-def _section_warnings(target: TargetPaths, drafts: list[dict[str, Any]]) -> list[str]:
+def _section_warnings(
+    target: TargetPaths, manifest: Manifest, drafts: list[dict[str, Any]]
+) -> list[str]:
     """A prompt section the Fingerprint in force does not hold: a heading renamed since the
-    drafts, or a slug typed by hand. Warned, not refused: `sync` may simply not have run."""
+    drafts, or a slug typed by hand. Warned, not refused: `sync` may simply not have run.
+    With no Fingerprint, the prompt files the Manifest points at stand in for it
+    (`_file_section_warnings`)."""
     fingerprint = load_fingerprint(target)
     if fingerprint is None:
-        return []
+        return _file_section_warnings(target, manifest, drafts)
     uncovered = {entry.id for entry in fingerprint.not_covered}
     warnings: list[str] = []
     for position, entry in enumerate(drafts):
@@ -333,6 +339,35 @@ def _section_warnings(target: TargetPaths, drafts: list[dict[str, Any]]) -> list
         warnings.append(
             f"warning: scenarios[{position}].provenance: {section} is no section of the "
             "Fingerprint in force; `agentdiag target show` lists them"
+        )
+    return warnings
+
+
+def _file_section_warnings(
+    target: TargetPaths, manifest: Manifest, drafts: list[dict[str, Any]]
+) -> list[str]:
+    """A prompt section the local prompt file does not hold, for a Target `sync` has never
+    fingerprinted: a migrated one whose Adapter is still pending has none to take, and its
+    drafts would otherwise pass with any heading (0.1.2-interfaces, amended after the ticket
+    49 reviews). The file is split as `sync` splits it (`sync.sections.prompt_sections`), so
+    the ids are the ones its first Fingerprint will hold. A prompt that is `observed`, points
+    outside the root, or is not on disk is not checked."""
+    warnings: list[str] = []
+    for position, entry in enumerate(drafts):
+        provenance = _parsed(entry.get("provenance"))
+        if provenance is None or provenance.kind != "prompt":
+            continue
+        pointed = pointed_file(target, manifest, prompt_id(provenance.name))
+        text = read_text(pointed.path) if isinstance(pointed, PointedFile) else None
+        if not isinstance(pointed, PointedFile) or text is None:
+            continue
+        sections = prompt_sections(provenance.name, text)
+        if provenance.section_id in sections:
+            continue
+        warnings.append(
+            f"warning: scenarios[{position}].provenance: {provenance.section_id} is no section "
+            f"of {pointed.relative} (its sections: {', '.join(sections)}); agentdiag target show "
+            "lists them once sync has run"
         )
     return warnings
 

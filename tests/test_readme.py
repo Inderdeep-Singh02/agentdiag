@@ -692,3 +692,71 @@ def test_the_describe_walkthrough_prints_what_the_guide_shows(tmp_path: Path) ->
             compared += 1
             pending = None
     assert compared == 4
+
+
+MIGRATE_SECTION = "## Migrate a Target from another maintenance repository"
+MIGRATE_ROOT = "/tmp/agentdiag-migrate"
+MIGRATE_EXITS = {"init": 0, "generate": 0, "validate": 0, "registry": 0, "run": 3}
+"""The documented exit of each command the section types: `run --dry-run` refuses the
+pending Adapter the migration leaves (ADR-0016 §4, §7)."""
+
+
+def test_the_migrate_walkthrough_prints_what_the_guide_shows(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every line of "Migrate a Target from another maintenance repository", typed from the
+    repository root into a temporary root (ticket 49): the `uv run agentdiag …` lines
+    through the CLI, each exiting as documented, the `cp`, `mkdir` and `sed` lines in a
+    shell. The Manifest edits the prose asks for are `tests/migrate_fixtures.py`'s, made at
+    the first `yaml` block; each Manifest block is then a part of the Manifest, the drafts
+    block a part of the drafts file, and each output block what the bash block before it
+    printed, with the documented root in place of the temporary one."""
+    import subprocess
+
+    from tests.migrate_fixtures import SLUG, SUITE, settle_manifest
+
+    monkeypatch.chdir(REPO)
+    root = tmp_path / "agentdiag-migrate"
+    target = root / ".agentdiag" / "targets" / SLUG
+
+    def typed(line: str) -> str:
+        """Run one documented line from the repository root, the documented root replaced
+        by the temporary one: a shell line through bash (it prints nothing the section
+        shows), an agentdiag line through the CLI, exiting as `MIGRATE_EXITS` says; what it
+        printed, with the documented root put back."""
+        if not line.startswith("uv run agentdiag "):
+            subprocess.run(
+                ["bash", "-c", line.replace(MIGRATE_ROOT, root.as_posix())],
+                check=True,
+                capture_output=True,
+                cwd=REPO,
+            )
+            return ""
+        words = [w.replace(MIGRATE_ROOT, root.as_posix()) for w in shlex.split(line)]
+        result = runner.invoke(app, words[3:])
+        assert result.exit_code == MIGRATE_EXITS[words[3]], f"`{line}`: {result.output}"
+        return result.output.replace(root.as_posix(), MIGRATE_ROOT)
+
+    pending: str | None = None
+    compared = settled = 0
+    for match in BLOCK.finditer(fenced_section(MIGRATE_SECTION)):
+        language, body = match.group(1), match.group(2)
+        if language == "bash":
+            pending = "".join(typed(line) for line in body.strip().splitlines())
+        elif language == "yaml":
+            if not settled:
+                settle_manifest(target / "manifest.yaml")
+            settled += 1
+            drafts = target / "drafts" / f"{SUITE}.yaml"
+            held = drafts.read_text(encoding="utf-8") if drafts.is_file() else ""
+            manifest = (target / "manifest.yaml").read_text(encoding="utf-8")
+            assert body in manifest or body in held, body
+        else:
+            assert pending, "an output block with no command printing before it"
+            assert pending == body
+            compared += 1
+            pending = None
+    assert (settled, compared) == (4, 6)
+    section = fenced_section(MIGRATE_SECTION)
+    for stays in ("**fix history**", "ADR-0012", "**Adapter and Connector**", "**credentials**"):
+        assert stays in section, stays

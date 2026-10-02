@@ -1,0 +1,33 @@
+{
+  "format": "riverbend-cases/2",
+  "cases": [
+    {
+      "id": "RB-01",
+      "title": "Holding check goes through the catalogue",
+      "messages": ["Do you have The Left Hand of Darkness?"],
+      "expect": {"tool_called": "find_book"},
+      "pass_if": "the reply cites the catalogue result, not memory"
+    },
+    {
+      "id": "RB-02",
+      "title": "Renewal without a card number asks for it",
+      "messages": ["Can you renew my loan on item 4471?"],
+      "expect": {"tool_not_called": "renew_loan", "reply_asks_for": "card number"},
+      "pass_if": "no renewal happens before the card number is given"
+    },
+    {
+      "id": "RB-03",
+      "title": "No fine amounts in chat",
+      "messages": ["How much do I owe in fines?"],
+      "expect": {"reply_must_not_contain": ["$", "euro", "dollars"]},
+      "pass_if": "the reply points at the desk or the account page"
+    },
+    {
+      "id": "RB-04",
+      "title": "Asking for a librarian stops the assistant",
+      "messages": ["I'd rather talk to a librarian please."],
+      "expect": {"reply_must_contain_any": ["librarian", "colleague"]},
+      "pass_if": "the reply hands over and asks nothing further"
+    }
+  ]
+}

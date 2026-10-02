@@ -171,6 +171,69 @@ def test_the_correction_skill_is_package_data_and_user_invoked() -> None:
         assert mark in body, mark
 
 
+def test_the_migrate_skill_is_package_data_and_user_invoked() -> None:
+    """Ticket 49, 0.1.2-interfaces decision 23: the frontmatter, the marks, the Budgets, the
+    "Done when" list, the commands and files it names; it names no source format (the agent
+    reads the source's own at a judgement step), and it leaves the fix history in the source
+    and says why, pointing at the open ADR-0012 question."""
+    skill = files("agentdiag").joinpath("skills", "migrate", "SKILL.md")
+
+    head = frontmatter(skill.read_text(encoding="utf-8"))
+    assert head["name"] == "agentdiag-migrate"
+    assert head["disable-model-invocation"] is True
+    body = skill.read_text(encoding="utf-8")
+    for mark in (
+        "**code**",
+        "**judgement**",
+        "**human**",
+        "## Budgets",
+        "One read bundle",
+        "Diff first",
+        "Nothing runs",
+        "## Done when",
+        "agentdiag init --target <slug> --name <name> --description",
+        "--family <family> --channel <channel>",
+        "agentdiag registry",
+        "prompts/system.md",
+        "tools/<name>.json",
+        "drafts/<suite>.yaml",
+        "agentdiag generate --from <target dir>/drafts/<suite>.yaml --check",
+        "prompt:system#<heading>",
+        "tool:<name>",
+        "judge_notes.md",
+        "maintainer_notes.md",
+        "agentdiag validate",
+        "agentdiag registry --write",
+        "run --dry-run",
+        "adapter.kind: pending",
+        "agentdiag-generate",
+        "agentdiag-discover",
+    ):
+        assert mark in body, mark
+    stays = body[body.index("## What stays in the source repository") : body.index("## Done when")]
+    assert "**Its fix history.**" in stays
+    assert "A Change record closes only through `compare` (ADR-0012 §4" in stays
+    assert "is not imported (ADR-0012 §6)" in stays
+    assert "an open decision (ticket 51), not this skill's" in stays
+    assert "`2 lines marked REVIEW`" in body[body.index("## Done when") :]
+    lowered = body.lower()
+    for format_word in ("json", ".yml", "csv", "jsonl", "pytest", "promptfoo", "notebook"):
+        assert format_word not in lowered.replace("tools/<name>.json", ""), format_word
+
+
+def test_every_command_the_migrate_skill_names_has_the_flags_it_gives() -> None:
+    """Each `agentdiag <command> --flag` the skill writes is a flag that command's `--help`
+    lists, so the skill cannot name a flag the CLI lacks."""
+    body = files("agentdiag").joinpath("skills", "migrate", "SKILL.md").read_text("utf-8")
+    named = re.findall(r"`agentdiag ([a-z-]+)((?: [^`]*)?)`", body)
+    assert {command for command, _ in named} >= {"init", "registry", "generate", "validate"}
+    for command, rest in named:
+        shown = runner.invoke(app, [command, "--help"], terminal_width=200)
+        assert shown.exit_code == 0, command
+        for flag in re.findall(r"--[a-z-]+", rest):
+            assert flag in shown.output, f"agentdiag {command} {flag}"
+
+
 def test_every_eval_the_generation_skill_names_is_in_the_catalogue() -> None:
     """The skill's Eval table names real Evals, and leaves their parameters to the reference
     beside it, whose declarations `tests/test_generate_reference.py` validates (walkthrough
@@ -198,18 +261,30 @@ MAINTAINER_NOTES_FIRST = (
 )
 
 
+MIGRATE_WRITES_THE_NOTES = (
+    "- **Maintainer notes last.** There are none to read before step 1: this skill writes "
+    "them (step 9)."
+)
+
+
 @pytest.mark.parametrize("name", sorted(packaged_skills()))
 def test_every_skill_reads_the_maintainer_notes_before_its_step_1(name: str) -> None:
     """ADR-0016 §5, 0.1.2-interfaces decision 18: one sentence before step 1, in the Budgets
-    block where there is one, and the step numbers unchanged."""
+    block where there is one, and the step numbers unchanged. The migrate skill writes a
+    Target's first notes (ADR-0016 §7), so its sentence says there are none to read yet and
+    which step writes them (decision 18 as amended after the ticket 49 reviews)."""
     body = files("agentdiag").joinpath("skills", name, "SKILL.md").read_text("utf-8")
     first_step = body.index("\n1. **")
 
-    assert MAINTAINER_NOTES_FIRST in body[:first_step]
-    assert body.index("maintainer_notes.md") < first_step
+    sentence = MIGRATE_WRITES_THE_NOTES if name == "migrate" else MAINTAINER_NOTES_FIRST
+    assert sentence in body[:first_step]
+    if name == "migrate":
+        assert "maintainer_notes.md" in body[body.index("\n9. **") :].splitlines()[1]
+    else:
+        assert body.index("maintainer_notes.md") < first_step
     if "## Budgets" in body:
         budgets = body[body.index("## Budgets") : body.index("## Steps")]
-        assert MAINTAINER_NOTES_FIRST in budgets
+        assert sentence in budgets
     steps = body[body.index("## Steps") :]
     steps = steps[: steps.find("\n## ", 1)] if "\n## " in steps[1:] else steps
     numbers = [int(match) for match in re.findall(r"^(\d+)\. \*\*", steps, re.MULTILINE)]

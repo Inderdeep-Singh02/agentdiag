@@ -630,6 +630,78 @@ def test_target_show_lists_the_fingerprint_sections_by_id_and_summary(tmp_path: 
     assert "tool.cancel_order" in result.stdout
 
 
+def pending_target(tmp_path: Path) -> tuple[Path, Path]:
+    """The migrate skill's Target before its drafts: `init --target library-desk` with an
+    Adapter of kind pending, the source's prompt and tools copied and pointed at, and no
+    Fingerprint, since nothing can `sync` it yet (ADR-0016 §7)."""
+    from tests.migrate_fixtures import IDENTITY, SLUG, SOURCE, settle_manifest
+
+    root = tmp_path / "migrated"
+    words = [word for pair in IDENTITY for word in pair]
+    assert invoke("init", "--root", root, "--target", SLUG, *words).exit_code == 0
+    target = root / ".agentdiag" / "targets" / SLUG
+    for kind in ("prompts", "tools"):
+        shutil.copytree(SOURCE / kind, target / kind)
+    settle_manifest(target / "manifest.yaml")
+    return root, target
+
+
+def test_with_no_fingerprint_a_draft_naming_no_heading_of_the_prompt_file_is_warned(
+    tmp_path: Path,
+) -> None:
+    """0.1.2-interfaces, amended after the ticket 49 reviews: a pending Target has no
+    Fingerprint to check a section against, so the prompt file the Manifest points at, split
+    as `sync` splits it, stands in; `generate --check` still exits 0, since `sync` may yet
+    disagree with nothing."""
+    root, _ = pending_target(tmp_path)
+    drafts = write_drafts(
+        tmp_path,
+        [draft("prompt:system#rule", "Rule 1: a holding check goes through the catalogue")],
+        target="Ada",
+    )
+
+    result = invoke("generate", "--root", root, "--from", drafts, "--check")
+
+    assert result.exit_code == 0, result.output
+    assert [line for line in result.stdout.splitlines() if line.startswith("warning:")] == [
+        "warning: scenarios[0].provenance: prompt.system#rule is no section of "
+        "prompts/system.md (its sections: prompt.system#persona, prompt.system#rules, "
+        "prompt.system#tools); agentdiag target show lists them once sync has run"
+    ]
+
+
+def test_with_no_fingerprint_a_draft_naming_a_real_heading_is_not_warned(
+    tmp_path: Path,
+) -> None:
+    root, _ = pending_target(tmp_path)
+    drafts = write_drafts(
+        tmp_path,
+        [draft("prompt:system#rules", "Rule 1: a holding check goes through the catalogue")],
+        target="Ada",
+    )
+
+    result = invoke("generate", "--root", root, "--from", drafts, "--check")
+
+    assert result.exit_code == 0, result.output
+    assert "warning" not in result.output
+
+
+def test_with_a_fingerprint_the_sections_are_the_fingerprints_as_before(tmp_path: Path) -> None:
+    """Once `sync` has written a Fingerprint it is the one checked, and its warning is the
+    one it was; the prompt file is not read for it."""
+    root = headed_workspace(tmp_path)
+    assert invoke("sync", "--root", root).exit_code == 0
+    drafts = write_drafts(tmp_path, [draft("prompt:system#no-such-rule", "A status question")])
+
+    result = invoke("generate", "--root", root, "--from", drafts, "--check")
+
+    assert result.exit_code == 0, result.output
+    assert [line for line in result.stdout.splitlines() if line.startswith("warning:")] == [
+        "warning: scenarios[0].provenance: prompt.system#no-such-rule is no section of the "
+        "Fingerprint in force; `agentdiag target show` lists them"
+    ]
+
+
 # --- units: the id derivation and the matching rule ---
 
 

@@ -1,0 +1,12 @@
+{
+  "name": "renew_loan",
+  "description": "Extend a member's loan by 21 days.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "card_number": {"type": "string", "description": "The member's card number."},
+      "item_id": {"type": "string", "description": "The loaned item's id."}
+    },
+    "required": ["card_number", "item_id"]
+  }
+}

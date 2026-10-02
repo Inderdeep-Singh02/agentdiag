@@ -1,0 +1,11 @@
+{
+  "name": "find_book",
+  "description": "Search the catalogue by title, author or ISBN.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "query": {"type": "string", "description": "Title, author or ISBN."}
+    },
+    "required": ["query"]
+  }
+}

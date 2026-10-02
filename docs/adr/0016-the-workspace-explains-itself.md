@@ -102,7 +102,8 @@ skills there, with `.claude/skills` a symlink to it.
    `generate`, the judging rules carried into `judge_notes.md` and the operational facts into
    `maintainer_notes.md`, then `validate` and `registry --write`. The source repository's
    closed fix history is out of its scope: a Change record closes only through `compare`
-   (ADR-0012 §3), so importing closed records needs an ADR-0012 amendment, left as a ticket.
+   (ADR-0012 §2 and §4) and a history kept in another shape is not imported (§6), so
+   importing closed records needs an ADR-0012 amendment, left as a ticket.
 8. **Three frictions of the first Workspace build.** `validate --all` validates every Target,
    one summary line each, the Workspace-level warnings once, one exit code; `discover
    --from-connector --env <x>` on the in-process Connector says that it reads a module in this

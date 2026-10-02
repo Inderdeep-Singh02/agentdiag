@@ -19,6 +19,7 @@ import yaml
 from typer.testing import CliRunner
 
 from agentdiag.cli import app
+from tests.fakes.workspace import PENDING_LINE
 
 REPO = Path(__file__).resolve().parents[1]
 EXAMPLE = REPO / "examples" / "toy"
@@ -268,8 +269,7 @@ def test_a_dry_run_of_a_pending_target_refuses_with_validates_lines(tmp_path: Pa
 
     assert result.exit_code == 3, result.output
     assert warned == [
-        "adapter.kind: pending: nothing drives this Target yet; set the Adapter kind and its "
-        "environment block (the REVIEW lines in manifest.yaml name what to fill)",
+        PENDING_LINE,
         "suites: no runnable Suite: suites/sample.yaml is draft; settle its Scenarios and drop "
         "status: draft from its entry to run them",
     ]

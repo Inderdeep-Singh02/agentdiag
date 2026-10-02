@@ -30,6 +30,7 @@ from agentdiag.run.manifest import (
 )
 from agentdiag.types import PROTECTED_BY_DEFAULT
 from agentdiag.workspace import Workspace
+from tests.fakes.workspace import warnings_of
 
 REPO = Path(__file__).resolve().parents[1]
 MANIFESTS = REPO / "tests" / "fixtures" / "manifests"
@@ -678,10 +679,6 @@ UNCOVERED = (
     "redaction: the Workspace .gitignore does not cover .agentdiag/targets/*/redaction.yaml; "
     "add that line, as `agentdiag init` writes it, so the names stay out of git"
 )
-
-
-def warnings_of(result: Any) -> list[str]:
-    return [line for line in result.stdout.splitlines() if line.startswith("warning:")]
 
 
 def a_repository(root: Path) -> None:

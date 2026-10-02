@@ -77,4 +77,4 @@ one Target, and `--root <path>` from outside it.
 | Carry a fix | `agentdiag change open`, `expect`, `propose`, `close` |
 | Refresh this page's table | `agentdiag registry --write` |
 
-Skills this agentdiag ships, installed by `agentdiag init --skills`: /agentdiag-correction, /agentdiag-discover, /agentdiag-fix-cycle, /agentdiag-generate.
+Skills this agentdiag ships, installed by `agentdiag init --skills`: /agentdiag-correction, /agentdiag-discover, /agentdiag-fix-cycle, /agentdiag-generate, /agentdiag-migrate.

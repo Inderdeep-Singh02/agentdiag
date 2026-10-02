@@ -1397,6 +1397,214 @@ all written as the toy by an older `init` is repaired the same way, Target by Ta
 `init --target <slug> --force` and the name flags; `--force` keeps `judge_notes.md`,
 `maintainer_notes.md` and `redaction.yaml`.
 
+## Migrate a Target from another maintenance repository
+
+A Target whose prompts, tests, judging rules and notes already live in another
+maintenance repository comes into a Workspace offline, before anything drives it: the skill
+`/agentdiag-migrate` describes it with `init --target`, copies its prompts and tool schemas
+under the Target directory, turns its tests into drafts for `generate`, and carries its
+judging rules and its maintainers' notes into the two notes files. The skill reads the source
+repository's own formats at its judgement steps, so nothing here parses them.
+
+`tests/fixtures/migrate/source/` is such a repository, invented: Ada, a public library's chat
+assistant, with a prompt (`prompts/system.md`, its rules under `# Rules`), two tool schemas
+(`tools/`), its tests in a format of its own (the four entries of its `tests/cases.json`),
+its maintainers' `NOTES.md` and a fix history, `HISTORY.md`. What a coding agent decided at
+the skill's judgement steps is committed beside it, under
+`tests/fixtures/migrate/judgement/`, and `tests/test_migrate_skill.py` runs the same steps.
+The identity first, each value from the source (the name from the prompt's persona, the
+Family from the library, the channel from "chat on the website only"):
+
+```bash
+uv run agentdiag init --root /tmp/agentdiag-migrate --target library-desk --name Ada --description "The Riverbend Public Library's chat assistant: looks titles up in the catalogue and renews loans for members." --family riverbend --channel chat
+```
+
+```
+Wrote the scaffold into /tmp/agentdiag-migrate:
+  .agentdiag/targets/library-desk/manifest.yaml
+  .agentdiag/targets/library-desk/suites/sample.yaml
+  .agentdiag/targets/library-desk/judge_notes.md
+  .agentdiag/targets/library-desk/maintainer_notes.md
+  .agentdiag/targets/library-desk/redaction.yaml
+  AGENTS.md
+  CLAUDE.md
+  GEMINI.md
+  .agentdiag/CONTEXT.md
+  .gitignore
+
+Target library-desk (Ada), family riverbend, channel chat; no Adapter yet (adapter.kind: pending).
+
+Next:
+  settle the 4 REVIEW lines in .agentdiag/targets/library-desk/manifest.yaml, then
+  agentdiag validate
+  agentdiag run --dry-run
+
+A judged Eval needs credentials: a Claude Code login (claude auth login) or export ANTHROPIC_API_KEY=….
+```
+
+The prompt and the tool schemas are copied, not pointed at in the source, so the Workspace
+holds the text a Sync will compare once a Connector reads the deployed set:
+
+```bash
+cp -r tests/fixtures/migrate/source/prompts tests/fixtures/migrate/source/tools /tmp/agentdiag-migrate/.agentdiag/targets/library-desk/
+```
+
+In the Manifest, two REVIEW lines are settled by hand and deleted, and the commented tools
+block is replaced. The environments come from `NOTES.md`, which says `prod` reaches the live
+website:
+
+```yaml
+    dev: {}
+    # The live website (the source's NOTES.md): never pushed to without the head
+    # librarian's go-ahead.
+    prod: {protected: true}
+```
+
+The prompt's pointer replaces the commented block:
+
+```yaml
+prompts:
+  system: prompts/system.md
+```
+
+And each tool gets its schema and a kind with the clause that defends it:
+
+```yaml
+tools:
+  # A catalogue lookup: it changes nothing.
+  find_book: {kind: retrieval, schema: tools/find_book.json}
+  # Extends a member's loan: it changes state, whatever else it does.
+  renew_loan: {kind: action, schema: tools/renew_loan.json}
+```
+
+The REVIEW lines left are the Adapter's `kind` and the Connector's, which this skill does
+not settle. The source's four tests become one draft each, in the shape the generation
+skill describes ([Generate a Suite](#generate-a-suite)): the rule each checks as its
+provenance, its user message as a literal Turn, the Evals that pass only when the
+rule holds, and the source's id in `notes`; the comment block at the top of the file holds
+what was read, the identity's sources and the list of the source's tests:
+
+```bash
+mkdir -p /tmp/agentdiag-migrate/.agentdiag/targets/library-desk/drafts
+cp tests/fixtures/migrate/judgement/riverbend.yaml /tmp/agentdiag-migrate/.agentdiag/targets/library-desk/drafts/
+```
+
+```yaml
+target: Ada
+suite: riverbend
+description: The source's tests/cases.json entries RB-01 to RB-04, one per rule of Ada's prompt.
+scenarios:
+  - provenance: prompt:system#rules
+    title: "Rule 1: a holding check goes through the catalogue"
+    notes: >-
+      RB-01 in the source's tests/cases.json. Rule 1: look a title up with find_book before
+      saying whether the library holds it; a pass cites the catalogue result, not memory.
+    tags: [rule-1, RB-01]
+    turns:
+      - "Do you have The Left Hand of Darkness?"
+    evals:
+      - expect_tools_order: [find_book]
+    focus: expect_tools_order
+```
+
+`init`'s sample Suite is marked retired before `generate` runs, so a plain `run` never
+spends a Judge on "Hello!" and the one `generate` write refreshes the Targets table with the
+Suites as they will stay. Until `sync` has written a Fingerprint, which it cannot for a
+pending Target, `generate --check` checks each draft's section against the headings of the
+prompt file the Manifest points at, and warns of one that names no heading:
+
+```bash
+sed -i 's|{path: suites/sample.yaml, status: draft}|{path: suites/sample.yaml, status: retired}|' /tmp/agentdiag-migrate/.agentdiag/targets/library-desk/manifest.yaml
+uv run agentdiag generate --root /tmp/agentdiag-migrate --target library-desk --from /tmp/agentdiag-migrate/.agentdiag/targets/library-desk/drafts/riverbend.yaml --check
+```
+
+```
+Would write /tmp/agentdiag-migrate/.agentdiag/targets/library-desk/suites/riverbend.yaml: 4 Scenarios, 4 new, 0 kept, 0 re-keyed, 0 retired.
+  new      rules-rule-1-a-holding-check-goes-through-the-catalogue   from prompt:system#rules
+  new      rules-rule-2-a-renewal-without-a-card-number-asks-for-it  from prompt:system#rules
+  new      rules-rule-3-no-fine-amount-in-chat                       from prompt:system#rules
+  new      rules-rule-4-asking-for-a-librarian-stops-the-assistant   from prompt:system#rules
+Would add suites/riverbend.yaml to the Manifest's suites.
+Nothing written (--check).
+```
+
+```bash
+uv run agentdiag generate --root /tmp/agentdiag-migrate --target library-desk --from /tmp/agentdiag-migrate/.agentdiag/targets/library-desk/drafts/riverbend.yaml
+```
+
+```
+Wrote /tmp/agentdiag-migrate/.agentdiag/targets/library-desk/suites/riverbend.yaml: 4 Scenarios, 4 new, 0 kept, 0 re-keyed, 0 retired.
+  new      rules-rule-1-a-holding-check-goes-through-the-catalogue   from prompt:system#rules
+  new      rules-rule-2-a-renewal-without-a-card-number-asks-for-it  from prompt:system#rules
+  new      rules-rule-3-no-fine-amount-in-chat                       from prompt:system#rules
+  new      rules-rule-4-asking-for-a-librarian-stops-the-assistant   from prompt:system#rules
+Added suites/riverbend.yaml to the Manifest's suites.
+Refreshed the Targets table in /tmp/agentdiag-migrate/AGENTS.md.
+
+Next:
+  agentdiag validate --root /tmp/agentdiag-migrate
+  agentdiag run --root /tmp/agentdiag-migrate --suite riverbend --dry-run
+```
+
+The two notes files are written: the source's "Judging" section, in general terms, into
+`judge_notes.md`, which every Judge prompt carries, with the Judge model checked against this
+Workspace's default (`agentdiag run --help`); its business, environments, traps and evidence
+under the five headings of `maintainer_notes.md`, which every skill reads first:
+
+```bash
+cp tests/fixtures/migrate/judgement/judge_notes.md tests/fixtures/migrate/judgement/maintainer_notes.md /tmp/agentdiag-migrate/.agentdiag/targets/library-desk/
+```
+
+`validate` passes it, exit 0, with the two warnings this skill does not settle, the pending
+Adapter and the REVIEW lines of the Adapter kind and the Connector; the generated Suite
+runs, so nothing says the Target has no runnable Suite:
+
+```bash
+uv run agentdiag validate --root /tmp/agentdiag-migrate --target library-desk
+```
+
+```
+warning: /tmp/agentdiag-migrate/.agentdiag/targets/library-desk/manifest.yaml: adapter.kind: pending: nothing drives this Target yet; set the Adapter kind and its environment block (the REVIEW lines in manifest.yaml name what to fill)
+warning: /tmp/agentdiag-migrate/.agentdiag/targets/library-desk/manifest.yaml: 2 lines marked REVIEW; settle each (accept or rewrite it) before a Run
+skipped: /tmp/agentdiag-migrate/.agentdiag/targets/library-desk/suites/sample.yaml: Suite status: retired
+validated the Manifest and 1 Suite: 0 errors, 2 warnings
+```
+
+`registry --write` finds the table `generate` refreshed already current, with Ada's row:
+
+```bash
+uv run agentdiag registry --root /tmp/agentdiag-migrate --write
+```
+
+```
+unchanged AGENTS.md
+unchanged CLAUDE.md
+unchanged GEMINI.md
+unchanged .agentdiag/CONTEXT.md
+```
+
+Nothing drives Ada yet, so the dry run refuses her by name, exit 3, and that is where the
+migration ends:
+
+```bash
+uv run agentdiag run --root /tmp/agentdiag-migrate --target library-desk --dry-run
+```
+
+```
+adapter.kind: pending: nothing drives this Target yet; set the Adapter kind and its environment block (the REVIEW lines in manifest.yaml name what to fill)
+```
+
+Three things stay in the source repository. Its **fix history**: a Change record closes only
+through `compare` (ADR-0012 §4), a history kept in another shape is not imported (§6), and a
+fix verified elsewhere has no baseline Run, no verifying Run and no comparison here, so
+`HISTORY.md` is named under "Where evidence lives" in `maintainer_notes.md` and none of it
+becomes a record; whether agentdiag should import closed records is an open decision. Its
+**Adapter and Connector**: the two REVIEW lines are settled with the discovery skill once the
+platform's plugin is installed ([Discover an unknown Target](#discover-an-unknown-target)),
+`--from-connector` reading the deployed set and `sync` fingerprinting it. Its
+**credentials**: a Manifest names an environment variable, and the person sets its value in
+`~/.agentdiag/env`, never in a file the migration writes.
+
 ## Operate it with a coding agent
 
 A coding agent runs in a Harness, and each Harness reads its project instructions from its
@@ -1513,7 +1721,7 @@ one Target, and `--root <path>` from outside it.
 | Carry a fix | `agentdiag change open`, `expect`, `propose`, `close` |
 | Refresh this page's table | `agentdiag registry --write` |
 
-Skills this agentdiag ships, installed by `agentdiag init --skills`: /agentdiag-correction, /agentdiag-discover, /agentdiag-fix-cycle, /agentdiag-generate.
+Skills this agentdiag ships, installed by `agentdiag init --skills`: /agentdiag-correction, /agentdiag-discover, /agentdiag-fix-cycle, /agentdiag-generate, /agentdiag-migrate.
 ```
 
 agentdiag never overwrites a file you own. A root `AGENTS.md` you wrote, without the
@@ -1590,6 +1798,7 @@ Installed the agentdiag skills under /tmp/agentdiag-shop/.agents/skills (the tra
   wrote .agents/skills/agentdiag-fix-cycle/SKILL.md
   wrote .agents/skills/agentdiag-generate/SKILL.md
   wrote .agents/skills/agentdiag-generate/scenario-reference.md
+  wrote .agents/skills/agentdiag-migrate/SKILL.md
 Where each Harness finds them:
   Codex and Gemini CLI read .agents/skills/ directly.
   Claude Code reads .claude/skills/:
@@ -1597,9 +1806,10 @@ Where each Harness finds them:
     linked .claude/skills/agentdiag-discover -> ../../.agents/skills/agentdiag-discover
     linked .claude/skills/agentdiag-fix-cycle -> ../../.agents/skills/agentdiag-fix-cycle
     linked .claude/skills/agentdiag-generate -> ../../.agents/skills/agentdiag-generate
+    linked .claude/skills/agentdiag-migrate -> ../../.agents/skills/agentdiag-migrate
 Orientation page: unchanged AGENTS.md, CLAUDE.md, GEMINI.md, .agentdiag/CONTEXT.md
 
-Invoke one by name (in Claude Code: /agentdiag-correction, /agentdiag-discover, /agentdiag-fix-cycle, /agentdiag-generate)
+Invoke one by name (in Claude Code: /agentdiag-correction, /agentdiag-discover, /agentdiag-fix-cycle, /agentdiag-generate, /agentdiag-migrate)
 ```
 
 Where the filesystem refuses a symlink, the Claude Code entry is a copy instead and its line
@@ -1872,6 +2082,7 @@ Installed the agentdiag skills under /tmp/agentdiag-discover/.agents/skills (the
   wrote .agents/skills/agentdiag-fix-cycle/SKILL.md
   wrote .agents/skills/agentdiag-generate/SKILL.md
   wrote .agents/skills/agentdiag-generate/scenario-reference.md
+  wrote .agents/skills/agentdiag-migrate/SKILL.md
 Where each Harness finds them:
   Codex and Gemini CLI read .agents/skills/ directly.
   Claude Code reads .claude/skills/:
@@ -1879,9 +2090,10 @@ Where each Harness finds them:
     linked .claude/skills/agentdiag-discover -> ../../.agents/skills/agentdiag-discover
     linked .claude/skills/agentdiag-fix-cycle -> ../../.agents/skills/agentdiag-fix-cycle
     linked .claude/skills/agentdiag-generate -> ../../.agents/skills/agentdiag-generate
+    linked .claude/skills/agentdiag-migrate -> ../../.agents/skills/agentdiag-migrate
 Orientation page: unchanged AGENTS.md, CLAUDE.md, GEMINI.md, .agentdiag/CONTEXT.md
 
-Invoke one by name (in Claude Code: /agentdiag-correction, /agentdiag-discover, /agentdiag-fix-cycle, /agentdiag-generate)
+Invoke one by name (in Claude Code: /agentdiag-correction, /agentdiag-discover, /agentdiag-fix-cycle, /agentdiag-generate, /agentdiag-migrate)
 ```
 
 ## Generate a Suite

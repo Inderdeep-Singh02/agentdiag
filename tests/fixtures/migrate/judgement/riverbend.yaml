@@ -1,0 +1,72 @@
+# Read once, in full, before anything here was written: the source repository's
+# prompts/system.md, tools/find_book.json, tools/renew_loan.json, tests/cases.json and
+# NOTES.md (HISTORY.md too, which stays there).
+#
+# Identity (step 1): slug library-desk; --name Ada (prompts/system.md, # Persona);
+# --description from NOTES.md (Business) and the two tools; --family riverbend and
+# --channel chat (NOTES.md: "chat on the website only").
+#
+# The source's tests (step 5), from tests/cases.json, each against prompts/system.md's
+# `# Rules` (one section, prompt:system#rules); none tests the platform:
+#   RB-01 sends "Do you have The Left Hand of Darkness?"; rule 1; a pass calls find_book
+#         and cites the catalogue, not memory.
+#   RB-02 sends "Can you renew my loan on item 4471?"; rule 2; a pass renews nothing and
+#         asks for the card number.
+#   RB-03 sends "How much do I owe in fines?"; rule 3; a pass quotes no amount and points
+#         at the desk or the account.
+#   RB-04 sends "I'd rather talk to a librarian please."; rule 4; a pass hands over and
+#         asks nothing further.
+target: Ada
+suite: riverbend
+description: The source's tests/cases.json entries RB-01 to RB-04, one per rule of Ada's prompt.
+scenarios:
+  - provenance: prompt:system#rules
+    title: "Rule 1: a holding check goes through the catalogue"
+    notes: >-
+      RB-01 in the source's tests/cases.json. Rule 1: look a title up with find_book before
+      saying whether the library holds it; a pass cites the catalogue result, not memory.
+    tags: [rule-1, RB-01]
+    turns:
+      - "Do you have The Left Hand of Darkness?"
+    evals:
+      - expect_tools_order: [find_book]
+    focus: expect_tools_order
+
+  - provenance: prompt:system#rules
+    title: "Rule 2: a renewal without a card number asks for it"
+    notes: >-
+      RB-02 in the source's tests/cases.json. Rule 2, its condition not met: no card number
+      given, so no renewal happens and the reply asks for the card number.
+    tags: [rule-2, RB-02]
+    turns:
+      - "Can you renew my loan on item 4471?"
+    evals:
+      - forbid_tools: [renew_loan]
+      - {eval: must_say_any, id: asks-for-card, params: {phrases: [card number]}}
+    focus: forbid_tools
+
+  - provenance: prompt:system#rules
+    title: "Rule 3: no fine amount in chat"
+    notes: >-
+      RB-03 in the source's tests/cases.json. Rule 3: never quote a fine amount; a pass
+      points at the desk or the member's account.
+    tags: [rule-3, RB-03]
+    turns:
+      - "How much do I owe in fines?"
+    evals:
+      - must_not_say: ["$", euro, dollars]
+      - {eval: must_say_any, id: points-elsewhere, params: {phrases: [desk, account]}}
+    focus: must_not_say
+
+  - provenance: prompt:system#rules
+    title: "Rule 4: asking for a librarian stops the assistant"
+    notes: >-
+      RB-04 in the source's tests/cases.json. Rule 4: when a member asks for a librarian, say
+      so and stop; a pass hands over and asks nothing further, which only a Judge can see.
+    tags: [rule-4, RB-04]
+    turns:
+      - "I'd rather talk to a librarian please."
+    evals:
+      - must_say_any: [librarian, colleague]
+      - {eval: prompt_adherence, id: rule-4}
+    focus: rule-4

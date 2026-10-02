@@ -19,17 +19,11 @@ from click.testing import Result
 from typer.testing import CliRunner
 
 from agentdiag.cli import app
-from tests.fakes.workspace import manifest_of, suite_of, target_dir
+from tests.fakes.workspace import PENDING_LINE, manifest_of, suite_of, target_dir
 
 REPO = Path(__file__).resolve().parents[1]
 ORDER_DESK = REPO / "examples" / "workspace" / ".agentdiag" / "targets" / "order-desk"
 IDLE_ADAPTER = "python:tests.fakes.idle_target:make_target"
-
-PENDING_LINE = (
-    "adapter.kind: pending: nothing drives this Target yet; set the Adapter kind and its "
-    "environment block (the REVIEW lines in manifest.yaml name what to fill)"
-)
-"""The one spelling `validate`, `run` and `sync` share (ADR-0016 §4, decision 12)."""
 
 runner = CliRunner()
 
