@@ -1,13 +1,19 @@
-"""Seam 1: `agentdiag init --skills` and the packaged skills (tickets 11, 12; ADR-0014 §3).
+"""Seam 1: `agentdiag init --skills` and the packaged skills (tickets 11, 12, 48; ADR-0014 §3,
+ADR-0016 §6).
 
-The skills ship as package data under `agentdiag/skills/<name>/`; `init --skills` copies
-each into `<root>/.claude/skills/agentdiag-<name>/`, leaves an unchanged one alone, and
-refuses to overwrite one an author edited unless `--force`.
+The skills ship as package data under `agentdiag/skills/<name>/`; `init --skills` writes
+each to the tracked copy `<root>/.agents/skills/agentdiag-<name>/`, which Codex and Gemini
+CLI read, and links `<root>/.claude/skills/agentdiag-<name>` to it for Claude Code, or copies
+it where the filesystem refuses the link. It leaves an unchanged skill alone, migrates a
+0.1.1 install, and refuses to overwrite one an author edited unless `--force`; `validate`
+warns when the two layouts disagree (0.1.2-interfaces decisions 19-21).
 """
 
 from __future__ import annotations
 
+import os
 import re
+import shutil
 from importlib.resources import files
 from pathlib import Path
 
@@ -16,7 +22,7 @@ import yaml
 from typer.testing import CliRunner
 
 from agentdiag.cli import app
-from agentdiag.run.skills import packaged_skills
+from agentdiag.run.skills import on_disk, packaged_contents, packaged_skills
 
 runner = CliRunner()
 
@@ -219,25 +225,99 @@ def test_discover_writes_the_notes_first_headings_and_generate_names_the_pending
     assert "still `pending` the dry run refuses by name" in step_9
 
 
+SKILLS = sorted(f"agentdiag-{name}" for name in packaged_skills())
+TRACKED = Path(".agents") / "skills"
+CLAUDE = Path(".claude") / "skills"
+REFUSED = (
+    "this filesystem refused a symlink; agentdiag validate warns when the copy differs from "
+    "the tracked copy"
+)
+
+
 def workspace(tmp_path: Path) -> Path:
     root = tmp_path / "shop"
     assert runner.invoke(app, ["init", "--root", str(root)]).exit_code == 0
     return root
 
 
-def test_init_skills_installs_every_packaged_skill(tmp_path: Path) -> None:
+def install(root: Path, *arguments: str) -> object:
+    return runner.invoke(app, ["init", "--root", str(root), "--skills", *arguments])
+
+
+def link_text(name: str) -> str:
+    return f"../../.agents/skills/{name}"
+
+
+packaged = packaged_contents
+
+
+def validate(root: Path) -> list[str]:
+    result = runner.invoke(app, ["validate", "--root", str(root)])
+    assert result.exit_code == 0, result.output
+    return result.stdout.splitlines()
+
+
+def refuse_symlinks(monkeypatch: pytest.MonkeyPatch, error: type[Exception] = OSError) -> None:
+    def refused(*_: object, **__: object) -> None:
+        raise error("symbolic links are not supported here")
+
+    monkeypatch.setattr(os, "symlink", refused)
+
+
+def an_0_1_1_install(root: Path) -> None:
+    """What 0.1.1's `init --skills` left: a real directory per skill under `.claude/skills/`,
+    equal to the package's, and nothing under `.agents/`."""
+    for name in SKILLS:
+        for path, data in packaged(name).items():
+            target = root / CLAUDE / name / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+
+
+def test_init_skills_writes_the_tracked_copy_and_links_claude_code_to_it(tmp_path: Path) -> None:
     root = workspace(tmp_path)
     before = sorted((root / ".agentdiag").rglob("*"))
 
-    result = runner.invoke(app, ["init", "--root", str(root), "--skills"])
+    result = install(root)
 
     assert result.exit_code == 0, result.output
-    for name in ("discover", "generate", "fix-cycle", "correction"):
-        installed = root / ".claude" / "skills" / f"agentdiag-{name}" / "SKILL.md"
-        packaged = files("agentdiag").joinpath("skills", name, "SKILL.md")
-        assert installed.read_bytes() == packaged.read_bytes()
-        assert f"/agentdiag-{name}" in result.stdout
+    lines = result.stdout.splitlines()
+    assert lines[0] == f"Installed the agentdiag skills under {root / TRACKED} (the tracked copy):"
+    for name in SKILLS:
+        assert on_disk(root / TRACKED / name) == packaged(name), name
+        entry = root / CLAUDE / name
+        assert entry.is_symlink(), name
+        assert Path(os.readlink(entry)).as_posix() == link_text(name)
+        assert on_disk(entry) == packaged(name), "Claude Code reads the tracked copy through it"
+        assert f"    linked {CLAUDE.as_posix()}/{name} -> {link_text(name)}" in lines
+        assert f"/{name}" in lines[-1]
+    for path in packaged("agentdiag-generate"):
+        assert f"  wrote .agents/skills/agentdiag-generate/{path.as_posix()}" in lines
+    assert "Where each Harness finds them:" in lines
+    assert "  Codex and Gemini CLI read .agents/skills/ directly." in lines
+    assert "  Claude Code reads .claude/skills/:" in lines
+    assert (
+        lines[-1]
+        == "Invoke one by name (in Claude Code: " + ", ".join(f"/{name}" for name in SKILLS) + ")"
+    )
+    for name in ("AGENTS.md", "CLAUDE.md", "GEMINI.md"):
+        assert (root / name).is_file(), name
     assert sorted((root / ".agentdiag").rglob("*")) == before
+
+
+def test_a_second_init_skills_prints_every_entry_unchanged(tmp_path: Path) -> None:
+    root = workspace(tmp_path)
+    assert install(root).exit_code == 0
+
+    again = install(root)
+
+    assert again.exit_code == 0, again.output
+    lines = again.stdout.splitlines()
+    for name in SKILLS:
+        assert f"    unchanged {CLAUDE.as_posix()}/{name} -> {link_text(name)}" in lines
+    assert "  unchanged .agents/skills/agentdiag-discover/SKILL.md" in lines
+    assert "  unchanged .agents/skills/agentdiag-generate/scenario-reference.md" in lines
+    assert not [line for line in lines if line.lstrip().startswith(("wrote", "linked", "copied"))]
 
 
 def test_init_skills_from_a_subdirectory_installs_under_the_workspace_root(
@@ -251,8 +331,10 @@ def test_init_skills_from_a_subdirectory_installs_under_the_workspace_root(
     result = runner.invoke(app, ["init", "--skills"])
 
     assert result.exit_code == 0, result.output
-    assert (root / ".claude" / "skills" / "agentdiag-discover" / "SKILL.md").is_file()
+    assert (root / TRACKED / "agentdiag-discover" / "SKILL.md").is_file()
+    assert (root / CLAUDE / "agentdiag-discover").is_symlink()
     assert not (inside / ".claude").exists()
+    assert not (inside / ".agents").exists()
 
 
 def test_init_skills_with_no_workspace_is_refused(
@@ -265,30 +347,236 @@ def test_init_skills_with_no_workspace_is_refused(
     assert result.exit_code == 3
     assert "agentdiag init" in result.output
     assert not (tmp_path / ".claude").exists()
+    assert not (tmp_path / ".agents").exists()
 
 
-def test_init_skills_is_idempotent(tmp_path: Path) -> None:
+def test_init_skills_keeps_an_edited_tracked_skill_unless_forced(tmp_path: Path) -> None:
     root = workspace(tmp_path)
-    runner.invoke(app, ["init", "--root", str(root), "--skills"])
+    assert install(root).exit_code == 0
+    edited = root / TRACKED / "agentdiag-discover" / "SKILL.md"
+    edited.write_text("our own procedure\n", encoding="utf-8")
 
-    again = runner.invoke(app, ["init", "--root", str(root), "--skills"])
-
-    assert again.exit_code == 0, again.output
-    assert "unchanged .claude/skills/agentdiag-discover/SKILL.md" in again.stdout
-    assert "unchanged .claude/skills/agentdiag-generate/SKILL.md" in again.stdout
-
-
-def test_init_skills_keeps_an_edited_skill_unless_forced(tmp_path: Path) -> None:
-    root = workspace(tmp_path)
-    runner.invoke(app, ["init", "--root", str(root), "--skills"])
-    installed = root / ".claude" / "skills" / "agentdiag-discover" / "SKILL.md"
-    installed.write_text("our own procedure\n", encoding="utf-8")
-
-    refused = runner.invoke(app, ["init", "--root", str(root), "--skills"])
+    refused = install(root)
     assert refused.exit_code == 3
-    assert str(installed) in refused.output
-    assert installed.read_text(encoding="utf-8") == "our own procedure\n"
+    assert str(edited) in refused.output
+    assert edited.read_text(encoding="utf-8") == "our own procedure\n"
 
-    forced = runner.invoke(app, ["init", "--root", str(root), "--skills", "--force"])
+    forced = install(root, "--force")
     assert forced.exit_code == 0, forced.output
-    assert installed.read_text(encoding="utf-8") != "our own procedure\n"
+    assert on_disk(edited.parent) == packaged("agentdiag-discover")
+
+
+@pytest.mark.parametrize("error", [OSError, NotImplementedError])
+def test_where_a_symlink_is_refused_claude_code_gets_a_copy_validate_watches(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, error: type[Exception]
+) -> None:
+    root = workspace(tmp_path)
+    refuse_symlinks(monkeypatch, error)
+
+    result = install(root)
+
+    assert result.exit_code == 0, result.output
+    lines = result.stdout.splitlines()
+    for name in SKILLS:
+        entry = root / CLAUDE / name
+        assert entry.is_dir() and not entry.is_symlink(), name
+        assert on_disk(entry) == on_disk(root / TRACKED / name) == packaged(name)
+        assert f"    copied {CLAUDE.as_posix()}/{name} ({REFUSED})" in lines
+    assert not [line for line in validate(root) if ".claude/skills" in line]
+
+    again = install(root)
+    assert again.exit_code == 0, again.output
+    for name in SKILLS:
+        assert f"    unchanged {CLAUDE.as_posix()}/{name} (a copy; {REFUSED})" in again.stdout
+
+    (root / CLAUDE / "agentdiag-generate" / "SKILL.md").write_text("tuned\n", encoding="utf-8")
+    assert (
+        "warning: .claude/skills/agentdiag-generate: differs from "
+        ".agents/skills/agentdiag-generate; the copy was edited; move the edit into "
+        ".agents/skills/agentdiag-generate, or agentdiag init --skills --force restores it"
+    ) in validate(root)
+
+
+def test_on_the_fallback_an_edit_to_the_tracked_copy_is_carried_over_without_force(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The Tracked copy is the edit's home; `--force` would reset it to the package's, so it
+    is not the remedy `validate` names (0.1.2-interfaces decision 21 as amended)."""
+    root = workspace(tmp_path)
+    refuse_symlinks(monkeypatch)
+    assert install(root).exit_code == 0
+    (root / TRACKED / "agentdiag-discover" / "SKILL.md").write_text("ours\n", encoding="utf-8")
+
+    warned = [line for line in validate(root) if "agentdiag-discover" in line]
+
+    assert warned == [
+        "warning: .claude/skills/agentdiag-discover: differs from "
+        ".agents/skills/agentdiag-discover, whose edit this copy lacks (this filesystem refuses "
+        "symlinks); copy .agents/skills/agentdiag-discover over it"
+    ]
+    assert "--force" not in warned[0]
+
+    (root / CLAUDE / "agentdiag-discover" / "SKILL.md").write_text("theirs\n", encoding="utf-8")
+    assert [line for line in validate(root) if "agentdiag-discover" in line] == [
+        "warning: .claude/skills/agentdiag-discover: differs from "
+        ".agents/skills/agentdiag-discover; both the copy and .agents/skills/agentdiag-discover "
+        "were edited; reconcile them by hand into .agents/skills/agentdiag-discover"
+    ]
+    shutil.copytree(
+        root / TRACKED / "agentdiag-discover",
+        root / CLAUDE / "agentdiag-discover",
+        dirs_exist_ok=True,
+    )
+    assert not [line for line in validate(root) if "agentdiag-discover" in line]
+
+
+def test_a_0_1_1_install_becomes_the_link_layout_without_force(tmp_path: Path) -> None:
+    root = workspace(tmp_path)
+    an_0_1_1_install(root)
+
+    result = install(root)
+
+    assert result.exit_code == 0, result.output
+    for name in SKILLS:
+        entry = root / CLAUDE / name
+        assert entry.is_symlink(), name
+        assert Path(os.readlink(entry)).as_posix() == link_text(name)
+        assert on_disk(root / TRACKED / name) == packaged(name)
+        assert (
+            f"    linked {CLAUDE.as_posix()}/{name} -> {link_text(name)} (replaced what was there)"
+        ) in result.stdout.splitlines()
+    assert not [line for line in validate(root) if "skills/" in line]
+
+
+def test_an_edited_0_1_1_install_is_refused_by_name_and_replaced_with_force(
+    tmp_path: Path,
+) -> None:
+    root = workspace(tmp_path)
+    an_0_1_1_install(root)
+    edited = root / CLAUDE / "agentdiag-fix-cycle" / "SKILL.md"
+    edited.write_text("our fix cycle\n", encoding="utf-8")
+
+    refused = install(root)
+
+    assert refused.exit_code == 3
+    assert str(edited) in refused.output
+    assert (
+        "differ from this agentdiag's packaged skills (edited, or installed by an earlier version)"
+    ) in " ".join(refused.output.split())
+    assert "agentdiag init --skills --force replaces them" in " ".join(refused.output.split())
+    assert not (root / ".agents").exists(), "nothing is written before the refusal"
+    assert edited.read_text(encoding="utf-8") == "our fix cycle\n"
+
+    forced = install(root, "--force")
+
+    assert forced.exit_code == 0, forced.output
+    entry = root / CLAUDE / "agentdiag-fix-cycle"
+    assert entry.is_symlink()
+    assert on_disk(entry) == packaged("agentdiag-fix-cycle")
+
+
+def test_a_plain_file_where_the_link_belongs_is_refused_unless_forced(tmp_path: Path) -> None:
+    """A Windows checkout without `core.symlinks` turns a committed symlink into a text file
+    holding the link's target."""
+    root = workspace(tmp_path)
+    assert install(root).exit_code == 0
+    entry = root / CLAUDE / "agentdiag-correction"
+    entry.unlink()
+    entry.write_text(link_text("agentdiag-correction"), encoding="utf-8")
+    assert (
+        "warning: .claude/skills/agentdiag-correction: a file, not a link or a copy (a checkout "
+        "without core.symlinks); Claude Code finds no such skill; agentdiag init --skills "
+        "--force replaces it"
+    ) in validate(root)
+
+    refused = install(root)
+    assert refused.exit_code == 3
+    assert str(entry) in refused.output
+    assert entry.is_file() and not entry.is_symlink()
+
+    forced = install(root, "--force")
+    assert forced.exit_code == 0, forced.output
+    assert entry.is_symlink()
+    assert Path(os.readlink(entry)).as_posix() == link_text("agentdiag-correction")
+
+
+def test_a_link_to_somewhere_else_is_refused_unless_forced(tmp_path: Path) -> None:
+    root = workspace(tmp_path)
+    assert install(root).exit_code == 0
+    elsewhere = tmp_path / "our-skills" / "discover"
+    elsewhere.mkdir(parents=True)
+    (elsewhere / "SKILL.md").write_text("ours\n", encoding="utf-8")
+    entry = root / CLAUDE / "agentdiag-discover"
+    entry.unlink()
+    os.symlink(elsewhere, entry, target_is_directory=True)
+
+    assert (
+        f"warning: .claude/skills/agentdiag-discover: a link to {elsewhere}, not to the tracked "
+        "copy; Claude Code reads another skill under this name; agentdiag init --skills "
+        "--force links it"
+    ) in validate(root)
+
+    refused = install(root)
+    assert refused.exit_code == 3
+    assert str(entry) in refused.output
+    assert entry.resolve() == elsewhere.resolve()
+
+    forced = install(root, "--force")
+    assert forced.exit_code == 0, forced.output
+    assert Path(os.readlink(entry)).as_posix() == link_text("agentdiag-discover")
+    assert (elsewhere / "SKILL.md").read_text(encoding="utf-8") == "ours\n", "only the link went"
+
+
+def test_validate_warns_of_a_skill_one_layout_holds_and_the_other_lacks(tmp_path: Path) -> None:
+    root = workspace(tmp_path)
+    assert install(root).exit_code == 0
+    quiet = validate(root)
+    assert not [line for line in quiet if "skills/" in line]
+
+    (root / CLAUDE / "agentdiag-discover").unlink()
+    no_link = validate(root)
+    assert (
+        "warning: .claude/skills/agentdiag-discover: absent; Claude Code finds no such skill; "
+        "agentdiag init --skills links it"
+    ) in no_link
+    assert no_link[-1] != quiet[-1], "the warning is counted in the summary line"
+
+    assert install(root).exit_code == 0
+    shutil.rmtree(root / TRACKED / "agentdiag-generate")
+    (root / CLAUDE / "agentdiag-generate").unlink()
+    shutil.copytree(
+        root / TRACKED / "agentdiag-discover",
+        root / CLAUDE / "agentdiag-generate",
+    )
+    assert (
+        "warning: .agents/skills/agentdiag-generate: absent; Codex and Gemini CLI find no such "
+        "skill; agentdiag init --skills writes the tracked copy"
+    ) in validate(root)
+
+
+def test_a_dangling_link_is_the_tracked_copy_absent(tmp_path: Path) -> None:
+    root = workspace(tmp_path)
+    assert install(root).exit_code == 0
+    shutil.rmtree(root / TRACKED / "agentdiag-correction")
+
+    assert (
+        "warning: .agents/skills/agentdiag-correction: absent; Codex and Gemini CLI find no "
+        "such skill, and Claude Code's link dangles; agentdiag init --skills writes the "
+        "tracked copy"
+    ) in validate(root)
+    assert install(root).exit_code == 0
+    assert on_disk(root / CLAUDE / "agentdiag-correction") == packaged("agentdiag-correction")
+
+
+def test_a_workspace_with_skills_of_its_own_keeps_them(tmp_path: Path) -> None:
+    """The links are per skill (ADR-0016 §6), so a repository's own skills beside them are
+    never touched, and `validate` never speaks of them."""
+    root = workspace(tmp_path)
+    ours = root / CLAUDE / "release-notes" / "SKILL.md"
+    ours.parent.mkdir(parents=True)
+    ours.write_text("ours\n", encoding="utf-8")
+
+    assert install(root).exit_code == 0
+
+    assert ours.read_text(encoding="utf-8") == "ours\n"
+    assert not [line for line in validate(root) if "release-notes" in line]

@@ -594,7 +594,7 @@ def test_the_orientation_walkthrough_prints_what_the_guide_shows(tmp_path: Path)
             return ""
         result = runner.invoke(app, words[3:])
         assert result.exit_code == 0, f"`{line}` exited {result.exit_code}: {result.output}"
-        return result.stdout
+        return result.stdout.replace(root.as_posix(), DOCUMENTED_ROOT)
 
     for language, body in blocks():
         if language == "bash":
@@ -612,11 +612,42 @@ def test_the_orientation_walkthrough_prints_what_the_guide_shows(tmp_path: Path)
             assert pending == body
             compared += 1
             pending = None
-    assert compared == 4
+    assert compared == 5
     assert "Harness" in fenced_section(ORIENTATION_SECTION)
     for harness, reads in (("Codex", "AGENTS.md"), ("Claude Code", "CLAUDE.md")):
         assert f"| {harness} | `{reads}` |" in fenced_section(ORIENTATION_SECTION)
     assert "| Gemini CLI | `GEMINI.md` |" in fenced_section(ORIENTATION_SECTION)
+
+    section = fenced_section(ORIENTATION_SECTION)
+    for layout in ("`.agents/skills/agentdiag-<name>/`", "`core.symlinks`", "`--force`"):
+        assert layout in section, layout
+
+
+README_OPERATE = "## Operate it with a coding agent"
+README_ROOT = "/tmp/agentdiag-demo"
+
+
+def test_the_readme_install_block_is_what_init_skills_prints(tmp_path: Path) -> None:
+    """The README's "Operate it with a coding agent" (ticket 48): its `init --skills` line,
+    typed into a Workspace the first Run's `init` made, prints the block it shows; the
+    section names the three Harnesses with the file each reads, and the skills layout."""
+    text = (REPO / "README.md").read_text(encoding="utf-8")
+    start = text.index(README_OPERATE)
+    section = text[start : text.index("\n## ", start + 1)]
+    root = tmp_path / "agentdiag-demo"
+    assert runner.invoke(app, ["init", "--root", str(root)]).exit_code == 0
+    (_, command), (_, shown) = [(m.group(1), m.group(2)) for m in BLOCK.finditer(section)]
+    words = [w.replace(README_ROOT, root.as_posix()) for w in shlex.split(command.strip())]
+    assert words[:3] == ["uv", "run", "agentdiag"]
+
+    result = runner.invoke(app, words[3:])
+
+    assert result.exit_code == 0, result.output
+    assert result.stdout.replace(root.as_posix(), README_ROOT) == shown
+    for harness, reads in (("Codex", "AGENTS.md"), ("Claude Code", "CLAUDE.md")):
+        assert f"`{reads}`" in section and harness in section
+    assert "`GEMINI.md`" in section and "Gemini CLI" in section
+    assert "`.agents/skills/`" in section and "`.claude/skills/`" in section
 
 
 DESCRIBE_SECTION = "## Describe a Target before it is connected"

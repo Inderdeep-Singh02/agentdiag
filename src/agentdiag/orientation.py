@@ -43,7 +43,12 @@ from importlib.resources import files
 from pathlib import Path
 
 from agentdiag.registry import RegistryEntry, registry, suites_shown
-from agentdiag.run.skills import INSTALLED_PREFIX, installed_layouts, packaged_skills
+from agentdiag.run.skills import (
+    INSTALLED_PREFIX,
+    installed_layouts,
+    layout_warnings,
+    packaged_skills,
+)
 from agentdiag.sync.fingerprint import NONE_SHOWN
 from agentdiag.workspace import AGENTDIAG_DIR, VOCABULARY_FILE, Workspace
 
@@ -433,7 +438,9 @@ def orientation_warnings(workspace: Workspace) -> list[str]:
     """The Workspace-level `warning: <file>: <message>` lines `validate` prints before a
     Target's (decision 3 as amended). A stale table is warned of everywhere: the block is
     agentdiag's and it is wrong. Everything else (a page without markers, an import without
-    its line, an absent file) only where skills are installed."""
+    its line, an absent file) only where skills are installed, and last the skills
+    layouts' own disagreements (`run.skills.layout_warnings`, decision 21), which exist only
+    where an `agentdiag-*` entry does."""
     state = _inspect(workspace)
     warnings: list[str] = []
     block = state.page.block() if state.page is not None else None
@@ -459,6 +466,7 @@ def orientation_warnings(workspace: Workspace) -> list[str]:
             warnings.append(f"{name}: does not import {ORIENTATION_NAME} (add the line {line})")
     if not workspace.vocabulary.is_file():
         warnings.append(_absent(VOCABULARY_NAME, "a coding agent finds no vocabulary"))
+    warnings += layout_warnings(workspace.root)
     return [f"warning: {warning}" for warning in warnings]
 
 

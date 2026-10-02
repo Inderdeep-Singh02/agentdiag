@@ -269,9 +269,9 @@ def init(
         False,
         "--skills",
         help=(
-            "Install agentdiag's skills under the Workspace root's .claude/skills/ (the "
-            "nearest Workspace, or --root's) instead of scaffolding a Target; an edited one "
-            "is kept unless --force."
+            "Install agentdiag's skills under the Workspace root's .agents/skills/ (the "
+            "nearest Workspace, or --root's), linked from .claude/skills/, instead of "
+            "scaffolding a Target; an edited one is kept unless --force."
         ),
     ),
 ) -> None:

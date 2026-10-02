@@ -1025,7 +1025,7 @@ fake endpoint on `127.0.0.1`.
 A Suite is YAML (or JSON) in the one Scenario schema: literal Turns and `simulate` Turns,
 typed Eval declarations with a short form (`- expect_tools: [cancel_order]`), Suite-level
 Evals every Scenario inherits, named Fixtures, `focus`, `continues`, `ground_truth` and
-`not_run`. `.claude/skills/agentdiag-generate/scenario-reference.md`, which `agentdiag init --skills` installs in any Workspace,
+`not_run`. `.agents/skills/agentdiag-generate/scenario-reference.md`, which `agentdiag init --skills` installs in any Workspace,
 has every key and every Eval with its real parameters, generated from the code; the JSON
 Schema editors read is
 [`schemas/suite.schema.json`](../schemas/suite.schema.json).
@@ -1135,7 +1135,7 @@ also covers the Judge's Backend and, for Claude Code, the CLI version, so a Run 
 through another path says so in `compare`. A
 judged declaration may name its own `judge: {model, effort}`, and a Judge that resolves to
 the Target's own model is flagged on every Score and warned of in the summary.
-`.claude/skills/agentdiag-generate/scenario-reference.md` has every judged Eval and what it reads;
+`.agents/skills/agentdiag-generate/scenario-reference.md` has every judged Eval and what it reads;
 [`docs/judge-notes.md`](judge-notes.md) what belongs in the notes.
 
 Check a Suite offline — no network, no credentials:
@@ -1202,7 +1202,7 @@ model that marks the Simulated User's own faults `invalid` rather than blaming t
 `run` takes `--simulated-user-model`, `--simulated-user-effort`,
 `--simulated-user-temperature` and `--reviewer-model` (`rescore` takes `--reviewer-model`);
 a Turn may take the environment's `turn_timeout` seconds, 600 by default.
-`.claude/skills/agentdiag-generate/scenario-reference.md` has the `simulate` Turn's keys in full.
+`.agents/skills/agentdiag-generate/scenario-reference.md` has the `simulate` Turn's keys in full.
 
 ## Point it at a Workspace of Targets
 
@@ -1571,6 +1571,56 @@ its import line, and of an absent page, import file or vocabulary copy; until th
 Workspace in a corner of a repository with instruction files of its own is not told to
 change them.
 
+The page routes each request to a skill, and `init --skills` installs the skills so that all
+three Harnesses find them from one tracked copy. Each skill is written once under
+`.agents/skills/agentdiag-<name>/`, which Codex and Gemini CLI read directly, and
+`.claude/skills/agentdiag-<name>` is a relative symlink to it, one per skill, which is how
+Claude Code reaches it; a skill of the repository's own beside them is never touched. An edit
+has one home, the tracked copy, and is committed with the rest of the Workspace, links
+included:
+
+```bash
+uv run agentdiag init --root /tmp/agentdiag-shop --skills
+```
+
+```
+Installed the agentdiag skills under /tmp/agentdiag-shop/.agents/skills (the tracked copy):
+  wrote .agents/skills/agentdiag-correction/SKILL.md
+  wrote .agents/skills/agentdiag-discover/SKILL.md
+  wrote .agents/skills/agentdiag-fix-cycle/SKILL.md
+  wrote .agents/skills/agentdiag-generate/SKILL.md
+  wrote .agents/skills/agentdiag-generate/scenario-reference.md
+Where each Harness finds them:
+  Codex and Gemini CLI read .agents/skills/ directly.
+  Claude Code reads .claude/skills/:
+    linked .claude/skills/agentdiag-correction -> ../../.agents/skills/agentdiag-correction
+    linked .claude/skills/agentdiag-discover -> ../../.agents/skills/agentdiag-discover
+    linked .claude/skills/agentdiag-fix-cycle -> ../../.agents/skills/agentdiag-fix-cycle
+    linked .claude/skills/agentdiag-generate -> ../../.agents/skills/agentdiag-generate
+Orientation page: unchanged AGENTS.md, CLAUDE.md, GEMINI.md, .agentdiag/CONTEXT.md
+
+Invoke one by name (in Claude Code: /agentdiag-correction, /agentdiag-discover, /agentdiag-fix-cycle, /agentdiag-generate)
+```
+
+Where the filesystem refuses a symlink, the Claude Code entry is a copy instead and its line
+reads `copied .claude/skills/agentdiag-<name> (this filesystem refused a symlink; agentdiag
+validate warns when the copy differs from the tracked copy)`. `validate` compares such a copy
+with the tracked copy and both with the package, and names the side that was edited with the
+remedy that loses nothing: an edit made in the tracked copy, where edits belong, is carried
+over by copying `.agents/skills/agentdiag-<name>` over the Claude Code copy; an edit made in
+the copy is moved into the tracked copy, or dropped with `init --skills --force`; an edit on
+both sides is reconciled by hand. In every Workspace with skills installed `validate` also
+warns of a skill one layout holds and the other lacks, naming the Harness that cannot find
+it, and of a link pointing anywhere else; a link to the tracked copy is never compared,
+because it reads the tracked copy itself. A Windows clone without `core.symlinks` checks each
+committed link out as a text file holding its target: Claude Code finds no skill there,
+`validate` says so, and `init --skills --force` replaces the files with links (or copies);
+`--force` also resets every edited tracked skill to the package's, so commit or set aside an
+edit first. A Workspace installed by 0.1.1, with real directories under `.claude/skills/`, is
+refused by name, because every packaged skill has changed since; once `git diff` shows no
+edit of your own there, `init --skills --force` replaces them with this layout. A directory
+that already holds this package's files becomes a link with no `--force`.
+
 ## Keep the Target in Sync
 
 A Fingerprint is the hash of everything the Manifest points at, section by section: each
@@ -1805,7 +1855,8 @@ Next: accept or rewrite every REVIEW line, then
 Both flags at once suit a Target whose repository holds the Adapter and whose platform
 holds the prompt. The review itself is a coding agent's job, and agentdiag ships the
 procedure as a skill: `init --skills` installs it under the Workspace root's
-`.claude/skills/`, where Claude Code runs it as `/agentdiag-discover`. It marks each step code, judgement or human (a
+`.agents/skills/`, linked from `.claude/skills/` (see "Operate it with a coding agent"), and a
+coding agent runs it as `/agentdiag-discover`. It marks each step code, judgement or human (a
 credential is a variable the person exports, never a value in the conversation), and is
 done when `validate` is clean, no REVIEW line is left, `sync --check` holds and `registry`
 lists the Target. An installed skill someone edited is kept unless `--force`:
@@ -1815,15 +1866,22 @@ uv run agentdiag init --root /tmp/agentdiag-discover --skills
 ```
 
 ```
-Installed the agentdiag skills under /tmp/agentdiag-discover/.claude/skills:
-  wrote .claude/skills/agentdiag-correction/SKILL.md
-  wrote .claude/skills/agentdiag-discover/SKILL.md
-  wrote .claude/skills/agentdiag-fix-cycle/SKILL.md
-  wrote .claude/skills/agentdiag-generate/SKILL.md
-  wrote .claude/skills/agentdiag-generate/scenario-reference.md
+Installed the agentdiag skills under /tmp/agentdiag-discover/.agents/skills (the tracked copy):
+  wrote .agents/skills/agentdiag-correction/SKILL.md
+  wrote .agents/skills/agentdiag-discover/SKILL.md
+  wrote .agents/skills/agentdiag-fix-cycle/SKILL.md
+  wrote .agents/skills/agentdiag-generate/SKILL.md
+  wrote .agents/skills/agentdiag-generate/scenario-reference.md
+Where each Harness finds them:
+  Codex and Gemini CLI read .agents/skills/ directly.
+  Claude Code reads .claude/skills/:
+    linked .claude/skills/agentdiag-correction -> ../../.agents/skills/agentdiag-correction
+    linked .claude/skills/agentdiag-discover -> ../../.agents/skills/agentdiag-discover
+    linked .claude/skills/agentdiag-fix-cycle -> ../../.agents/skills/agentdiag-fix-cycle
+    linked .claude/skills/agentdiag-generate -> ../../.agents/skills/agentdiag-generate
 Orientation page: unchanged AGENTS.md, CLAUDE.md, GEMINI.md, .agentdiag/CONTEXT.md
 
-Invoke one in Claude Code by name: /agentdiag-correction, /agentdiag-discover, /agentdiag-fix-cycle, /agentdiag-generate
+Invoke one by name (in Claude Code: /agentdiag-correction, /agentdiag-discover, /agentdiag-fix-cycle, /agentdiag-generate)
 ```
 
 ## Generate a Suite

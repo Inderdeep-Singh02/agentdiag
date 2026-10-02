@@ -769,7 +769,7 @@ scenarios:
 {tags}    # Literal user messages, in order. One Turn is one user message and the Target's
     # complete response to it. A `- simulate: {{goal, stop_when}}` Turn, with `max_turns` on
     # the Scenario, would hand the rest of the conversation to a Simulated User. Every
-    # field and every Eval's parameters: .claude/skills/agentdiag-generate/scenario-reference.md,
+    # field and every Eval's parameters: .agents/skills/agentdiag-generate/scenario-reference.md,
     # which `agentdiag init --skills` installs.
     turns:
       - {scalar(scaffold.turn, quoted=True)}

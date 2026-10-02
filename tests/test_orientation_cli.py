@@ -384,7 +384,7 @@ def test_the_read_set_fits_the_budget(tmp_path: Path) -> None:
     page = (root / "AGENTS.md").read_text(encoding="utf-8")
     assert len(rows(between_markers(page))) == 10
     longest = max(
-        (path.read_text(encoding="utf-8") for path in (root / ".claude").rglob("SKILL.md")),
+        (path.read_text(encoding="utf-8") for path in (root / ".agents").rglob("SKILL.md")),
         key=len,
     )
     vocabulary = (root / ".agentdiag" / "CONTEXT.md").read_text(encoding="utf-8")

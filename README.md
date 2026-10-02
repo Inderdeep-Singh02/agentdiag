@@ -181,10 +181,14 @@ Manifest names a kind, and core finds the class by name. A plugin imports only t
 API named in [`docs/plugins.md`](docs/plugins.md) and proves itself with the conformance
 suites core ships.
 
-## Skills
+## Operate it with a coding agent
 
-Four Claude Code skills, invoked by name (`/agentdiag-fix-cycle`), make a coding agent
-operate agentdiag; each is a procedure calling agentdiag commands and never a platform's:
+A coding agent runs in a Harness, and `init` writes the file each Harness reads at the
+Workspace root: `AGENTS.md`, the Orientation page, for Codex; `CLAUDE.md`, the one line
+`@AGENTS.md` importing it, for Claude Code; `GEMINI.md`, the one line `@./AGENTS.md`
+importing it, for Gemini CLI. The page routes each request to a skill, a procedure calling
+agentdiag commands and never a platform's, invoked by name (in Claude Code,
+`/agentdiag-fix-cycle`):
 
 | Skill | Does |
 |-------|------|
@@ -194,8 +198,32 @@ operate agentdiag; each is a procedure calling agentdiag commands and never a pl
 | `agentdiag-correction` | Correct a Score the Judge or an Eval got wrong, through the Judge's notes, an Eval's parameters or a Suppression that sets a known false fail aside, and prove it with `rescore` and `compare` |
 
 ```bash
-uv run agentdiag init --root /tmp/agentdiag-demo --skills   # installs them under the Workspace root's .claude/skills/
+uv run agentdiag init --root /tmp/agentdiag-demo --skills
 ```
+
+```
+Installed the agentdiag skills under /tmp/agentdiag-demo/.agents/skills (the tracked copy):
+  wrote .agents/skills/agentdiag-correction/SKILL.md
+  wrote .agents/skills/agentdiag-discover/SKILL.md
+  wrote .agents/skills/agentdiag-fix-cycle/SKILL.md
+  wrote .agents/skills/agentdiag-generate/SKILL.md
+  wrote .agents/skills/agentdiag-generate/scenario-reference.md
+Where each Harness finds them:
+  Codex and Gemini CLI read .agents/skills/ directly.
+  Claude Code reads .claude/skills/:
+    linked .claude/skills/agentdiag-correction -> ../../.agents/skills/agentdiag-correction
+    linked .claude/skills/agentdiag-discover -> ../../.agents/skills/agentdiag-discover
+    linked .claude/skills/agentdiag-fix-cycle -> ../../.agents/skills/agentdiag-fix-cycle
+    linked .claude/skills/agentdiag-generate -> ../../.agents/skills/agentdiag-generate
+Orientation page: unchanged AGENTS.md, CLAUDE.md, GEMINI.md, .agentdiag/CONTEXT.md
+
+Invoke one by name (in Claude Code: /agentdiag-correction, /agentdiag-discover, /agentdiag-fix-cycle, /agentdiag-generate)
+```
+
+The skills live in one tracked copy under `.agents/skills/`, which Codex and Gemini CLI read
+directly, with a symlink per skill under `.claude/skills/` for Claude Code; where the
+filesystem refuses a symlink a copy is written, and `agentdiag validate` warns when it differs
+from the tracked copy ([the layout](docs/guide.md#operate-it-with-a-coding-agent)).
 
 ## Documentation
 

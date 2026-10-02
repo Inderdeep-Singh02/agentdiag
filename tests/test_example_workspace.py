@@ -11,7 +11,10 @@ does not follow fails here rather than drifting.
 
 At the root it carries the Orientation page, its two import files and the vocabulary copy,
 as `init` and `init --skills` write them (ticket 45, ADR-0016 §1-§2), gated against what
-`orientation` renders over the example's own Registry.
+`orientation` renders over the example's own Registry. The skills are in both layouts
+(ticket 48, ADR-0016 §6): the tracked copy under `.agents/skills/`, and under
+`.claude/skills/` one committed symlink per skill, which a checkout without symlinks holds as
+a byte-equal copy.
 
 The help desk is gated by the commands that write it: `discover --from-connector` drafts its
 Manifest (with nothing to add) and saves its prompt and tool schemas, `generate --from
@@ -20,6 +23,7 @@ drafts/generated.yaml` writes its Suite, and `sync` its Fingerprint, each byte f
 
 from __future__ import annotations
 
+import os
 import shutil
 from dataclasses import replace
 from pathlib import Path
@@ -35,7 +39,15 @@ from agentdiag.orientation import (
 )
 from agentdiag.registry import registry
 from agentdiag.run.init import GITIGNORE_LINES, ignore_outputs
-from agentdiag.run.skills import CLAUDE_SKILLS, INSTALLED_PREFIX, _contents, packaged_skills
+from agentdiag.run.skills import (
+    CLAUDE_SKILLS,
+    INSTALLED_PREFIX,
+    TRACKED_SKILLS,
+    link_target,
+    on_disk,
+    packaged_contents,
+    packaged_skills,
+)
 from agentdiag.run.templates import (
     JUDGE_NOTES_STARTER,
     MAINTAINER_NOTES_STARTER,
@@ -77,6 +89,7 @@ def test_the_workspace_holds_the_order_desk_and_the_help_desk_and_nothing_else()
     assert held == ["CONTEXT.md", "targets"]
     assert sorted(p.name for p in WORKSPACE.iterdir()) == [
         ".agentdiag",
+        ".agents",
         ".claude",
         ".gitignore",
         "AGENTS.md",
@@ -149,19 +162,35 @@ def test_the_gitignore_is_what_init_writes(tmp_path: Path) -> None:
     assert (WORKSPACE / ".gitignore").read_bytes() == fresh.read_bytes()
 
 
-def test_the_installed_skills_are_the_packaged_ones_byte_for_byte() -> None:
-    """What `init --skills` copied; the walkthrough agent reads these, so a skill fixed in
-    the package and not re-installed here fails."""
-    installed = WORKSPACE / CLAUDE_SKILLS
+def test_the_tracked_skills_are_the_packaged_ones_byte_for_byte() -> None:
+    """What `init --skills` wrote under `.agents/skills/`; the walkthrough agent reads these,
+    so a skill fixed in the package and not re-installed here fails."""
+    tracked = WORKSPACE / TRACKED_SKILLS
     packaged = packaged_skills()
 
-    assert sorted(p.name for p in installed.iterdir()) == sorted(
+    assert sorted(p.name for p in tracked.iterdir()) == sorted(
         f"{INSTALLED_PREFIX}{name}" for name in packaged
     )
-    for name, skill in packaged.items():
-        here = installed / f"{INSTALLED_PREFIX}{name}"
-        on_disk = {p.relative_to(here): p.read_bytes() for p in here.rglob("*") if p.is_file()}
-        assert on_disk == _contents(skill), name
+    for name in packaged:
+        assert on_disk(tracked / f"{INSTALLED_PREFIX}{name}") == packaged_contents(name), name
+
+
+def test_claude_code_reaches_each_skill_through_a_link_or_a_byte_equal_copy() -> None:
+    """The links are committed (0.1.2-interfaces decision 22); a checkout without
+    `core.symlinks` holds them as copies, accepted while they equal the package's."""
+    claude = WORKSPACE / CLAUDE_SKILLS
+    packaged = packaged_skills()
+
+    assert sorted(p.name for p in claude.iterdir()) == sorted(
+        f"{INSTALLED_PREFIX}{name}" for name in packaged
+    )
+    for name in packaged:
+        entry = claude / f"{INSTALLED_PREFIX}{name}"
+        if entry.is_symlink():
+            assert Path(os.readlink(entry)).as_posix() == link_target(entry.name), name
+        else:
+            assert entry.is_dir(), f"{name}: a file, not a link or a copy"
+            assert on_disk(entry) == packaged_contents(name), name
 
 
 def help_desk_copy(tmp_path: Path) -> Path:
@@ -169,6 +198,7 @@ def help_desk_copy(tmp_path: Path) -> Path:
     shutil.copytree(
         WORKSPACE,
         root,
+        symlinks=True,
         ignore=shutil.ignore_patterns(
             "runs", "restore-points", "platform", "sync-breaks", "index.sqlite"
         ),

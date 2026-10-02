@@ -116,6 +116,12 @@ The coding agent's runtime that reads the Orientation page and runs the skills: 
 Codex or Gemini CLI.
 _Avoid_: agent (what runs in it), IDE, tool, platform (the Target's side)
 
+**Tracked copy**:
+The one copy of the installed skills, under `.agents/skills/`, that every Harness reads
+directly or through a link: a Harness directory holds a link to it, or a copy where the
+filesystem refuses links, and `validate` warns when such a copy differs from it (ADR-0016).
+_Avoid_: canonical copy, source skills, master, mirror
+
 **Dashboard**:
 The Workspace-wide view of every Target's Sync state, last Run and Score trend, read from the
 Registry and the Index; never a source of truth.
