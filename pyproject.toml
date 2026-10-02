@@ -1,6 +1,6 @@
 [project]
 name = "agentdiag"
-version = "0.1.1"
+version = "0.1.2"
 description = "A profiler and evaluator for agentic systems"
 readme = "README.md"
 license = "MIT"

@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.1.2 — 2026-10-02
+
+The Workspace explains itself (ADR-0016): what a coding agent finds at the root of a
+Workspace, whichever Harness opens it, and what `init` says about a Target it has only been
+told the name of.
+
+- **An Orientation page.** `init`, `init --skills` and `registry --write` write `AGENTS.md`
+  at the Workspace root (what the repository is, the read set, the request-to-skill routing,
+  the Targets table between `<!-- agentdiag:targets -->` markers, the standing rules, the
+  commands), `CLAUDE.md` and `GEMINI.md` as one-line imports of it, and the vocabulary as
+  `.agentdiag/CONTEXT.md`. A page the user owns keeps every byte: the generated blocks are
+  appended or regenerated between their markers and nothing outside them is touched;
+  `generate` and `discover` refresh the table they change; `validate` warns when a generated
+  block is stale and, where the skills are installed, when the page or an import file is
+  missing. The read set (page, vocabulary, Maintainer notes, one skill) is budgeted at 10k
+  tokens and a test holds it.
+- **`init --target <slug>` scaffolds an identity, never the toy.** `--name`, `--description`,
+  `--family` and `--channel` fill the Manifest; the Adapter is `kind: pending`, a core kind
+  that validates with a warning and refuses to drive, under `# REVIEW:` lines saying what to
+  fill; the Connector and prompts are comments under their own REVIEW lines; the sample Suite
+  is a draft. The first `init` with no `--target` keeps the toy, and `--adapter toy` scaffolds
+  it under any slug. `validate` counts REVIEW lines and warns when every Suite is a draft or
+  retired; a Run over such a Manifest is refused instead of writing an empty Run.
+- **Maintainer notes.** Every scaffold writes `maintainer_notes.md` beside the Manifest, kept
+  on `--force`, pointed at by `maintainer_notes`, listed by `target show`, the Registry and
+  the page's table; every skill reads it before its first step and the Judge never does.
+- **Skills reach every Harness.** `init --skills` writes one Tracked copy under
+  `.agents/skills/`, which Codex and Gemini CLI read directly, and per-skill symlinks under
+  `.claude/skills/` for Claude Code (a copy with a notice where the filesystem refuses a
+  link). A 0.1.1 install is refused by name until `--force`; `validate` warns when the two
+  layouts disagree and names which side was edited.
+- **The `agentdiag-migrate` skill** onboards a Target whose prompts, tests, judging rules and
+  notes live in another maintenance repository, offline and with no Connector yet; the
+  source's fix history stays where it is (ADR-0012 §4 and §6). `generate --check` checks a
+  draft's prompt section against the prompt file's headings until a Fingerprint exists.
+- **Three frictions.** `validate --all` validates every Target with one summary line each and
+  one exit code; `discover --from-connector --env <x>` on the in-process Connector says it
+  reads a module and no platform and names the plugin Connector as the next step; `init`
+  with no `--root` adds the Target to the nearest Workspace above the current directory.
+
 ## 0.1.1 — 2026-10-01
 
 A Workspace is one repository (ADR-0015): four fixes so a Workspace can be cloned and used

@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.speedscope.app/file-format-schema.json",
   "activeProfileIndex": 0,
-  "exporter": "agentdiag 0.1.1",
+  "exporter": "agentdiag 0.1.2",
   "name": "20260922T101500Z-k7pq \u00b7 cancel-processing-order \u00b7 trial 1",
   "profiles": [
     {

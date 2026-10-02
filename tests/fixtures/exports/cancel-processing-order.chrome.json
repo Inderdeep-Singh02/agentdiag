@@ -1,7 +1,7 @@
 {
   "displayTimeUnit": "ms",
   "otherData": {
-    "agentdiag": "0.1.1",
+    "agentdiag": "0.1.2",
     "run": "20260922T101500Z-k7pq",
     "scenario": "cancel-processing-order",
     "trace_id": "20260922T101500Z-k7pq/cancel-processing-order/1",
