@@ -23,6 +23,9 @@ chat nobody drove, and every Trace today comes from a Run through an Adapter.
    and `runs/`. A single-Target root stays valid: it is a Workspace with one Target and the
    older single-Target layout is read as `targets/default/` (an expand–contract migration).
    `runs/` and Restore points are gitignored; everything else is committed.
+   _Amended by ADR-0016 (2026-10-02): the root also holds `AGENTS.md`, `CLAUDE.md`,
+   `GEMINI.md`, `.agents/skills/` and `.claude/skills/`; `.agentdiag/` holds the vocabulary copy
+   `CONTEXT.md`; and each Target directory holds `maintainer_notes.md`._
 2. **The Workspace root is the user's choice**, given by `--root` or found by walking up from
    the current directory. For a Target whose repository agentdiag must not write into, the root
    is outside that repository, so the rule holds; moving it into the Target's repository later is the owner's

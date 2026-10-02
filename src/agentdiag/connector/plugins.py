@@ -53,9 +53,13 @@ COMPONENT_OF_GROUP: Mapping[str, str] = {
 }
 """Entry-point group to the component its kinds are, as a message names it."""
 
+INPROCESS_KIND = "inprocess"
+"""The in-process kind's name, core's Adapter and Connector alike: a Python module in this
+process, never a platform."""
+
 CORE_KINDS_OF: Mapping[str, frozenset[str]] = {
-    ADAPTER_GROUP: frozenset({"inprocess", "http", "pending"}),
-    CONNECTOR_GROUP: frozenset({"inprocess"}),
+    ADAPTER_GROUP: frozenset({INPROCESS_KIND, "http", "pending"}),
+    CONNECTOR_GROUP: frozenset({INPROCESS_KIND}),
     DIALECT_GROUP: frozenset({"json", "sse-json"}),
 }
 """What core itself registers in its `pyproject.toml`, per group: missing, the checkout's
@@ -214,6 +218,7 @@ __all__ = [
     "CORE_KINDS",
     "CORE_KINDS_OF",
     "DIALECT_GROUP",
+    "INPROCESS_KIND",
     "AmbiguousKind",
     "UnknownKind",
     "adapter_class",

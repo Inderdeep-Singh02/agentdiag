@@ -32,6 +32,9 @@ platform plugin is, or where the operating procedure lives.
    the reference repository's `feedback` and `audit-run` are renamed because both words are avoided in
    `CONTEXT.md`), each calling agentdiag commands and never a platform's. Budgets (two evidence
    commands, one read bundle, diff first) are skill text.
+   _Amended by ADR-0016 §1 and §6 (2026-10-02): the skills are installed as one Tracked copy
+   under `.agents/skills/`, reached from `.claude/skills/` by per-skill links, and the
+   Orientation page `init` writes at the Workspace root is part of the operating procedure._
 4. **Install shapes.** `pip install agentdiag` then `agentdiag init` at a repository root or an
    empty directory creates a Workspace with one Target, and `init --target <slug>` adds one
    (ADR-0013); a plugin is a second package.

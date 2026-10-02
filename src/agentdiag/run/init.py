@@ -13,7 +13,12 @@ one's own, and the name flags apply over whichever scaffold is chosen.
 Since ADR-0013 the root is a Workspace of Targets (phase-6 decision 4): `init` with no
 `.agentdiag/` under the root creates one holding the Target `default` (or the one `--target`
 names) at `.agentdiag/targets/<slug>/`, and `init --target <slug>` on an existing Workspace
-adds that Target beside the others. A root still in the Phase 4 spelling (a Manifest directly
+adds that Target beside the others. With no `--root`, the root is the nearest Workspace at
+or above the current directory, found by ADR-0015 §1's bounded walk, else the current
+directory (`init_root`, ADR-0016 §8), so `init --target` inside a Workspace adds to it and
+nests no second one; joined from below, the paths `Next:` names are printed joined to that
+root, since a root-relative path does not resolve from where the command was typed.
+A root still in the Phase 4 spelling (a Manifest directly
 under `.agentdiag/`) is refused with the move that fixes it, never rearranged here: a command
 that moved an author's files unasked would be the surprise this module exists to avoid.
 
@@ -160,6 +165,10 @@ class InitOptions:
     channel: str | None = None
     """`--channel`: which channel of its Family the Target is."""
 
+    joined: bool = False
+    """The root is a Workspace above the current directory, found by `init_root`; the
+    paths under `Next:` are then printed joined to it."""
+
 
 @dataclass
 class InitResult:
@@ -180,6 +189,9 @@ class InitResult:
     reviews: int = 0
     """How many `# REVIEW:` lines the Manifest holds: what `init` asks a reader to settle
     before anything else, for a Target nothing drives yet (decision 14)."""
+
+    joined: bool = False
+    """As `InitOptions.joined`: `Next:` prints its paths joined to the root."""
 
     @property
     def scenario_id(self) -> str:
@@ -264,6 +276,17 @@ def slug(text: str) -> str:
     return "-".join(part for part in "".join(kept).split("-") if part) or "target"
 
 
+def init_root(cwd: Path) -> Path:
+    """Where `init` with no `--root` scaffolds (ADR-0016 §8, decision 27): the nearest
+    Workspace at or above `cwd` by ADR-0015 §1's bounded walk, as its absolute root, else
+    `cwd` itself as `.`, which `init` makes a Workspace. A Workspace found at `cwd` is `.`
+    too, so `init` in the root prints the first line it always did."""
+    found = Workspace.holding(cwd)
+    if found is None or found.root == Path(cwd).resolve():
+        return Path(".")
+    return found.root
+
+
 def scaffold_target(options: InitOptions) -> InitResult:
     """Write one Target's scaffold under `options.root`, creating the Workspace when there is
     none, or refuse and say what is in the way."""
@@ -316,6 +339,7 @@ def scaffold_target(options: InitOptions) -> InitResult:
         created=created,
         several_targets=bool(others),
         reviews=review_count(manifest_text),
+        joined=options.joined,
     )
     # Imported here, not at the top: orientation reaches the Registry, whose Sync breaks
     # import `agentdiag.sync.sections`, which imports `slug` from this module (a cycle).
@@ -344,19 +368,6 @@ def _target_to_write(
             "and sample Suite, and leaves every Run where it is"
         )
     return target
-
-
-def enclosing_workspace(start: Path) -> Path | None:
-    """The root of a Workspace strictly above `start`, when `start` holds none itself: what
-    an `init` with no `--root` would nest a second Workspace inside (it still does, per
-    phase-6 decision 4, and says so). Looked for as `Workspace.holding` does, no further up
-    than the enclosing git repository's top level, so `init` and `find` agree on what is
-    inside a Workspace."""
-    here = Path(start).resolve()
-    if (here / AGENTDIAG_DIR).is_dir():
-        return None
-    outer = Workspace.holding(here)
-    return None if outer is None else outer.root
 
 
 def ignore_outputs(path: Path, lines: tuple[str, ...] = GITIGNORE_LINES) -> bool:
@@ -417,7 +428,7 @@ def _who_and_next(result: InitResult) -> list[str]:
         if value is not None
     )
     manifest = next(path for path in result.created if path.name == MANIFEST_NAME)
-    where = manifest.relative_to(Path(result.root)).as_posix()
+    where = (manifest if result.joined else manifest.relative_to(Path(result.root))).as_posix()
     return [
         f"Target {scaffold.slug} ({scaffold.target_name}){persona}; no Adapter yet "
         f"(adapter.kind: {scaffold.adapter_kind}).",
@@ -443,8 +454,8 @@ __all__ = [
     "InitOptions",
     "InitRefused",
     "InitResult",
-    "enclosing_workspace",
     "ignore_outputs",
+    "init_root",
     "parse_adapter",
     "render_created",
     "scaffold_for",

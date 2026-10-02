@@ -446,19 +446,61 @@ def test_target_show_takes_the_slug_as_argument_or_option_or_the_one_target(
 # --- init inside an existing Workspace ---
 
 
-def test_init_without_a_root_below_a_workspace_says_it_nests_another(
+def test_init_without_a_root_below_a_workspace_adds_the_target_to_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ADR-0016 §8, decision 27: the nearest Workspace above is the root, and nothing nests."""
+    invoke("init", "--root", str(tmp_path))
+    below = tmp_path / "service" / "src"
+    below.mkdir(parents=True)
+    monkeypatch.chdir(below)
+
+    result = invoke("init", "--target", "c")
+
+    assert result.exit_code == 0, output(result)
+    assert result.stdout.splitlines()[0] == f"Wrote the scaffold into {tmp_path.resolve()}:"
+    assert (target_dir(tmp_path, "c") / "manifest.yaml").is_file()
+    assert not (tmp_path / "service" / ".agentdiag").exists()
+    assert not (below / ".agentdiag").exists()
+    assert "notice:" not in result.stderr
+    assert "| `c` |" in (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+
+
+def test_init_from_below_the_root_prints_the_next_paths_joined_to_the_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Decision 14 as amended after the ticket 50 reviews: a root-relative path does not
+    resolve from the subdirectory the command was typed in, so `Next:` names it absolutely."""
+    invoke("init", "--root", str(tmp_path))
+    below = tmp_path / "service"
+    below.mkdir()
+    monkeypatch.chdir(below)
+
+    result = invoke("init", "--target", "c")
+
+    assert result.exit_code == 0, output(result)
+    manifest = (tmp_path.resolve() / ".agentdiag" / "targets" / "c" / "manifest.yaml").as_posix()
+    (settle,) = [line for line in result.stdout.splitlines() if "REVIEW lines in" in line]
+    assert settle.endswith(f" REVIEW lines in {manifest}, then")
+    assert Path(settle.split(" in ", 1)[1].removesuffix(", then")).is_file()
+
+
+def test_plain_init_below_a_workspace_holding_default_is_refused_naming_force(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     invoke("init", "--root", str(tmp_path))
+    manifest = target_dir(tmp_path, "default") / "manifest.yaml"
+    before = manifest.read_bytes()
     below = tmp_path / "service"
     below.mkdir()
     monkeypatch.chdir(below)
 
     result = invoke("init")
 
-    assert result.exit_code == 0, output(result)
-    assert f"notice: a Workspace already exists at {tmp_path.resolve()}" in result.stderr
-    assert (below / ".agentdiag" / "targets" / "default" / "manifest.yaml").is_file()
+    assert result.exit_code == 3
+    assert "--force" in output(result)
+    assert manifest.read_bytes() == before
+    assert not (below / ".agentdiag").exists()
 
 
 def test_init_in_the_workspace_root_itself_adds_a_target_without_a_notice(
@@ -470,7 +512,24 @@ def test_init_in_the_workspace_root_itself_adds_a_target_without_a_notice(
     result = invoke("init", "--target", "b")
 
     assert result.exit_code == 0, output(result)
+    assert result.stdout.splitlines()[0] == "Wrote the scaffold into .:"
+    assert (target_dir(tmp_path, "b") / "manifest.yaml").is_file()
     assert "notice:" not in result.stderr
+
+
+def test_init_under_no_workspace_creates_one_in_the_current_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    here = tmp_path / "fresh"
+    here.mkdir()
+    monkeypatch.chdir(here)
+
+    result = invoke("init", "--target", "c")
+
+    assert result.exit_code == 0, output(result)
+    assert result.stdout.splitlines()[0] == "Wrote the scaffold into .:"
+    assert (target_dir(here, "c") / "manifest.yaml").is_file()
+    assert not (tmp_path / ".agentdiag").exists()
 
 
 # --- the root: given, or found walking up ---
@@ -611,18 +670,23 @@ def test_root_names_a_workspace_from_inside_another_git_repository(
     assert registry_slugs(result) == ["default"]
 
 
-def test_init_in_a_clone_inside_a_workspace_prints_no_nesting_notice(
+def test_init_in_a_clone_inside_a_workspace_creates_a_workspace_in_the_clone(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """The walk stops at the git top level (ADR-0015 §1): a repository that holds no
+    Workspace gets its own, never the Target of the Workspace outside it."""
     outer = one_target_workspace(tmp_path / "w")
     clone = outer / "innerclone"
     (clone / ".git").mkdir(parents=True)
     monkeypatch.chdir(clone)
 
-    result = invoke("init")
+    result = invoke("init", "--target", "c")
 
     assert result.exit_code == 0, output(result)
-    assert "notice: a Workspace already exists" not in result.stderr
+    assert result.stdout.splitlines()[0] == "Wrote the scaffold into .:"
+    assert (target_dir(clone, "c") / "manifest.yaml").is_file()
+    assert not target_dir(outer, "c").exists()
+    assert "notice:" not in result.stderr
 
 
 def test_a_root_without_agentdiag_is_an_error_naming_it(tmp_path: Path) -> None:

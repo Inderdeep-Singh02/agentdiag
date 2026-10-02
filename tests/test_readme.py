@@ -612,7 +612,7 @@ def test_the_orientation_walkthrough_prints_what_the_guide_shows(tmp_path: Path)
             assert pending == body
             compared += 1
             pending = None
-    assert compared == 5
+    assert compared == 6
     assert "Harness" in fenced_section(ORIENTATION_SECTION)
     for harness, reads in (("Codex", "AGENTS.md"), ("Claude Code", "CLAUDE.md")):
         assert f"| {harness} | `{reads}` |" in fenced_section(ORIENTATION_SECTION)

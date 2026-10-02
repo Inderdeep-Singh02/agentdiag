@@ -37,7 +37,7 @@ Connector is built only when `--from-connector` asks, and the in-process one imp
 from __future__ import annotations
 
 import os
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -46,7 +46,7 @@ import yaml
 from pydantic import ValidationError
 
 from agentdiag.connector.base import ConnectorError, DeployedSet
-from agentdiag.connector.plugins import UnknownKind, build_connector
+from agentdiag.connector.plugins import INPROCESS_KIND, UnknownKind, build_connector
 from agentdiag.discover.draft import (
     PROPOSED,
     SECTION_COMMENTS,
@@ -334,16 +334,29 @@ def _read(target: TargetPaths, existing: dict[str, Any] | None, environment: str
     section = manifest.connector
     assert section is not None
     if environment not in section.environments:
-        names = ", ".join(section.environments) or "none"
-        raise DiscoverRefused(
-            f"the {section.kind} Connector names no environment {environment!r} (it names {names})"
-        )
+        raise DiscoverRefused(_no_environment(section.kind, environment, section.environments))
     try:
         connector = build_connector(manifest)
         assert connector is not None
         return connector.read_deployed_set(environment)
     except (ConnectorError, UnknownKind) as exc:
         raise DiscoverRefused(connector_failure(exc, manifest, environment)) from exc
+
+
+def _no_environment(kind: str, environment: str, names: Iterable[str]) -> str:
+    """Why `--env <environment>` reads nothing. The in-process Connector reads a Python
+    module in this process, so an environment it lacks is a platform's and needs that
+    platform's Connector, which this says rather than listing the module's environments
+    (ADR-0016 §8, decision 26); any other kind names the environments it has."""
+    if kind == INPROCESS_KIND:
+        return (
+            f"the Manifest's Connector is {kind}, which reads a Python module in this process "
+            f"and no platform; --from-connector --env {environment} needs the platform's "
+            "Connector: set connector.kind to the plugin's kind and list "
+            f"{environment} under connector.environments"
+        )
+    listed = ", ".join(names) or "none"
+    return f"the {kind} Connector names no environment {environment!r} (it names {listed})"
 
 
 # --- composing the draft ---
@@ -570,7 +583,7 @@ def _adapter(kept: dict[str, Any], findings: ScanFindings | None) -> DraftLine |
     return DraftLine(
         "adapter",
         children=[
-            DraftLine("kind", "inprocess", review=kind_review),
+            DraftLine("kind", INPROCESS_KIND, review=kind_review),
             DraftLine(
                 "side_effects",
                 "none",
@@ -696,7 +709,7 @@ def _connector(findings: ScanFindings | None) -> DraftLine | None:
         children=[
             DraftLine(
                 "kind",
-                "inprocess",
+                INPROCESS_KIND,
                 review=(
                     "the in-process Connector reads a deployed-set callable in this process; "
                     "a platform's Connector is a plugin with its own kind"

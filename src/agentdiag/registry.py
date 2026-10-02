@@ -360,6 +360,9 @@ def _entry(target: TargetPaths) -> tuple[RegistryEntry, Manifest | None]:
 
 # --- the terminal ---
 
+NO_TARGETS = "no Targets in this Workspace; `agentdiag init --target <slug>` adds one"
+"""What `registry` prints for a Workspace of no Target, and `validate --all` too."""
+
 COLUMNS = ("target", "name", "family", "channel", "environments", "connector", "suites", "sync")
 
 
@@ -368,7 +371,7 @@ def render_registry(entries: Sequence[RegistryEntry]) -> str:
     `problem:` line per problem. Plain padded text, as `list` renders, so the bytes are
     the same at any terminal width."""
     if not entries:
-        return "no Targets in this Workspace; `agentdiag init --target <slug>` adds one"
+        return NO_TARGETS
     lines = render_table([list(COLUMNS), *(_cells(entry) for entry in entries)])
     lines += [
         f"problem: {entry.slug}: {problem}" for entry in entries for problem in entry.problems
@@ -557,6 +560,7 @@ def _without_none(value: Any) -> Any:
 
 
 __all__ = [
+    "NO_TARGETS",
     "CalibrationNotesSummary",
     "ChangeRecordSummary",
     "OpenSyncBreak",

@@ -10,6 +10,7 @@ hand-made tree.
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -49,6 +50,18 @@ def two_target_workspace(root: Path) -> Path:
         ["--target", CUSTOM_SLUG, "--adapter", CUSTOM_ADAPTER],
     ):
         result = runner.invoke(app, ["init", "--root", str(root), *arguments])
+        assert result.exit_code == 0, result.output
+    return root
+
+
+def toy_workspace(root: Path, slugs: Sequence[str]) -> Path:
+    """`init --target <slug> --adapter toy` under `root` for each slug, in the order given;
+    the root back. Each Target validates with nothing to say."""
+    runner = CliRunner()
+    for slug in slugs:
+        result = runner.invoke(
+            app, ["init", "--root", str(root), "--target", slug, "--adapter", "toy"]
+        )
         assert result.exit_code == 0, result.output
     return root
 

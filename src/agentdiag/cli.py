@@ -25,12 +25,13 @@ before any command runs, never overriding a variable already set, and prints its
 warning to stderr; a Manifest names each credential by that variable, never by value.
 
 **One Workspace, resolved once per command** (ADR-0013, phase-6 decision 3). `--root`
-defaults to None, meaning the nearest `.agentdiag/` at or above the current directory;
-`init` alone defaults to `.`, because it creates the root. `--target` names one Target of
-the Workspace, and needs naming only when it holds several. `_workspace` and `_target` are
-the one place either is resolved, and a `WorkspaceError` is `error: …`, exit 3, from every
-command alike. A command given a Run *path* needs no Workspace; a Run *id* is looked for
-under every Target's `runs/`, or the named one's.
+defaults to None, meaning the nearest `.agentdiag/` at or above the current directory, and
+`_workspace` is the one place it is resolved; `_target` resolves `--target`, which needs
+naming only when the Workspace holds several. `init`, which creates the root, resolves it
+through `run.init.init_root` instead: the same walk, falling back to the current directory
+when it finds no Workspace (ADR-0016 §8). A `WorkspaceError` is `error: …`, exit 3, from
+every command alike. A command given a Run *path* needs no Workspace; a Run *id* is looked
+for under every Target's `runs/`, or the named one's.
 """
 
 from __future__ import annotations
@@ -53,21 +54,13 @@ from agentdiag.run.init import (
     INIT_EXIT,
     InitOptions,
     InitRefused,
-    enclosing_workspace,
+    init_root,
     render_created,
     scaffold_target,
 )
 from agentdiag.run.locate import NOT_FOUND_EXIT, TrialNotFound, locate_run
-from agentdiag.run.manifest import manifest_report
 from agentdiag.run.templates import DEFAULT_MODEL
-from agentdiag.scenario.validate import (
-    NO_MANIFEST,
-    VALIDATE_EXIT,
-    ManifestFacts,
-    report_lines,
-    summary_line,
-    validate_suite,
-)
+from agentdiag.scenario.validate import VALIDATE_EXIT
 from agentdiag.trace.export import (
     FORMATS,
     UnknownFormat,
@@ -208,7 +201,8 @@ def init(
         None,
         "--root",
         help=(
-            "The Workspace root, where .agentdiag/ is or will be (default: the current directory)."
+            "The Workspace root, where .agentdiag/ is or will be (default: the nearest one at "
+            "or above the current directory, else the current directory)."
         ),
         show_default=False,
     ),
@@ -296,16 +290,11 @@ def init(
         for notice in orientation.notices:
             typer.echo(notice, err=True)
         raise typer.Exit(0)
-    if root is None and (outer := enclosing_workspace(Path("."))) is not None:
-        typer.echo(
-            f"notice: a Workspace already exists at {outer}; this creates another one nested "
-            "inside it (pass --root to add the Target to that one instead)",
-            err=True,
-        )
+    resolved = root if root is not None else init_root(Path.cwd())
     try:
         result = scaffold_target(
             InitOptions(
-                root=root or Path("."),
+                root=resolved,
                 target=target,
                 adapter=adapter,
                 tools=tools,
@@ -315,6 +304,7 @@ def init(
                 description=description,
                 family=family,
                 channel=channel,
+                joined=root is None and resolved != Path("."),
             )
         )
     except InitRefused as refused:
@@ -344,6 +334,14 @@ def validate(
         ),
         show_default=False,
     ),
+    every: bool = typer.Option(
+        False,
+        "--all",
+        help=(
+            "Check every Target of the Workspace in slug order, each ending on one "
+            "`<slug>: validated …` line, with one exit code: 3 when any Target has an error."
+        ),
+    ),
 ) -> None:
     """Check the Manifest, then its Suites and Change records, offline: errors exit 3,
     warnings do not.
@@ -352,66 +350,51 @@ def validate(
     runnable and draft Suite it names (a retired Suite is named as skipped, never read),
     then every Change record under the Target's changes/.
     `--manifest` checks another file as the Manifest, then the Suites it names (or the paths).
+    `--all` checks every Target so, after the Workspace's own warnings, printed once.
     """
+    from agentdiag.orientation import orientation_warnings
+    from agentdiag.validation import validate_target, validate_workspace
+
+    if every:
+        clashes = [
+            flag
+            for flag, given in (
+                ("--target", target is not None),
+                ("a Suite path", bool(paths)),
+                ("--manifest", manifest_path is not None),
+            )
+            if given
+        ]
+        if clashes:
+            typer.echo(
+                f"error: --all validates every Target of the Workspace; drop {', '.join(clashes)}",
+                err=True,
+            )
+            raise typer.Exit(USAGE_EXIT)
+        lines, ok = validate_workspace(_workspace(root))
+        for line in lines:
+            typer.echo(line)
+        raise typer.Exit(0 if ok else VALIDATE_EXIT)
+
     files = list(paths or [])
-    manifest_ok = True
-    counted = (0, 0)
-    facts = NO_MANIFEST
-    if not files or manifest_path is not None:
-        workspace = _workspace(root)
-        chosen = _target(workspace, target)
+    if files and manifest_path is None:
+        checked = validate_target(None, paths=files)
+    else:
+        # A whole Target: no paths and no draft Manifest, so the Workspace's warnings and
+        # the Change records belong to this check too.
         whole = not files and manifest_path is None
-        orientation: list[str] = []
-        if whole:
-            from agentdiag.orientation import orientation_warnings
-
-            orientation = orientation_warnings(workspace)
-        for line in orientation:
-            typer.echo(line)
-        manifest_check, manifest = manifest_report(chosen, manifest_path)
-        for line in manifest_check.lines():
-            typer.echo(line)
-        counted = (
-            len(manifest_check.errors),
-            len(manifest_check.warnings) + len(orientation),
+        workspace = _workspace(root)
+        checked = validate_target(
+            _target(workspace, target),
+            paths=files,
+            manifest_path=manifest_path,
+            whole=whole,
+            orientation_lines=orientation_warnings(workspace) if whole else (),
         )
-        if manifest is None:
-            typer.echo(summary_line([], manifest=counted))
-            raise typer.Exit(VALIDATE_EXIT)
-        manifest_ok = manifest_check.ok
-        facts = ManifestFacts.of(manifest)
-        if not files:
-            for entry in manifest.retired_suites:
-                typer.echo(f"skipped: {chosen.relative(entry.path)}: Suite status: retired")
-            files = [
-                chosen.relative(entry.path)
-                for index, entry in enumerate(manifest.suites)
-                if entry in manifest.read_suites
-                and f"suites[{index}]" not in manifest_check.refused
-            ]
-
-    reports = [validate_suite(path, facts=facts) for path in files]
-    for report in reports:
-        for line in report_lines(report):
-            typer.echo(line)
-    checked_manifest = not paths or manifest_path is not None
-    changes: tuple[int, int, int] | None = None
-    changes_ok = True
-    if not paths and manifest_path is None:
-        # The Change records after the Suites (phase-7 decision 5), when the whole Target is
-        # validated; a Suite named by path is validated alone.
-        from agentdiag.change.checks import check_records
-
-        records = check_records(chosen)
-        for line in records.lines():
-            typer.echo(line)
-        changes = (records.checked, len(records.errors), len(records.warnings))
-        changes_ok = records.ok
-    typer.echo(
-        summary_line(reports, manifest=counted if checked_manifest else None, changes=changes)
-    )
-    ok = manifest_ok and changes_ok and all(report.ok for report in reports)
-    raise typer.Exit(0 if ok else VALIDATE_EXIT)
+    for line in checked.lines:
+        typer.echo(line)
+    typer.echo(checked.summary)
+    raise typer.Exit(0 if checked.ok else VALIDATE_EXIT)
 
 
 @app.command()
@@ -1244,9 +1227,9 @@ def registry(
         False,
         "--write",
         help=(
-            "Instead of printing the Registry, regenerate the Targets table between the "
-            "markers of AGENTS.md at the Workspace root; write the page and its import "
-            "files where absent, and the vocabulary copy always."
+            "Instead of printing the Registry, regenerate the Targets table and the skills "
+            "line between their markers in AGENTS.md at the Workspace root; write the page "
+            "and its import files where absent, and the vocabulary copy always."
         ),
     ),
 ) -> None:
@@ -1255,8 +1238,8 @@ def registry(
 
     One line per Target: its slug, name, Family, channel, environments, Connector, Suites
     and Sync state. A Manifest that does not load is still a line, with its problem after
-    the table. With --write, regenerate the Orientation page's Targets table instead: the
-    text between its markers is regenerated and nothing else of the page; the page,
+    the table. With --write, regenerate the Orientation page's Targets table and skills line
+    instead: the text between their markers is regenerated and nothing else of the page; the page,
     CLAUDE.md and GEMINI.md are written where absent, and .agentdiag/CONTEXT.md always.
     """
     from agentdiag.registry import registry as workspace_registry

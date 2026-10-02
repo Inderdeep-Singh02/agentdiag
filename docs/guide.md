@@ -80,13 +80,14 @@ uv run agentdiag --help
 ```
 
 Every command reads the Workspace whose `.agentdiag/` is under the directory `--root` names,
-and when it names none, the nearest `.agentdiag/` at or above the current directory. The
-walk up stops at the enclosing git repository's top level, so a clone inside a Workspace is
-not read as part of it; `--root` names a Workspace from anywhere. A Workspace holds one
-or more Targets, each under `.agentdiag/targets/<slug>/`; with one Target no command needs
-`--target`. From this checkout `uv run` has to stay in the repository, so every command
-below passes `--root`; with `agentdiag` installed on your PATH you drop the `uv run` and the
-`--root` and work anywhere inside the Workspace instead.
+and when it names none, the nearest `.agentdiag/` at or above the current directory (`init`,
+finding none, creates the Workspace in the current directory). The walk up stops at the
+enclosing git repository's top level, so a clone inside a Workspace is not read as part of
+it; `--root` names a Workspace from anywhere. A Workspace holds one or more Targets, each
+under `.agentdiag/targets/<slug>/`; with one Target no command needs `--target`. From this
+checkout `uv run` has to stay in the repository, so every command below passes `--root`;
+with `agentdiag` installed on your PATH you drop the `uv run` and the `--root` and work
+anywhere inside the Workspace instead.
 
 ### Scaffold a Target
 
@@ -1209,7 +1210,11 @@ a Turn may take the environment's `turn_timeout` seconds, 600 by default.
 One Workspace holds as many Targets as you keep, each in its own Target directory under
 `.agentdiag/targets/<slug>/` with its own Manifest, Suites, Calibration Notes and Runs.
 `init --target <slug>` creates the Workspace with that Target, or adds the Target to the
-Workspace that is already there. `--adapter` says what drives it: `toy` is the shipped toy
+Workspace that is already there. Without `--root`, `init` adds it to the nearest Workspace
+at or above the current directory, looking no further up than the git repository's top
+level, as every other command finds its Workspace; it creates a Workspace in the current
+directory only when none is found, so `init --target` from anywhere inside a Workspace
+nests nothing. `--adapter` says what drives it: `toy` is the shipped toy
 Target under that slug, and `python:<module:attr>` a factory of your own; with no
 `--adapter` its Adapter is of kind `pending`, nothing drives it yet ([Describe a Target before it is
 connected](#describe-a-target-before-it-is-connected)):
@@ -1555,19 +1560,20 @@ under the five headings of `maintainer_notes.md`, which every skill reads first:
 cp tests/fixtures/migrate/judgement/judge_notes.md tests/fixtures/migrate/judgement/maintainer_notes.md /tmp/agentdiag-migrate/.agentdiag/targets/library-desk/
 ```
 
-`validate` passes it, exit 0, with the two warnings this skill does not settle, the pending
-Adapter and the REVIEW lines of the Adapter kind and the Connector; the generated Suite
-runs, so nothing says the Target has no runnable Suite:
+`validate --all`, which checks every Target of the Workspace, passes it, exit 0, with the
+two warnings this skill does not settle, the pending Adapter and the REVIEW lines of the
+Adapter kind and the Connector; the generated Suite runs, so nothing says the Target has no
+runnable Suite:
 
 ```bash
-uv run agentdiag validate --root /tmp/agentdiag-migrate --target library-desk
+uv run agentdiag validate --root /tmp/agentdiag-migrate --all
 ```
 
 ```
 warning: /tmp/agentdiag-migrate/.agentdiag/targets/library-desk/manifest.yaml: adapter.kind: pending: nothing drives this Target yet; set the Adapter kind and its environment block (the REVIEW lines in manifest.yaml name what to fill)
 warning: /tmp/agentdiag-migrate/.agentdiag/targets/library-desk/manifest.yaml: 2 lines marked REVIEW; settle each (accept or rewrite it) before a Run
 skipped: /tmp/agentdiag-migrate/.agentdiag/targets/library-desk/suites/sample.yaml: Suite status: retired
-validated the Manifest and 1 Suite: 0 errors, 2 warnings
+library-desk: validated the Manifest and 1 Suite: 0 errors, 2 warnings
 ```
 
 `registry --write` finds the table `generate` refreshed already current, with Ada's row:
@@ -1635,7 +1641,9 @@ cat /tmp/agentdiag-shop/CLAUDE.md /tmp/agentdiag-shop/GEMINI.md
 The page says what the repository is, what to read before the first command (itself, the
 Target's Maintainer notes, one skill), which skill a request routes to, the Targets, the
 rules and the commands. It names no platform: only the Targets table, between the
-`<!-- agentdiag:targets -->` markers, differs from one Workspace to the next.
+`<!-- agentdiag:targets -->` markers, differs from one Workspace to the next. The skills
+line at its end, between the `<!-- agentdiag:skills -->` markers, is generated too, so a
+page an older agentdiag wrote is told of a skill this one ships.
 
 ```bash
 cat /tmp/agentdiag-shop/AGENTS.md
@@ -1721,17 +1729,21 @@ one Target, and `--root <path>` from outside it.
 | Carry a fix | `agentdiag change open`, `expect`, `propose`, `close` |
 | Refresh this page's table | `agentdiag registry --write` |
 
+<!-- agentdiag:skills -->
 Skills this agentdiag ships, installed by `agentdiag init --skills`: /agentdiag-correction, /agentdiag-discover, /agentdiag-fix-cycle, /agentdiag-generate, /agentdiag-migrate.
+<!-- /agentdiag:skills -->
 ```
 
 agentdiag never overwrites a file you own. A root `AGENTS.md` you wrote, without the
-markers, keeps every byte (its line endings too) and gains the marked table at its end, with
-a notice on stderr; once the markers are there, only the text between them is regenerated.
-`CLAUDE.md` and `GEMINI.md` are written only when absent, and one that does not import the
-page is named in a notice with the line to add. The vocabulary copy is agentdiag's and is
-always rewritten. `init --skills` writes whichever of the three root files and the
-vocabulary copy is absent, because skills without the page that routes to them are half an
-install.
+markers, keeps every byte (its line endings too) and gains the marked table and then the
+marked skills line at its end, with a notice on stderr naming each block appended; once the
+markers are there, only the text between them is regenerated. A page written before the
+skills line had markers carries that line bare, and `registry --write` puts the markers
+around it where it stands. `CLAUDE.md` and `GEMINI.md` are written only when absent, and one
+that does not import the page is named in a notice with the line to add. The vocabulary copy
+is agentdiag's and is always rewritten. `init --skills` writes whichever of the three root
+files and the vocabulary copy is absent, because skills without the page that routes to them
+are half an install.
 
 The page's read set names one more file per Target: its **Maintainer notes**,
 `maintainer_notes.md` beside the Manifest, which the Manifest's `maintainer_notes` key points
@@ -1772,8 +1784,22 @@ unchanged GEMINI.md
 unchanged .agentdiag/CONTEXT.md
 ```
 
-Only the help desk's row changed, and `validate` is quiet again. A stale table is the one
-orientation warning every Workspace gets. Once the skills are installed (in either layout)
+Only the help desk's row changed, and `validate` is quiet again. `validate --all` checks
+every Target of the Workspace in slug order, after the Workspace's own warnings, printed
+once; each Target's lines end on its summary line under its slug, and one exit code, 3 when
+any Target has an error, answers for them all:
+
+```bash
+uv run agentdiag validate --root /tmp/agentdiag-shop --all
+```
+
+```
+help-desk: validated the Manifest and 1 Suite: 0 errors, 0 warnings
+order-desk: validated the Manifest and 1 Suite: 0 errors, 0 warnings
+```
+
+A stale table, or a stale skills line, is the one orientation warning every Workspace
+gets. Once the skills are installed (in either layout)
 `validate` also warns of a page without the markers, of `CLAUDE.md` or `GEMINI.md` without
 its import line, and of an absent page, import file or vocabulary copy; until then a
 Workspace in a corner of a repository with instruction files of its own is not told to
@@ -2061,6 +2087,14 @@ Next: accept or rewrite every REVIEW line, then
   mv /tmp/agentdiag-discover/.agentdiag/targets/default/manifest.draft.yaml /tmp/agentdiag-discover/.agentdiag/targets/default/manifest.yaml
   agentdiag sync --root /tmp/agentdiag-discover --target default
 ```
+
+The in-process Connector reads a Python module in this process, and has only the
+environments its block lists; asked for another, such as a platform's `dev`, `discover`
+exits 3 with the next step rather than a list of the module's environments: `the Manifest's
+Connector is inprocess, which reads a Python module in this process and no platform;
+--from-connector --env dev needs the platform's Connector: set connector.kind to the
+plugin's kind and list dev under connector.environments`. Any other kind names the
+environments it has.
 
 Both flags at once suit a Target whose repository holds the Adapter and whose platform
 holds the prompt. The review itself is a coding agent's job, and agentdiag ships the

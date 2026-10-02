@@ -20,6 +20,7 @@ from typer.testing import CliRunner
 
 from agentdiag.cli import app
 from agentdiag.scenario import load_suite, validate_suite
+from tests.fakes.workspace import edit_manifest, toy_workspace
 
 REPO = Path(__file__).resolve().parents[1]
 SUITES = REPO / "tests" / "fixtures" / "suites"
@@ -443,4 +444,92 @@ def test_second_walk_5_a_suite_naming_another_target_is_a_warning(tmp_path: Path
     assert line.endswith(
         "target: the Suite names the Target 'helpdesk' and the Manifest names 'toy-order-desk'; "
         "a Report and a comparison print the Manifest's"
+    )
+
+
+# --- validate --all (ADR-0016 §8, 0.1.2-interfaces decision 25) ---
+
+
+def summaries(output: str) -> list[str]:
+    return [line for line in output.splitlines() if ": validated " in line]
+
+
+def test_validate_all_checks_every_target_in_slug_order_with_one_exit_code(
+    tmp_path: Path,
+) -> None:
+    root = toy_workspace(tmp_path / "shop", ("c", "a", "b"))
+
+    passed = validate("--root", str(root), "--all")
+
+    assert passed.exit_code == 0, passed.output
+    assert [line.split(":")[0] for line in summaries(passed.stdout)] == ["a", "b", "c"]
+    assert summaries(passed.stdout) == passed.stdout.splitlines()
+    assert all(line.endswith(": 0 errors, 0 warnings") for line in summaries(passed.stdout))
+
+    edit_manifest(root, "b", suites=[{"path": "suites/missing.yaml"}])
+    failed = validate("--root", str(root), "--all")
+
+    assert failed.exit_code == 3, failed.output
+    lines = failed.stdout.splitlines()
+    assert [line.split(":")[0] for line in summaries(failed.stdout)] == ["a", "b", "c"]
+    problems = [line for line in lines if line.startswith("error:")]
+    assert problems and all("targets/b/" in line for line in problems)
+    a_line, b_line, c_line = (lines.index(line) for line in summaries(failed.stdout))
+    assert all(a_line < lines.index(line) < b_line for line in problems), "b's lines are b's"
+    assert (
+        lines[b_line]
+        == f"b: validated the Manifest and 1 Suite: {len(problems)} errors, 0 warnings"
+    )
+    assert lines[c_line].endswith(": 0 errors, 0 warnings")
+
+
+def test_validate_all_prints_the_workspace_warnings_once_before_every_target(
+    tmp_path: Path,
+) -> None:
+    """Decision 25 as amended after the ticket 50 reviews: the Workspace's warnings are
+    printed once, before the first Target, and counted in no Target's summary."""
+    root = toy_workspace(tmp_path / "shop", ("c", "a", "b"))
+    edit_manifest(root, "a", family="another-family")
+
+    result = validate("--root", str(root), "--all")
+
+    assert result.exit_code == 0, result.output
+    stale = (
+        "warning: AGENTS.md: the Targets table is stale; agentdiag registry --write regenerates it"
+    )
+    assert result.stdout.splitlines()[0] == stale
+    assert result.stdout.count("AGENTS.md") == 1
+    assert len(summaries(result.stdout)) == 3
+    assert all(line.endswith(": 0 errors, 0 warnings") for line in summaries(result.stdout))
+
+
+@pytest.mark.parametrize(
+    ("given", "named"),
+    [
+        (["--target", "a"], "--target"),
+        ([str(EXAMPLE_ORDERS)], "a Suite path"),
+        (["--manifest", "manifest.draft.yaml"], "--manifest"),
+    ],
+)
+def test_validate_all_beside_a_target_a_path_or_a_manifest_is_a_usage_error(
+    tmp_path: Path, given: list[str], named: str
+) -> None:
+    root = toy_workspace(tmp_path / "shop", ("c", "a", "b"))
+
+    result = validate("--root", str(root), "--all", *given)
+
+    assert result.exit_code == 3
+    assert f"error: --all validates every Target of the Workspace; drop {named}" in result.stderr
+    assert not summaries(result.stdout)
+
+
+def test_validate_all_over_a_workspace_of_no_target_says_so_and_exits_3(tmp_path: Path) -> None:
+    root = tmp_path / "empty"
+    (root / ".agentdiag" / "targets").mkdir(parents=True)
+
+    result = validate("--root", str(root), "--all")
+
+    assert result.exit_code == 3
+    assert result.stdout == (
+        "no Targets in this Workspace; `agentdiag init --target <slug>` adds one\n"
     )

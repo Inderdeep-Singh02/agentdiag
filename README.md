@@ -35,7 +35,7 @@ uv run agentdiag --help
 with five numbered rules, a lookup tool and an action tool, so the first Run works before
 you have written anything. From a checkout every command runs with `uv run` and names its
 Workspace with `--root`; with `agentdiag` on your PATH, drop `uv run` and run from the
-directory that holds `.agentdiag/` instead of passing `--root`.
+directory that holds `.agentdiag/`, or any directory below it, instead of passing `--root`.
 
 ```bash
 uv run agentdiag init --root /tmp/agentdiag-demo
@@ -167,7 +167,8 @@ CLAUDE.md, GEMINI.md                  one line each importing it, for Claude Cod
 ```
 
 `agentdiag init --target <slug>` adds a Target (`--adapter toy` for the toy under that
-slug); `agentdiag registry` lists them;
+slug) to the Workspace at or above the current directory, and creates one there only when
+none is found; `agentdiag registry` lists them; `agentdiag validate --all` checks them all;
 `agentdiag dashboard` shows every Target's Sync state, last Run and Score trend.
 [`examples/workspace`](examples/workspace) is a two-Target Workspace checked in.
 

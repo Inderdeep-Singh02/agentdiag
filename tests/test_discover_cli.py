@@ -445,6 +445,28 @@ def test_from_connector_on_an_unknown_environment_names_the_ones_there_are(
     assert result.exit_code == 3
     assert "names no environment 'prod'" in result.output
     assert "dev" in result.output
+    assert "Python module" not in result.output, "a platform's Connector names its own"
+    assert not draft_of(root).exists()
+
+
+IN_PROCESS_NO_ENV = (
+    "the Manifest's Connector is inprocess, which reads a Python module in this process and no "
+    "platform; --from-connector --env dev needs the platform's Connector: set connector.kind "
+    "to the plugin's kind and list dev under connector.environments"
+)
+"""ADR-0016 §8, decision 26, word for word."""
+
+
+def test_from_connector_on_the_in_process_connector_names_the_plugin_as_the_next_step(
+    tmp_path: Path,
+) -> None:
+    root = workspace(tmp_path)
+
+    result = invoke("discover", "--root", str(root), "--from-connector", "--env", "dev")
+
+    assert result.exit_code == 3
+    assert IN_PROCESS_NO_ENV in " ".join(result.output.split())
+    assert "names no environment" not in result.output
     assert not draft_of(root).exists()
 
 

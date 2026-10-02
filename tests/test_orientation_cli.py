@@ -19,21 +19,45 @@ from typer.testing import CliRunner
 from agentdiag.cli import app
 from agentdiag.orientation import (
     READ_SET_BUDGET_TOKENS,
+    SKILLS_CLOSE,
+    SKILLS_OPEN,
     TARGETS_CLOSE,
     TARGETS_GENERATED,
     TARGETS_OPEN,
     vocabulary_text,
 )
 from agentdiag.run.skills import packaged_skills
+from tests.fakes.workspace import toy_workspace
 
 REPO = Path(__file__).resolve().parents[1]
 DRAFTS = REPO / "tests" / "fixtures" / "drafts" / "toy-order-desk.yaml"
 runner = CliRunner()
 
 STALE = "warning: AGENTS.md: the Targets table is stale; agentdiag registry --write regenerates it"
-APPENDED = (
-    "notice: AGENTS.md exists and had no Targets table; the marked section was appended at its "
-    "end (regenerate it with agentdiag registry --write)"
+THREE = ("default", "a", "b")
+"""The slugs of the three-Target Workspace most tests start from, each the toy."""
+
+
+def appended(label: str) -> str:
+    """The notice for a block appended to a page that lacked it (decision 6 as amended
+    after the ticket 50 reviews)."""
+    return (
+        f"notice: AGENTS.md: the marked {label} was appended at the end (regenerate it with "
+        "agentdiag registry --write)"
+    )
+
+
+APPENDED = appended("Targets table")
+APPENDED_SKILLS = appended("skills line")
+FOUR_SKILLS_LINE = (
+    "Skills this agentdiag ships, installed by `agentdiag init --skills`: /agentdiag-correction, "
+    "/agentdiag-discover, /agentdiag-fix-cycle, /agentdiag-generate."
+)
+"""The skills line, bare, as an earlier 0.1.2 build wrote it (`examples/workspace/AGENTS.md`
+at 3c4ddbf), before the migrate skill shipped."""
+NO_SKILLS_LINE = (
+    "warning: AGENTS.md: no skills line between <!-- agentdiag:skills --> markers; agentdiag "
+    "registry --write adds one"
 )
 ORIENTATION_FILES = ("AGENTS.md", "CLAUDE.md", "GEMINI.md", ".agentdiag/CONTEXT.md")
 
@@ -46,14 +70,6 @@ def init(root: Path, *arguments: str) -> object:
     result = runner.invoke(app, ["init", "--root", str(root), *arguments])
     assert result.exit_code == 0, result.output
     return result
-
-
-def three_targets(tmp_path: Path) -> Path:
-    root = tmp_path / "shop"
-    init(root)
-    init(root, "--target", "a")
-    init(root, "--target", "b")
-    return root
 
 
 def between_markers(text: str) -> str:
@@ -79,6 +95,16 @@ def rename(root: Path, slug: str, name: str) -> None:
     path.write_text(text.replace(f"name: {current}\n", f"name: {name}\n", 1), encoding="utf-8")
 
 
+def skills_block() -> str:
+    """The skills block as this agentdiag writes it (decision 6 as amended after ticket 49)."""
+    return f"{SKILLS_OPEN}\n{skills_line()}\n{SKILLS_CLOSE}"
+
+
+def skills_line() -> str:
+    named = ", ".join(f"/agentdiag-{name}" for name in packaged_skills())
+    return f"Skills this agentdiag ships, installed by `agentdiag init --skills`: {named}."
+
+
 def created(output: str) -> list[str]:
     """The paths `init` lists, between its first line and the first blank one."""
     lines = output.splitlines()
@@ -96,7 +122,7 @@ def warnings_counted(output: str) -> int:
 def test_init_writes_the_page_the_two_imports_and_the_vocabulary_at_the_root(
     tmp_path: Path,
 ) -> None:
-    root = three_targets(tmp_path)
+    root = toy_workspace(tmp_path / "shop", THREE)
 
     assert sorted(path.name for path in root.iterdir()) == [
         ".agentdiag",
@@ -122,10 +148,7 @@ def test_the_page_names_the_vocabulary_and_every_packaged_skill(tmp_path: Path) 
     page = (root / "AGENTS.md").read_text(encoding="utf-8")
     assert page.startswith("# Orientation: an agentdiag Workspace\n")
     assert "and `.agentdiag/CONTEXT.md` for every word" in page
-    named = ", ".join(f"/agentdiag-{name}" for name in packaged_skills())
-    assert page.endswith(
-        f"Skills this agentdiag ships, installed by `agentdiag init --skills`: {named}.\n"
-    )
+    assert page.endswith(f"\n\n{skills_block()}\n")
     assert between_markers(page).splitlines()[1] == TARGETS_GENERATED
 
 
@@ -167,8 +190,8 @@ def test_a_page_the_user_wrote_keeps_every_byte_and_gains_the_marked_section(
     page = (root / "AGENTS.md").read_text(encoding="utf-8")
     assert page.startswith(own)
     assert rows(between_markers(page)) == ["default"]
-    assert page.endswith(TARGETS_CLOSE + "\n")
-    assert APPENDED in first.stderr
+    assert page.endswith(f"{TARGETS_CLOSE}\n\n{skills_block()}\n"), "the table, then the skills"
+    assert APPENDED in first.stderr and APPENDED_SKILLS in first.stderr
     assert "AGENTS.md" in first.stdout
 
     second = init(root, "--target", "a")
@@ -209,7 +232,7 @@ def test_import_files_the_user_owns_are_kept_and_named_in_a_notice(tmp_path: Pat
 
 
 def test_registry_write_regenerates_the_table_only_and_quiets_validate(tmp_path: Path) -> None:
-    root = three_targets(tmp_path)
+    root = toy_workspace(tmp_path / "shop", THREE)
     before = (root / "AGENTS.md").read_text(encoding="utf-8")
     rename(root, "a", "renamed-desk")
 
@@ -236,7 +259,7 @@ def test_registry_write_regenerates_the_table_only_and_quiets_validate(tmp_path:
 
 
 def test_registry_write_with_json_is_a_usage_error(tmp_path: Path) -> None:
-    root = three_targets(tmp_path)
+    root = toy_workspace(tmp_path / "shop", THREE)
     page = (root / "AGENTS.md").read_bytes()
     rename(root, "a", "renamed-desk")
 
@@ -342,7 +365,7 @@ def test_a_page_without_markers_is_a_validate_warning_once_skills_are_installed(
 def test_validate_of_a_suite_named_by_path_or_a_draft_manifest_skips_the_workspace(
     tmp_path: Path,
 ) -> None:
-    root = three_targets(tmp_path)
+    root = toy_workspace(tmp_path / "shop", THREE)
     rename(root, "a", "renamed-desk")
     target = root / ".agentdiag" / "targets" / "a"
 
@@ -416,7 +439,7 @@ def test_a_crlf_page_the_user_wrote_keeps_every_byte_outside_the_markers(tmp_pat
     assert first.startswith(own) and second.startswith(own)
     assert b"\n" not in second.replace(b"\r\n", b""), "every line ends as the user's do"
     text = second.decode("utf-8")
-    assert text.endswith(TARGETS_CLOSE + "\r\n")
+    assert text.endswith(SKILLS_CLOSE + "\r\n")
     assert rows(between_markers(text)) == ["a", "default"]
     quiet = invoke("validate", "--root", str(root), "--target", "a")
     assert "AGENTS.md" not in quiet.stdout, "a CRLF table is not stale"
@@ -437,7 +460,7 @@ def test_a_lone_opening_marker_never_swallows_the_users_text(tmp_path: Path) -> 
 
 
 def test_registry_write_keeps_the_text_after_the_closing_marker(tmp_path: Path) -> None:
-    root = three_targets(tmp_path)
+    root = toy_workspace(tmp_path / "shop", THREE)
     page = root / "AGENTS.md"
     page.write_text(page.read_text(encoding="utf-8") + "\n## Ours\n\nKept.\n", encoding="utf-8")
     rename(root, "a", "renamed-desk")
@@ -453,7 +476,7 @@ def test_registry_write_keeps_the_text_after_the_closing_marker(tmp_path: Path) 
 
 
 def test_a_second_registry_write_leaves_every_file_unchanged(tmp_path: Path) -> None:
-    root = three_targets(tmp_path)
+    root = toy_workspace(tmp_path / "shop", THREE)
     rename(root, "a", "renamed-desk")
     assert invoke("registry", "--root", str(root), "--write").exit_code == 0
 
@@ -508,3 +531,129 @@ def test_discover_of_a_new_target_refreshes_the_table(tmp_path: Path) -> None:
     assert "| `fresh` | (problem: No Manifest at .agentdiag/targets/fresh/manifest.yaml) |" in (
         between_markers(page)
     )
+
+
+# --- the skills block (decision 6 as amended after the ticket 49 reviews) ---
+
+STALE_SKILLS = (
+    "warning: AGENTS.md: the skills line is stale; agentdiag registry --write regenerates it"
+)
+
+
+def test_a_page_from_before_the_skills_block_gains_it_on_registry_write(tmp_path: Path) -> None:
+    """A page 0.1.2 wrote before the block had markers carries the line bare: `registry
+    --write` wraps that line in the markers, in place, and the page is then this version's."""
+    root = toy_workspace(tmp_path / "shop", THREE)
+    page = root / "AGENTS.md"
+    current = page.read_text(encoding="utf-8")
+    earlier = current.replace(skills_block(), skills_line())
+    assert SKILLS_OPEN not in earlier
+    page.write_text(earlier, encoding="utf-8")
+    quiet = invoke("validate", "--root", str(root), "--target", "a")
+    assert "AGENTS.md" not in quiet.stdout, "a page without the block is not stale"
+
+    written = invoke("registry", "--root", str(root), "--write")
+
+    assert written.exit_code == 0, written.output
+    assert "wrote AGENTS.md" in written.stdout.splitlines()
+    assert page.read_text(encoding="utf-8") == current
+    assert current.count(skills_line()) == 1
+
+
+def test_a_page_whose_skills_line_is_not_the_bare_one_gains_the_block_at_its_end(
+    tmp_path: Path,
+) -> None:
+    root = toy_workspace(tmp_path / "shop", THREE)
+    page = root / "AGENTS.md"
+    older = page.read_text(encoding="utf-8").replace(
+        skills_block(), "Skills this agentdiag ships: /agentdiag-discover."
+    )
+    page.write_text(older, encoding="utf-8")
+
+    written = invoke("registry", "--root", str(root), "--write")
+
+    assert written.exit_code == 0, written.output
+    assert page.read_text(encoding="utf-8") == f"{older}\n{skills_block()}\n"
+    assert written.stderr.splitlines() == [APPENDED_SKILLS], "one notice, for the one block"
+
+
+def test_a_stale_skills_line_warns_in_a_workspace_with_no_skills_and_is_regenerated(
+    tmp_path: Path,
+) -> None:
+    root = toy_workspace(tmp_path / "shop", THREE)
+    page = root / "AGENTS.md"
+    current = page.read_text(encoding="utf-8")
+    old_block = f"{SKILLS_OPEN}\nSkills this agentdiag ships: /agentdiag-discover.\n{SKILLS_CLOSE}"
+    stale_page = current.replace(skills_block(), old_block) + "\n## Ours\n\nKept.\n"
+    page.write_text(stale_page, encoding="utf-8")
+
+    stale = invoke("validate", "--root", str(root), "--target", "a")
+
+    assert stale.exit_code == 0, stale.output
+    assert STALE_SKILLS in stale.stdout.splitlines()
+    assert STALE not in stale.stdout.splitlines()
+    every = invoke("validate", "--root", str(root), "--all")
+    assert every.stdout.splitlines().count(STALE_SKILLS) == 1
+
+    assert invoke("registry", "--root", str(root), "--write").exit_code == 0
+
+    written = page.read_text(encoding="utf-8")
+    assert written == stale_page.replace(old_block, skills_block()), "only the block changed"
+    assert written.endswith("\n## Ours\n\nKept.\n")
+    quiet = invoke("validate", "--root", str(root), "--target", "a")
+    assert "AGENTS.md" not in quiet.stdout
+
+
+def test_a_page_from_an_earlier_build_naming_four_skills_gains_the_block_in_place(
+    tmp_path: Path,
+) -> None:
+    """The bare line is known by its fixed prefix and closing `.`, not by this build's list:
+    a page written before the migrate skill shipped gets the block where its line stood, the
+    line once, and no notice, since nothing was appended."""
+    root = toy_workspace(tmp_path / "shop", THREE)
+    page = root / "AGENTS.md"
+    current = page.read_text(encoding="utf-8")
+    page.write_text(current.replace(skills_block(), FOUR_SKILLS_LINE), encoding="utf-8")
+
+    written = invoke("registry", "--root", str(root), "--write")
+
+    assert written.exit_code == 0, written.output
+    assert page.read_text(encoding="utf-8") == current
+    assert "/agentdiag-generate." not in page.read_text(encoding="utf-8")
+    assert "notice:" not in written.stderr
+
+
+def test_a_page_with_the_table_and_no_skills_line_gains_it_with_a_notice(
+    tmp_path: Path,
+) -> None:
+    root = toy_workspace(tmp_path / "shop", THREE)
+    page = root / "AGENTS.md"
+    own = page.read_text(encoding="utf-8").replace(f"\n{skills_block()}\n", "")
+    page.write_text(own, encoding="utf-8")
+
+    written = invoke("registry", "--root", str(root), "--write")
+
+    assert written.exit_code == 0, written.output
+    assert written.stderr.splitlines() == [APPENDED_SKILLS]
+    assert page.read_text(encoding="utf-8") == f"{own}\n{skills_block()}\n"
+
+
+def test_with_skills_installed_a_page_with_the_table_and_no_skills_line_warns(
+    tmp_path: Path,
+) -> None:
+    root = toy_workspace(tmp_path / "shop", ("default",))
+    page = root / "AGENTS.md"
+    without = page.read_text(encoding="utf-8").replace(f"\n{skills_block()}\n", "")
+    page.write_text(without, encoding="utf-8")
+
+    unoperated = invoke("validate", "--root", str(root))
+    assert unoperated.exit_code == 0, unoperated.output
+    assert NO_SKILLS_LINE not in unoperated.stdout.splitlines(), "no skills: silence"
+
+    assert invoke("init", "--root", str(root), "--skills").exit_code == 0
+    page.write_text(without, encoding="utf-8")
+    operated = invoke("validate", "--root", str(root))
+
+    assert operated.exit_code == 0, operated.output
+    assert NO_SKILLS_LINE in operated.stdout.splitlines()
+    assert STALE not in operated.stdout.splitlines()

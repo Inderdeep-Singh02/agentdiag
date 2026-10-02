@@ -100,7 +100,7 @@ def migrated(tmp_path_factory: pytest.TempPathFactory) -> Migrated:
     for notes in ("judge_notes.md", "maintainer_notes.md"):
         shutil.copy(JUDGEMENT / notes, target / notes)
 
-    done.printed["validate"] = invoke("validate", *at)
+    done.printed["validate"] = invoke("validate", "--root", root, "--all")
     done.printed["registry"] = invoke("registry", "--root", root, "--write")
     done.printed["dry-run"] = invoke("run", *at, "--dry-run")
     return done
@@ -194,9 +194,10 @@ def test_the_notes_are_filled_under_600_words_and_hold_no_credential(
 def test_validate_leaves_the_pending_adapter_and_the_two_review_lines(
     migrated: Migrated,
 ) -> None:
-    """Step 10: 0 errors, and the warnings are the pending Adapter and the REVIEW count,
-    nothing else: the table is fresh (the sample was retired before `generate` refreshed
-    it), and the generated Suite is runnable, so `no runnable Suite` does not fire."""
+    """Step 10, as `validate --all` checks the Workspace (decision 24, switched by ticket
+    50): 0 errors, and the warnings are the pending Adapter and the REVIEW count, nothing
+    else: the table is fresh (the sample was retired before `generate` refreshed it), and
+    the generated Suite is runnable, so `no runnable Suite` does not fire."""
     result = migrated.printed["validate"]
     manifest = (migrated.target / "manifest.yaml").as_posix()
 
@@ -206,7 +207,7 @@ def test_validate_leaves_the_pending_adapter_and_the_two_review_lines(
         f"warning: {manifest}: {TWO_REVIEW_LINES}",
     ]
     summary = result.stdout.splitlines()[-1]
-    assert summary == "validated the Manifest and 1 Suite: 0 errors, 2 warnings"
+    assert summary == f"{SLUG}: validated the Manifest and 1 Suite: 0 errors, 2 warnings"
 
 
 def test_the_page_lists_the_target_and_the_dry_run_refuses_it_by_name(
