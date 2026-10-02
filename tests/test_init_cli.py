@@ -7,7 +7,8 @@ editing.
 Every assertion is on what a developer can observe after typing one command — a file on
 disk, a line of output, an exit code — and then on whether `run` and `show` accept what
 `init` wrote. The checked-in `examples/toy/.agentdiag/` is the truth of what `init` writes
-with no `--adapter`, so the two can never drift apart (ticket 02).
+with no `--target` and no `--adapter`, so the two can never drift apart (ticket 02);
+`tests/test_pending_scaffold_cli.py` covers `--target` alone (ADR-0016 §4).
 """
 
 from __future__ import annotations
@@ -31,6 +32,7 @@ from agentdiag.run.templates import (
 )
 from agentdiag.scenario.load import load_suite
 from agentdiag.workspace import INDEX_FILE, RUNS_DIRNAME, Workspace
+from tests.fakes.workspace import manifest_of, suite_of, target_dir
 from tests.stories import CANCEL_COUNTS, CANCEL_EXIT
 
 REPO = Path(__file__).resolve().parents[1]
@@ -60,22 +62,9 @@ def init(root: Path, *arguments: str) -> object:
     return runner.invoke(app, ["init", "--root", str(root), *arguments])
 
 
-def target_dir(root: Path) -> Path:
-    """Where `init` with no `--target` writes: the Target `default` (ADR-0013)."""
-    return root / ".agentdiag" / "targets" / "default"
-
-
 def manifest_in(root: Path) -> Manifest:
     """The Manifest of the one Target of the Workspace at `root`, as `run` loads it."""
     return load_manifest(Workspace.find(root).resolve(None))
-
-
-def manifest_of(root: Path) -> dict:
-    return yaml.safe_load((target_dir(root) / "manifest.yaml").read_text(encoding="utf-8"))
-
-
-def suite_of(root: Path) -> dict:
-    return yaml.safe_load((target_dir(root) / "suites" / "sample.yaml").read_text(encoding="utf-8"))
 
 
 def only_run(root: Path) -> Path:

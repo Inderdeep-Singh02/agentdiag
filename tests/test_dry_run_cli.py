@@ -247,3 +247,54 @@ def test_a_dry_run_refuses_an_absolute_prompt_pointer_as_validate_does(tmp_path:
     assert f"error: {path}: {problem}" in checked.stdout.splitlines()
     assert result.exit_code == 3, result.stdout
     assert problem in result.stdout.splitlines(), result.stdout
+
+
+def test_a_dry_run_of_a_pending_target_refuses_with_validates_lines(tmp_path: Path) -> None:
+    """ADR-0016 §4: a Target `init --target` described and nothing yet drives is refused by
+    name, beside the draft-only Suite list, each line word for word as `validate` warns it,
+    and no Adapter is built or Run written."""
+    root = tmp_path / "shop"
+    made = runner.invoke(app, ["init", "--root", str(root), "--target", "desk"])
+    assert made.exit_code == 0, made.output
+    validated = runner.invoke(app, ["validate", "--root", str(root)])
+    manifest = root / ".agentdiag" / "targets" / "desk" / "manifest.yaml"
+    warned = [
+        line.removeprefix(f"warning: {manifest}: ")
+        for line in validated.stdout.splitlines()
+        if line.startswith("warning:") and "REVIEW;" not in line
+    ]
+
+    result = runner.invoke(app, ["run", "--root", str(root), "--dry-run"])
+
+    assert result.exit_code == 3, result.output
+    assert warned == [
+        "adapter.kind: pending: nothing drives this Target yet; set the Adapter kind and its "
+        "environment block (the REVIEW lines in manifest.yaml name what to fill)",
+        "suites: no runnable Suite: suites/sample.yaml is draft; settle its Scenarios and drop "
+        "status: draft from its entry to run them",
+    ]
+    assert result.output.splitlines() == warned
+    assert not (root / ".agentdiag" / "targets" / "desk" / "runs").exists()
+
+
+def test_a_dry_run_whose_only_suite_is_a_draft_is_refused_by_name(tmp_path: Path) -> None:
+    """The ticket 46 amendment: a Run that drives, over a Manifest whose every Suite is a
+    draft, is refused rather than recording a Run of nothing; a retired one is named too."""
+    root = toy_root(tmp_path)
+    path = root / ".agentdiag" / "targets" / "toy-order-desk" / "manifest.yaml"
+    manifest = yaml.safe_load(path.read_text(encoding="utf-8"))
+    manifest["suites"] = [
+        {"path": "suites/orders.yaml", "status": "draft"},
+        {"path": "suites/guardrails.yaml", "status": "retired"},
+    ]
+    path.write_text(yaml.safe_dump(manifest), encoding="utf-8")
+
+    result = runner.invoke(app, ["run", "--root", str(root), "--dry-run"])
+
+    assert result.exit_code == 3, result.output
+    assert (
+        "suites: no runnable Suite: suites/orders.yaml is draft; settle its Scenarios and drop "
+        "status: draft from its entry to run them. suites/guardrails.yaml is retired; a "
+        "retired Suite never runs"
+    ) in result.output.splitlines()
+    assert not (root / ".agentdiag" / "targets" / "toy-order-desk" / "runs").exists()

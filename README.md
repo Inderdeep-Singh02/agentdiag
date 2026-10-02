@@ -120,6 +120,16 @@ the `http` Adapter: one POST per Turn, the reply read as it streams, credentials
 environment variable and never by value. See
 [Drive a Target over HTTP](docs/guide.md#drive-a-target-over-http).
 
+A Target not yet connected can still be described: `init --target <slug>` with no
+`--adapter` writes who it is with an Adapter of kind `pending`, which `validate` passes
+with warnings and every Run refuses by name, each hole under a `# REVIEW:` line saying what
+to fill. See
+[Describe a Target before it is connected](docs/guide.md#describe-a-target-before-it-is-connected).
+
+```bash
+uv run agentdiag init --root <your-repo> --target <slug> --name "<name>" --family <persona> --channel chat
+```
+
 ## The Workspace
 
 Everything agentdiag writes about its Targets lives under one `.agentdiag/` directory, the
@@ -154,7 +164,8 @@ CLAUDE.md, GEMINI.md                  one line each importing it, for Claude Cod
         └── trials/<scenario>/<n>/    trace.jsonl, judgement.jsonl, scores.json
 ```
 
-`agentdiag init --target <slug>` adds a Target; `agentdiag registry` lists them;
+`agentdiag init --target <slug>` adds a Target (`--adapter toy` for the toy under that
+slug); `agentdiag registry` lists them;
 `agentdiag dashboard` shows every Target's Sync state, last Run and Score trend.
 [`examples/workspace`](examples/workspace) is a two-Target Workspace checked in.
 

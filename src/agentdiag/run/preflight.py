@@ -86,7 +86,10 @@ Once the Manifest loads (a missing or unloadable one is refused before anything 
 `adapter.kind` nothing registers is a problem, with the message `validate` gives for it, and
 so is a `connector.kind` when this preflight uses the Connector (a Sync check, or an HTTP
 Adapter whose `tool_truth` reads through it): the Adapter is then neither built nor probed,
-and the rest is collected as usual (ADR-0015 §3).
+and the rest is collected as usual (ADR-0015 §3). A `pending` Adapter, the identity
+scaffold's (ADR-0016 §4), is the same: `validate`'s warning becomes the problem, word for
+word, and no Adapter is built; and a Manifest whose every Suite is a draft or retired is
+`no runnable Suite` for a Run that drives.
 """
 
 from __future__ import annotations
@@ -135,7 +138,12 @@ from agentdiag.run.manifest import (
     load_manifest,
     pointer_problems,
 )
-from agentdiag.run.manifest_checks import kind_problems
+from agentdiag.run.manifest_checks import (
+    kind_problems,
+    no_runnable_suite,
+    pending_problem,
+    render_problem,
+)
 from agentdiag.run.record import Defaulted, SyncSection
 from agentdiag.scenario.load import LoadedSuite, load_suite_files
 from agentdiag.scenario.models import (
@@ -359,18 +367,27 @@ def preflight(
     # Everything that does not need the Adapter is still collected below.
     unknown = unknown_kinds(manifest, connector=check_sync or reads_tool_truth(manifest))
     problems.extend(unknown)
+    # A `pending` Adapter drives nothing (ADR-0016 §4): `validate`'s warning is this refusal,
+    # word for word, and no Adapter is built, so nothing of the Target is ever reached.
+    pending = pending_problem(manifest)
+    if pending is not None:
+        problems.append(render_problem(pending))
     # Every pointer relative and inside the Workspace root (ADR-0015 §2): `validate`'s
     # problem, word for word, so `run` refuses what `validate` refuses.
     problems.extend(f"{where}: {message}" for where, message in pointer_problems(target, manifest))
 
     suites, warnings, suite_problems = load_suites(target, manifest)
     problems.extend(suite_problems)
+    # Nothing a Run could execute is refused by name; a rescore (the only caller with ad-hoc
+    # Scenarios) drives nothing and is not asked.
+    if drives and (nothing := no_runnable_suite(manifest)) is not None:
+        problems.append(render_problem(nothing))
     suites = with_adhoc(suites, adhoc, manifest)
     # Before the Adapter: what resolves decides the Backend of the Target's calls too.
     source = None if client_backend is not None else resolve_credentials(replay, dry_run)
     adapter, description, adapter_problems = (
         (None, None, [])
-        if unknown
+        if unknown or pending is not None
         else build_adapter(
             manifest, cursor, source, allow_live=live, drives=drives, environment=environment
         )

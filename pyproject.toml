@@ -27,6 +27,7 @@ agentdiag = "agentdiag.cli:app"
 [project.entry-points."agentdiag.adapters"]
 inprocess = "agentdiag.adapter.inprocess:InProcessAdapter"
 http = "agentdiag.adapter.http.session:HttpAdapter"
+pending = "agentdiag.adapter.pending:PendingAdapter"
 
 [project.entry-points."agentdiag.dialects"]
 json = "agentdiag.adapter.http.dialects:JsonDialect"

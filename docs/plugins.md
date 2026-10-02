@@ -13,7 +13,8 @@ its `pyproject.toml`, so a plugin is never a special case.
 | `agentdiag.connectors` | a Connector class (manages the deployed set and Evidence stores) | `connector.kind` in the Manifest |
 | `agentdiag.dialects` | a Dialect class (how an HTTP endpoint frames one Turn) | `dialect` in an `http` Adapter environment |
 
-Core registers `inprocess` and `http` Adapters, the `inprocess` Connector and the `json` and
+Core registers the `inprocess`, `http` and `pending` Adapters (`pending` is the placeholder
+`init --target` writes, which refuses to drive), the `inprocess` Connector, and the `json` and
 `sse-json` Dialects. A plugin's `pyproject.toml` adds its own:
 
 ```toml

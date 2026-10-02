@@ -223,7 +223,11 @@ def init(
     adapter: str | None = typer.Option(
         None,
         "--adapter",
-        help="The Target's factory, as python:<module:attr>. Omitted: the shipped toy Target.",
+        help=(
+            "What drives the Target: toy (the shipped toy Target) or python:<module:attr> (its "
+            "factory). Omitted: the toy for the first init with no --target; with --target, "
+            "an Adapter of kind pending."
+        ),
     ),
     tools: str | None = typer.Option(
         None,
@@ -234,6 +238,24 @@ def init(
         DEFAULT_MODEL,
         "--model",
         help="The model the Target runs on, passed to its factory as an option.",
+    ),
+    name: str | None = typer.Option(
+        None,
+        "--name",
+        help="The Target's name, as a Report prints it (default: the slug, for a pending Adapter).",
+        show_default=False,
+    ),
+    description: str | None = typer.Option(
+        None, "--description", help="One sentence: what the Target does.", show_default=False
+    ),
+    family: str | None = typer.Option(
+        None,
+        "--family",
+        help="The persona this Target is one channel of.",
+        show_default=False,
+    ),
+    channel: str | None = typer.Option(
+        None, "--channel", help="Which channel of the Family: chat, voice, …", show_default=False
     ),
     force: bool = typer.Option(
         False,
@@ -289,6 +311,10 @@ def init(
                 tools=tools,
                 model=model,
                 force=force,
+                name=name,
+                description=description,
+                family=family,
+                channel=channel,
             )
         )
     except InitRefused as refused:

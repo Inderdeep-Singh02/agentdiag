@@ -34,6 +34,7 @@ from typing import Any
 
 import yaml
 
+from agentdiag.run.manifest_checks import REVIEW
 from agentdiag.run.templates import (
     ADAPTER_COMMENT,
     CONNECTOR_COMMENT,
@@ -43,9 +44,6 @@ from agentdiag.run.templates import (
     scalar,
     suites_comment,
 )
-
-REVIEW = "# REVIEW:"
-"""The marker above every guessed line. `grep -n 'REVIEW:'` finds what is left to decide."""
 
 INDENT = "  "
 

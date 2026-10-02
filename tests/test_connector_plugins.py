@@ -68,7 +68,8 @@ def test_an_unknown_kind_with_no_known_distribution_says_to_install_a_plugin() -
 def test_an_unknown_kind_nobody_knows_names_the_installed_kinds() -> None:
     # `http` was the unknown name until ticket 17 registered it; `grpc` is nobody's.
     with pytest.raises(
-        UnknownKind, match=r"no Adapter of kind 'grpc' is installed \(installed: http, inprocess\)"
+        UnknownKind,
+        match=r"no Adapter of kind 'grpc' is installed \(installed: http, inprocess, pending\)",
     ):
         adapter_class("grpc")
 
@@ -177,3 +178,16 @@ def test_a_core_kind_of_one_group_is_not_claimed_for_another() -> None:
 
     assert "agentdiag registers it itself" not in str(unknown.value)
     assert "(installed: inprocess)" in str(unknown.value)
+
+
+def test_pending_is_a_core_adapter_kind_that_refuses_to_be_built() -> None:
+    """ADR-0016 §4: the identity scaffold's kind is registered like every core kind, and a
+    direct construction refuses with the message `validate` warns with."""
+    from agentdiag.adapter.pending import PENDING_MESSAGE, AdapterPending, PendingAdapter
+
+    kind = adapter_class("pending")
+
+    assert kind is PendingAdapter
+    with pytest.raises(AdapterPending) as refused:
+        kind({"kind": "pending", "environments": {"default": "dev", "dev": {}}}, environment="dev")
+    assert str(refused.value) == PENDING_MESSAGE

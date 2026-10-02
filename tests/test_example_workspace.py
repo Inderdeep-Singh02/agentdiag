@@ -1,12 +1,13 @@
 """The gate for `examples/workspace/`, the two-Target example Workspace (ticket 13, phase-6
 decision 47).
 
-`examples/workspace/` is what a developer gets from `agentdiag init --target order-desk`,
-`agentdiag init --target help-desk --adapter python:agentdiag.examples.helpdesk:make_helpdesk
---tools agentdiag.examples.helpdesk:make_tools --model claude-sonnet-5` and `agentdiag init
---skills`, then the help desk's Manifest and Suite as a coding agent produced them from the
-two skills. As `examples/toy/` is, it is asserted byte for byte against what the templates
-render, so a template change the example does not follow fails here rather than drifting.
+`examples/workspace/` is what a developer gets from `agentdiag init --target order-desk
+--adapter toy`, `agentdiag init --target help-desk --adapter
+python:agentdiag.examples.helpdesk:make_helpdesk --tools agentdiag.examples.helpdesk:make_tools
+--model claude-sonnet-5` and `agentdiag init --skills`, then the help desk's Manifest and
+Suite as a coding agent produced them from the two skills. As `examples/toy/` is, it is
+asserted byte for byte against what the templates render, so a template change the example
+does not follow fails here rather than drifting.
 
 At the root it carries the Orientation page, its two import files and the vocabulary copy,
 as `init` and `init --skills` write them (ticket 45, ADR-0016 §1-§2), gated against what
@@ -62,7 +63,7 @@ desk ships without them, so a `sync` a reader ran there is set aside; the help d
 `fingerprint.json`, gated below, and no Sync break."""
 
 ORDER_DESK_SCAFFOLD = replace(TOY_SCAFFOLD, slug="order-desk")
-"""What `init --target order-desk` renders: the toy, under another slug."""
+"""What `init --target order-desk --adapter toy` renders: the toy, under another slug."""
 
 
 def test_the_workspace_holds_the_order_desk_and_the_help_desk_and_nothing_else() -> None:

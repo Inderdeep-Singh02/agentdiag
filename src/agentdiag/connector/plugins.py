@@ -6,9 +6,9 @@ this module turns each into the class that implements it. The mechanism is
 `importlib.metadata.entry_points`: an installed distribution registers a kind under
 `agentdiag.adapters` or `agentdiag.connectors`, or a Dialect under `agentdiag.dialects`
 (phase-8 decision 1), and core imports no plugin (ADR-0014 §1). Core registers its own kinds
-(`inprocess` in both groups, `http` among the Adapters) and its two Dialects (`json`,
-`sse-json`) the same way, in its `pyproject.toml`, so the one lookup path is the path every
-kind takes, and a plugin is never a special case.
+(`inprocess` in both groups, `http` and `pending` among the Adapters, ADR-0016 §4) and its
+two Dialects (`json`, `sse-json`) the same way, in its `pyproject.toml`, so the one lookup
+path is the path every kind takes, and a plugin is never a special case.
 
 - **An unknown kind names the kinds that are installed**, and says a plugin distribution
   registers one.
@@ -54,7 +54,7 @@ COMPONENT_OF_GROUP: Mapping[str, str] = {
 """Entry-point group to the component its kinds are, as a message names it."""
 
 CORE_KINDS_OF: Mapping[str, frozenset[str]] = {
-    ADAPTER_GROUP: frozenset({"inprocess", "http"}),
+    ADAPTER_GROUP: frozenset({"inprocess", "http", "pending"}),
     CONNECTOR_GROUP: frozenset({"inprocess"}),
     DIALECT_GROUP: frozenset({"json", "sse-json"}),
 }

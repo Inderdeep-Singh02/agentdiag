@@ -617,3 +617,47 @@ def test_the_orientation_walkthrough_prints_what_the_guide_shows(tmp_path: Path)
     for harness, reads in (("Codex", "AGENTS.md"), ("Claude Code", "CLAUDE.md")):
         assert f"| {harness} | `{reads}` |" in fenced_section(ORIENTATION_SECTION)
     assert "| Gemini CLI | `GEMINI.md` |" in fenced_section(ORIENTATION_SECTION)
+
+
+DESCRIBE_SECTION = "## Describe a Target before it is connected"
+DESCRIBE_ROOT = "/tmp/agentdiag-describe"
+DESCRIBE_EXITS = {"init": 0, "validate": 0, "run": 3}
+"""The documented exit of each command the section types: `run --dry-run` refuses a
+pending Adapter (ADR-0016 §4)."""
+
+
+def test_the_describe_walkthrough_prints_what_the_guide_shows(tmp_path: Path) -> None:
+    """Every line of "Describe a Target before it is connected", typed into a temporary
+    root: the `uv run agentdiag …` lines through the CLI, each exiting as documented, and
+    the `grep` line in a shell; each output block is what the bash block before it printed,
+    with the documented root in place of the temporary one."""
+    import subprocess
+
+    root = tmp_path / "agentdiag-describe"
+
+    def typed(line: str) -> str:
+        if not line.startswith("uv run agentdiag "):
+            done = subprocess.run(
+                ["bash", "-c", line.replace(DESCRIBE_ROOT, root.as_posix())],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            return done.stdout
+        words = [w.replace(DESCRIBE_ROOT, root.as_posix()) for w in shlex.split(line)]
+        result = runner.invoke(app, words[3:])
+        assert result.exit_code == DESCRIBE_EXITS[words[3]], f"`{line}`: {result.output}"
+        return result.output.replace(root.as_posix(), DESCRIBE_ROOT)
+
+    pending: str | None = None
+    compared = 0
+    for match in BLOCK.finditer(fenced_section(DESCRIBE_SECTION)):
+        language, body = match.group(1), match.group(2)
+        if language == "bash":
+            pending = "".join(typed(line) for line in body.strip().splitlines())
+        else:
+            assert pending is not None, "an output block before any command"
+            assert pending == body
+            compared += 1
+            pending = None
+    assert compared == 4

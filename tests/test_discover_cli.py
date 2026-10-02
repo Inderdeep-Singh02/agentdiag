@@ -133,7 +133,8 @@ def test_every_guessed_line_of_the_scan_draft_carries_a_review_line(tmp_path: Pa
 def test_a_new_target_gets_the_redaction_starter_beside_its_draft(tmp_path: Path) -> None:
     """A Target `discover` creates is as complete as one `init` scaffolds (ADR-0015 §4): the
     local, gitignored `redaction.yaml` is written beside the draft, named in the summary,
-    and `validate --manifest` has no absent-file warning. A file an author wrote is kept."""
+    and `validate --manifest` has no absent-file warning: its one warning is the count of the
+    draft's REVIEW lines (ADR-0016 §4). A file an author wrote is kept."""
     root = workspace(tmp_path)
     result = invoke("discover", "--root", str(root), "--target", "toy", "--scan", str(TOY_SOURCE))
     assert result.exit_code == 0, result.output
@@ -145,7 +146,9 @@ def test_a_new_target_gets_the_redaction_starter_beside_its_draft(tmp_path: Path
         "validate", "--root", str(root), "--target", "toy", "--manifest", str(draft_of(root, "toy"))
     )
     assert checked.exit_code == 0, checked.output
-    assert "0 errors, 0 warnings" in checked.stdout
+    (warning,) = [line for line in checked.stdout.splitlines() if line.startswith("warning:")]
+    assert "lines marked REVIEW; settle each (accept or rewrite it) before a Run" in warning
+    assert "0 errors, 1 warning" in checked.stdout
 
     redaction.write_text("names: [Dana Whitfield]\n", encoding="utf-8")
     again = invoke("discover", "--root", str(root), "--target", "toy", "--scan", str(TOY_SOURCE))

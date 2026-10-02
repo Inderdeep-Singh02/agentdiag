@@ -140,10 +140,11 @@ at the root and the vocabulary copy under `.agentdiag/`, and the gitignore:
   and platform stores are output, the index is derived from the Runs, and the redaction file
   is yours alone.
 
-With no `--adapter`, the scaffold points at the toy Target that ships with agentdiag — an
-order desk with five numbered rules, a lookup tool and an action tool — so the first Run
-works before you have written an Adapter or a Scenario of your own. Pointing it at a Target
-of your own is below.
+With no `--adapter` and no `--target`, the scaffold points at the toy Target that ships with
+agentdiag — an order desk with five numbered rules, a lookup tool and an action tool — so the
+first Run works before you have written an Adapter or a Scenario of your own; `--adapter toy`
+writes it under any slug. Pointing it at a Target of your own is below, and describing one
+not yet connected (`--target <slug>` alone) after the Workspace walkthrough.
 
 ### Credentials
 
@@ -919,7 +920,8 @@ The id of your rescore will differ; the Run directory it wrote is the newest und
 ## Point it at your own Target
 
 `--adapter python:<module>:<attr>` names the factory that builds your Target, and the
-scaffolded Manifest points at it instead of the toy's:
+scaffolded Manifest points at it instead of the toy's (a Target with nothing to drive it yet
+is [described instead](#describe-a-target-before-it-is-connected)):
 
 ```bash
 uv run agentdiag init --root <your-repo> --adapter python:<module>:<factory> --tools <module>:<tools>
@@ -934,7 +936,8 @@ and is handed an empty mapping. `--model` sets what the factory is asked to run 
 (`claude-sonnet-5` by default). `--force` rewrites the Manifest and the sample Suite of a
 directory that already has them — never a Run, which is written once and never edited, and
 never the calibration notes an author wrote; `init` without it refuses an existing
-`.agentdiag/` and exits 3.
+`.agentdiag/` and exits 3. `--name`, `--description`, `--family` and `--channel` fill who the
+Target is, on this scaffold as on every other.
 
 The sample Scenario `init` writes for a Target it has never run says the least that is still
 true of any of them — a first user message gets an answer — and its comment says to replace
@@ -1201,10 +1204,13 @@ a Turn may take the environment's `turn_timeout` seconds, 600 by default.
 One Workspace holds as many Targets as you keep, each in its own Target directory under
 `.agentdiag/targets/<slug>/` with its own Manifest, Suites, Calibration Notes and Runs.
 `init --target <slug>` creates the Workspace with that Target, or adds the Target to the
-Workspace that is already there:
+Workspace that is already there. `--adapter` says what drives it: `toy` is the shipped toy
+Target under that slug, and `python:<module:attr>` a factory of your own; with no
+`--adapter` its Adapter is of kind `pending`, nothing drives it yet ([Describe a Target before it is
+connected](#describe-a-target-before-it-is-connected)):
 
 ```bash
-uv run agentdiag init --root /tmp/agentdiag-shop --target order-desk
+uv run agentdiag init --root /tmp/agentdiag-shop --target order-desk --adapter toy
 uv run agentdiag init --root /tmp/agentdiag-shop --target help-desk --adapter python:agentdiag.examples.helpdesk:make_helpdesk --tools agentdiag.examples.helpdesk:make_tools
 ```
 
@@ -1288,6 +1294,98 @@ Target, a help desk whose prompt and tools live on a (module-level) platform, tw
 the one `northwind` Family. A root written by an older `init`, with its Manifest directly
 under `.agentdiag/`, is refused by every command with the move that fixes it: its files go
 into `.agentdiag/targets/default/`.
+
+## Describe a Target before it is connected
+
+A Target you cannot drive yet (its endpoint is not reachable from here, or nobody has written
+its Adapter) can still be described: `init --target <slug>` with no `--adapter` writes who it
+is and nothing else. `--name` (the slug when absent), `--description`, `--family` and
+`--channel` say who it is; the Adapter is `kind: pending`, a core kind that validates and
+drives nothing; the prompt pointers and the `connector` block are comments; and the sample
+Suite is a draft. The same four flags apply to `--adapter toy` and `--adapter python:…`.
+
+```bash
+uv run agentdiag init --root /tmp/agentdiag-describe --target desk --name "Returns desk" --description "Takes a customer's return from the first message to a refund." --family northwind --channel voice
+```
+
+```
+Wrote the scaffold into /tmp/agentdiag-describe:
+  .agentdiag/targets/desk/manifest.yaml
+  .agentdiag/targets/desk/suites/sample.yaml
+  .agentdiag/targets/desk/judge_notes.md
+  .agentdiag/targets/desk/redaction.yaml
+  AGENTS.md
+  CLAUDE.md
+  GEMINI.md
+  .agentdiag/CONTEXT.md
+  .gitignore
+
+Target desk (Returns desk), family northwind, channel voice; no Adapter yet (adapter.kind: pending).
+
+Next:
+  settle the 4 REVIEW lines in .agentdiag/targets/desk/manifest.yaml, then
+  agentdiag validate
+  agentdiag run --dry-run
+
+A judged Eval needs credentials: a Claude Code login (claude auth login) or export ANTHROPIC_API_KEY=….
+```
+
+Each hole sits under a `# REVIEW:` line directly above it, in the shape `discover` writes,
+saying what to fill. A description or a Family given on the command line has none:
+
+```bash
+grep -A1 "REVIEW:" /tmp/agentdiag-describe/.agentdiag/targets/desk/manifest.yaml
+```
+
+```
+  # REVIEW: nothing drives this Target yet; replace pending with inprocess (a Python factory in this process), http (a chat endpoint with a Dialect), or a plugin's kind, and give the environment block that kind reads
+  kind: pending
+--
+    # REVIEW: one block per environment the Target runs in, protected: true on every one that reaches real users
+    dev: {}
+--
+# REVIEW: name each prompt as a path under this Target directory (prompts/system.md) once the file is here, or observed when only the running Target shows it
+# prompts:
+--
+# REVIEW: no Connector yet: nothing reads or pushes the deployed set; a platform's Connector is a plugin kind, inprocess reads a Python module
+# connector:
+```
+
+`validate` passes it, exit 0, with three warnings and no error: the pending Adapter, the
+REVIEW lines left, and a Suite list with nothing runnable (the sample Suite is a draft):
+
+```bash
+uv run agentdiag validate --root /tmp/agentdiag-describe
+```
+
+```
+warning: /tmp/agentdiag-describe/.agentdiag/targets/desk/manifest.yaml: adapter.kind: pending: nothing drives this Target yet; set the Adapter kind and its environment block (the REVIEW lines in manifest.yaml name what to fill)
+warning: /tmp/agentdiag-describe/.agentdiag/targets/desk/manifest.yaml: 4 lines marked REVIEW; settle each (accept or rewrite it) before a Run
+warning: /tmp/agentdiag-describe/.agentdiag/targets/desk/manifest.yaml: suites: no runnable Suite: suites/sample.yaml is draft; settle its Scenarios and drop status: draft from its entry to run them
+validated the Manifest and 1 Suite: 0 errors, 3 warnings
+```
+
+Every command that would converse with the Target refuses it by name, exit 3, and builds no
+Adapter: `run` and `run --dry-run` with the two lines `validate` warned with, `sync` with the
+pending line after `error:` (unless a Connector reads the deployed set, which `sync` then
+reads):
+
+```bash
+uv run agentdiag run --root /tmp/agentdiag-describe --dry-run
+```
+
+```
+adapter.kind: pending: nothing drives this Target yet; set the Adapter kind and its environment block (the REVIEW lines in manifest.yaml name what to fill)
+suites: no runnable Suite: suites/sample.yaml is draft; settle its Scenarios and drop status: draft from its entry to run them
+```
+
+Settling the REVIEW lines is connecting it: an `inprocess` factory or an `http` endpoint
+([Drive a Target over HTTP](#drive-a-target-over-http)) in the Adapter block, the prompt
+files under the Target directory, a Connector when a platform holds the deployed set, and
+the sample Suite rewritten and its `status: draft` dropped. A Workspace whose Targets were
+all written as the toy by an older `init` is repaired the same way, Target by Target, with
+`init --target <slug> --force` and the name flags; `--force` keeps `judge_notes.md` and
+`redaction.yaml`.
 
 ## Operate it with a coding agent
 
@@ -1636,14 +1734,16 @@ adapter:
 ```
 
 A draft always validates as a Manifest; `validate --manifest` checks it where it is, its
-paths relative to the Target directory as the Manifest's are:
+paths relative to the Target directory as the Manifest's are, and warns with the count of
+REVIEW lines still to settle:
 
 ```bash
 uv run agentdiag validate --root /tmp/agentdiag-discover --target toy-order-desk --manifest /tmp/agentdiag-discover/.agentdiag/targets/toy-order-desk/manifest.draft.yaml
 ```
 
 ```
-validated the Manifest and 0 Suites: 0 errors, 0 warnings
+warning: /tmp/agentdiag-discover/.agentdiag/targets/toy-order-desk/manifest.draft.yaml: 15 lines marked REVIEW; settle each (accept or rewrite it) before a Run
+validated the Manifest and 0 Suites: 0 errors, 1 warning
 ```
 
 Over an existing `manifest.yaml` the draft is that file line for line, its comments
@@ -2368,8 +2468,9 @@ A Run is never edited. Re-scoring writes a new Run whose `run.json` names its so
 Run say something else. With `--trials N`, each Scenario has `trials/<id>/1/` to `N/`.
 
 [`examples/toy/`](../examples/toy) is that scaffold checked in: exactly what `init` writes when
-no `--adapter` names another Target, rendered from the same template and asserted byte for
-byte, so the example can never quietly stop being what the command produces. Its one Target
+neither `--target` nor `--adapter` names another Target, rendered from the same template and
+asserted byte for byte, so the example can never quietly stop being what the command
+produces. Its one Target
 is `toy-order-desk`, under `.agentdiag/targets/toy-order-desk/`, so every command reaches it
 with no `--target`. [`examples/workspace/`](../examples/workspace) is the two-Target Workspace:
 the same order desk and a help desk, gated the same way.

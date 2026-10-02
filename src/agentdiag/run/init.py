@@ -1,8 +1,14 @@
 """`agentdiag init`: the files that make a directory a Workspace, and a Target in it.
 
-D39 asks for a Manifest skeleton, a sample Suite and a gitignore entry, and — when no
-Adapter is named — a scaffold pointing at the shipped toy Target, so the first `agentdiag
-run` works before anyone has written an Adapter or found a key.
+D39 asks for a Manifest skeleton, a sample Suite and a gitignore entry, and — for the first
+`init`, naming no Target and no Adapter — a scaffold pointing at the shipped toy Target, so
+the first `agentdiag run` works before anyone has written an Adapter or found a key.
+
+`init --target <slug>` with no `--adapter` never writes the toy (ADR-0016 §4): it writes who
+the Target is, from `--name` (the slug when absent), `--description`, `--family` and
+`--channel`, an Adapter of kind `pending`, and every hole under a `# REVIEW:` line.
+`--adapter toy` writes the toy under any slug, `--adapter python:<module:attr>` a Target of
+one's own, and the name flags apply over whichever scaffold is chosen.
 
 Since ADR-0013 the root is a Workspace of Targets (phase-6 decision 4): `init` with no
 `.agentdiag/` under the root creates one holding the Target `default` (or the one `--target`
@@ -40,12 +46,14 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from agentdiag.exits import USAGE_EXIT
+from agentdiag.run.manifest_checks import review_count
 from agentdiag.run.templates import (
     DEFAULT_MODEL,
     TOY_SCAFFOLD,
     Scaffold,
     UnwritableValue,
     custom_scaffold,
+    pending_scaffold,
     render_judge_notes,
     render_manifest,
     render_redaction,
@@ -56,6 +64,7 @@ from agentdiag.workspace import (
     DEFAULT_SLUG,
     GITIGNORE_REDACTION_LINE,
     INDEX_FILE,
+    MANIFEST_NAME,
     RESTORE_POINTS_DIRNAME,
     RUNS_DIRNAME,
     TARGETS_DIRNAME,
@@ -108,8 +117,18 @@ GITIGNORE_COMMENT = (
 )
 
 ADAPTER_PREFIX = "python:"
-"""The only Adapter form Phase 4 scaffolds. Naming the language leaves room for the
+"""The Adapter form for a Target of one's own. Naming the language leaves room for the
 `http:` and `cli:` Adapters later phases add, without `--adapter` changing meaning."""
+
+TOY_ADAPTER = "toy"
+"""`--adapter toy`: the shipped toy Target under any slug (ADR-0016 §4)."""
+
+
+CREDENTIALS_LINE = (
+    "A judged Eval needs credentials: a Claude Code login (claude auth login) "
+    "or export ANTHROPIC_API_KEY=…."
+)
+"""The last line `init` prints for every scaffold: the two ways to supply credentials."""
 
 
 class InitRefused(Exception):
@@ -128,6 +147,18 @@ class InitOptions:
     tools: str | None = None
     model: str = DEFAULT_MODEL
     force: bool = False
+    name: str | None = None
+    """`--name`: the Target's name; None keeps the scaffold's (the slug, for a Target whose
+    Adapter is pending)."""
+
+    description: str | None = None
+    """`--description`: one sentence of what the Target does; None keeps the scaffold's."""
+
+    family: str | None = None
+    """`--family`: the persona the Target is one channel of (ADR-0013 §3)."""
+
+    channel: str | None = None
+    """`--channel`: which channel of its Family the Target is."""
 
 
 @dataclass
@@ -146,6 +177,10 @@ class InitResult:
     notices: list[str] = field(default_factory=list)
     """`notice: …` lines for stderr: what the Orientation page's writer left to the user."""
 
+    reviews: int = 0
+    """How many `# REVIEW:` lines the Manifest holds: what `init` asks a reader to settle
+    before anything else, for a Target nothing drives yet (decision 14)."""
+
     @property
     def scenario_id(self) -> str:
         """The Scenario the two next commands select, so the printed lines are runnable."""
@@ -153,20 +188,40 @@ class InitResult:
 
 
 def scaffold_for(options: InitOptions) -> Scaffold:
-    """The scaffold this invocation writes: the toy Target, or the one `--adapter` names.
+    """The scaffold this invocation writes (decision 10), with the name flags over it.
+
+    The toy for `--adapter toy` and for the first `init`, which names neither a Target nor
+    an Adapter, so the five-minute path is unchanged; the Target `--adapter python:…` names;
+    and for `--target <slug>` alone, an Adapter of kind `pending`, because a slug says who a
+    Target is and nothing about what drives it (ADR-0016 §4). `--name`, `--description`,
+    `--family` and `--channel` then replace what the chosen scaffold says, on every scaffold.
 
     `--tools` is optional on purpose. A Target whose tools live behind its own factory —
     or one that has none yet — should not be made to invent a module path to satisfy the
     Manifest, so the key is omitted and the Adapter hands the factory an empty mapping.
     """
-    if options.adapter is None:
-        return TOY_SCAFFOLD
-    factory = parse_adapter(options.adapter)
-    return custom_scaffold(
-        target_name=target_name(factory, options.root),
-        factory=factory,
-        tools=options.tools,
-        model=options.model,
+    scaffold: Scaffold
+    if options.adapter == TOY_ADAPTER or (options.adapter is None and options.target is None):
+        scaffold = TOY_SCAFFOLD
+    elif options.adapter is None:
+        assert options.target is not None
+        scaffold = pending_scaffold(options.target)
+    else:
+        factory = parse_adapter(options.adapter)
+        scaffold = custom_scaffold(
+            target_name=target_name(factory, options.root),
+            factory=factory,
+            tools=options.tools,
+            model=options.model,
+        )
+    return replace(
+        scaffold,
+        target_name=options.name if options.name is not None else scaffold.target_name,
+        target_description=(
+            options.description if options.description is not None else scaffold.target_description
+        ),
+        family=options.family if options.family is not None else scaffold.family,
+        channel=options.channel if options.channel is not None else scaffold.channel,
     )
 
 
@@ -174,8 +229,9 @@ def parse_adapter(reference: str) -> str:
     """Read `python:<module:attr>` into the `module:attr` the Manifest records."""
     if not reference.startswith(ADAPTER_PREFIX):
         raise InitRefused(
-            f"--adapter {reference!r} is not understood; "
-            f"Phase 4 scaffolds one form: --adapter {ADAPTER_PREFIX}<module:attr>"
+            f"--adapter {reference!r} is not understood; init scaffolds two forms: "
+            f"--adapter {TOY_ADAPTER} (the shipped toy Target) or "
+            f"--adapter {ADAPTER_PREFIX}<module:attr> (a Target of your own)"
         )
     factory = reference[len(ADAPTER_PREFIX) :]
     if ":" not in factory or not all(part for part in factory.split(":", 1)):
@@ -238,7 +294,7 @@ def scaffold_target(options: InitOptions) -> InitResult:
     notes = target.judge_notes
     redaction = target.redaction
     try:
-        rendered = (
+        manifest_text, suite_text, notes_text, redaction_text = (
             render_manifest(scaffold),
             render_suite(scaffold),
             render_judge_notes(scaffold),
@@ -251,16 +307,22 @@ def scaffold_target(options: InitOptions) -> InitResult:
 
     root.mkdir(exist_ok=True)
     suite.parent.mkdir(parents=True, exist_ok=True)
-    manifest.write_text(rendered[0], encoding="utf-8")
-    suite.write_text(rendered[1], encoding="utf-8")
+    manifest.write_text(manifest_text, encoding="utf-8")
+    suite.write_text(suite_text, encoding="utf-8")
     created = [manifest, suite]
-    for kept, text in ((notes, rendered[2]), (redaction, rendered[3])):
+    for kept, text in ((notes, notes_text), (redaction, redaction_text)):
         if not kept.exists():
             kept.write_text(text, encoding="utf-8")
             created.append(kept)
 
     others = [other for other in existing if other.slug != slug]
-    result = InitResult(root=root, scaffold=scaffold, created=created, several_targets=bool(others))
+    result = InitResult(
+        root=root,
+        scaffold=scaffold,
+        created=created,
+        several_targets=bool(others),
+        reviews=review_count(manifest_text),
+    )
     # Imported here, not at the top: orientation reaches the Registry, whose Sync breaks
     # import `agentdiag.sync.sections`, which imports `slug` from this module (a cycle).
     from agentdiag.orientation import write_orientation
@@ -334,23 +396,43 @@ def ignore_outputs(path: Path, lines: tuple[str, ...] = GITIGNORE_LINES) -> bool
 def render_created(result: InitResult) -> str:
     """What was written and what to type next — the whole of `init`'s terminal output."""
     root = Path(result.root)
-    scaffold = result.scaffold
-    naming = f" --target {scaffold.slug}" if result.several_targets else ""
     lines = [f"Wrote the scaffold into {root}:"]
     lines += [f"  {path.relative_to(root).as_posix()}" for path in result.created]
-    lines += [
-        "",
-        f"Target {scaffold.slug} ({scaffold.target_name}), driven by the {scaffold.factory} "
-        "factory.",
+    lines += ["", *_who_and_next(result), "", CREDENTIALS_LINE]
+    return "\n".join(lines)
+
+
+def _who_and_next(result: InitResult) -> list[str]:
+    """Who the Target is and the commands that follow, the one part that differs by
+    scaffold: a Target an Adapter drives is run and shown; one whose Adapter is pending
+    (decision 14) has its REVIEW lines settled, then `validate` and a dry run."""
+    scaffold = result.scaffold
+    naming = f" --target {scaffold.slug}" if result.several_targets else ""
+    if not scaffold.pending:
+        return [
+            f"Target {scaffold.slug} ({scaffold.target_name}), driven by the "
+            f"{scaffold.factory} factory.",
+            "",
+            "Next:",
+            f"  agentdiag run{naming} --scenario {result.scenario_id}",
+            f"  agentdiag show <run> {result.scenario_id}",
+        ]
+    persona = "".join(
+        f", {word} {value}"
+        for word, value in (("family", scaffold.family), ("channel", scaffold.channel))
+        if value is not None
+    )
+    manifest = next(path for path in result.created if path.name == MANIFEST_NAME)
+    where = manifest.relative_to(Path(result.root)).as_posix()
+    return [
+        f"Target {scaffold.slug} ({scaffold.target_name}){persona}; no Adapter yet "
+        f"(adapter.kind: {scaffold.adapter_kind}).",
         "",
         "Next:",
-        f"  agentdiag run{naming} --scenario {result.scenario_id}",
-        f"  agentdiag show <run> {result.scenario_id}",
-        "",
-        "A judged Eval needs credentials: a Claude Code login (claude auth login) "
-        "or export ANTHROPIC_API_KEY=….",
+        f"  settle the {result.reviews} REVIEW lines in {where}, then",
+        f"  agentdiag validate{naming}",
+        f"  agentdiag run{naming} --dry-run",
     ]
-    return "\n".join(lines)
 
 
 __all__ = [
@@ -363,6 +445,7 @@ __all__ = [
     "GITIGNORE_RUNS_LINE",
     "INIT_EXIT",
     "LEGACY_GITIGNORE_RUNS_LINE",
+    "TOY_ADAPTER",
     "InitOptions",
     "InitRefused",
     "InitResult",

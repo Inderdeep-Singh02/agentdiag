@@ -16,6 +16,13 @@ kinds it owns (`inprocess`, whose rules `agentdiag.inprocess_rules` holds offlin
 for a plugin kind only when its module is already imported (`plugins.imported_class`), so
 `validate` never imports a plugin, and a plugin that reads `tools:` its own way is never
 failed by core's reading of it.
+
+**Three warnings say a Manifest is not settled yet** (ADR-0016 §4), each owned here as the
+`(where, message)` `validate` prints, so every other command renders the same line:
+`pending_problem`, an Adapter of the `pending` kind, which the preflight and `sync` refuse
+on; `review_problem`, the count of `# REVIEW:` lines left in the file (`review_count`), for
+the Manifest and a `--manifest` draft alike; and `no_runnable_suite`, a Manifest whose every
+Suite is a draft or retired, which a Run that drives refuses on.
 """
 
 from __future__ import annotations
@@ -34,11 +41,30 @@ from agentdiag.connector.plugins import (
 from agentdiag.inprocess_rules import adapter_problems, connector_problems
 from agentdiag.run.manifest import DEFAULT_ENVIRONMENT_KEY, Manifest, protected_by_name
 from agentdiag.types import SIDE_EFFECT_ORDER, EvidenceKind
+from agentdiag.workspace import MANIFEST_NAME
 
 MANIFEST_SCHEMA_VERSION = 1
 
 Problem = tuple[str, str]
 """(where, message), as `ManifestProblem` takes them."""
+
+PENDING_KIND = "pending"
+"""The Adapter kind of a Target described before anything drives it (ADR-0016 §4), which
+`agentdiag.adapter.pending` registers. Its one home is here, beside the rule: `validate`,
+`sync`, `discover` and `init` import this module and nothing of `agentdiag.adapter` (their
+offline-import gates)."""
+
+PENDING_MESSAGE = (
+    "pending: nothing drives this Target yet; set the Adapter kind and its environment "
+    f"block (the REVIEW lines in {MANIFEST_NAME} name what to fill)"
+)
+"""What follows `adapter.kind: ` in `validate`'s warning, the preflight's problem and `sync`'s
+refusal, word for word (decision 12); the pending Adapter's constructor raises it too."""
+
+REVIEW = "# REVIEW:"
+"""The marker above every line a person must settle: `discover`'s guesses and the pending
+scaffold's holes (ADR-0016 §4). `grep -n 'REVIEW:'` finds what is left to decide, and
+`validate` counts them (`review_count`)."""
 
 
 def http_adapter_problems(section: Any) -> list[Problem]:
@@ -119,6 +145,54 @@ def kind_problems(manifest: Manifest, *, connector: bool = True) -> list[Problem
     return problems
 
 
+def render_problem(problem: Problem) -> str:
+    """`<where>: <message>`, as `validate` prints a problem after the file's name: the one
+    spelling the preflight's problems and `sync`'s refusal use for a rule owned here."""
+    where, message = problem
+    return f"{where}: {message}" if where else message
+
+
+def pending_problem(manifest: Manifest) -> Problem | None:
+    """`adapter.kind` and the pending message when the Adapter is `pending` (decision 12):
+    `validate` warns with it, and the preflight and `sync` refuse on it, in one spelling."""
+    if manifest.adapter.kind != PENDING_KIND:
+        return None
+    return ("adapter.kind", PENDING_MESSAGE)
+
+
+def review_count(text: str) -> int:
+    """How many lines of a Manifest's text hold a `# REVIEW:` comment (decision 13)."""
+    return sum(REVIEW in line for line in text.splitlines())
+
+
+def review_problem(text: str) -> Problem | None:
+    """The REVIEW count as a warning with no key path, so `validate` prints it after the
+    file's name; None when nothing is left to settle."""
+    count = review_count(text)
+    if not count:
+        return None
+    lines = "1 line" if count == 1 else f"{count} lines"
+    return ("", f"{lines} marked REVIEW; settle each (accept or rewrite it) before a Run")
+
+
+def no_runnable_suite(manifest: Manifest) -> Problem | None:
+    """`suites` and why nothing would run, when every Suite the Manifest names is a draft or
+    retired (the 0.1.2 amendment to decision 12): `validate` warns with it, and a Run that
+    drives refuses on it rather than recording a Run of nothing. One clause per entry, so a
+    retired Suite is not told to drop a status it has not got. A Manifest naming no Suite
+    at all is left to the selection."""
+    if not manifest.suites or manifest.runnable_suites:
+        return None
+    clauses = [
+        f"{entry.path} is draft; settle its Scenarios and drop status: draft from its entry "
+        "to run them"
+        if entry.status == "draft"
+        else f"{entry.path} is retired; a retired Suite never runs"
+        for entry in manifest.suites
+    ]
+    return ("suites", "no runnable Suite: " + ". ".join(clauses))
+
+
 def _side_effects(where: str, declared: Any) -> list[Problem]:
     if declared is None or declared in SIDE_EFFECT_ORDER:
         return []
@@ -146,7 +220,15 @@ def _kind_rules(where: str, group: str, section: Any, unknown: Mapping[str, str]
 __all__ = [
     "CORE_RULES",
     "MANIFEST_SCHEMA_VERSION",
+    "PENDING_KIND",
+    "PENDING_MESSAGE",
+    "REVIEW",
     "http_adapter_problems",
     "kind_problems",
     "manifest_problems",
+    "no_runnable_suite",
+    "pending_problem",
+    "render_problem",
+    "review_count",
+    "review_problem",
 ]

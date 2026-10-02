@@ -1,14 +1,13 @@
 """The drop-on-an-unknown-Target check, end to end (ticket 13, phase-6 decision 39).
 
 Every command runs in a temporary copy of `examples/workspace/`, the two-Target Workspace:
-the order desk (the first toy, `init --target order-desk`) and the help desk (the second
-toy, whose Manifest, drafts and Suite a fresh coding agent produced from the discovery and
-generation skills alone). The mechanical parts of that
-walkthrough are this module: `discover --from-connector` drafts the checked-in Manifest,
-`generate` writes the checked-in Suite, `sync` covers every section and holds; a replayed
-Run scores; a platform edit breaks Sync `deployed_ahead`; bringing the local copy in line
-re-syncs the next Run, which `show` and `compare` say; the committed proxy rows import and
-are judged.
+the order desk (the first toy, `init --target order-desk --adapter toy`) and the help desk
+(the second toy, whose Manifest, drafts and Suite a fresh coding agent produced from the
+discovery and generation skills alone). The mechanical parts of that walkthrough are this
+module: `discover --from-connector` drafts the checked-in Manifest, `generate` writes the
+checked-in Suite, `sync` covers every section and holds; a replayed Run scores; a platform
+edit breaks Sync `deployed_ahead`; bringing the local copy in line re-syncs the next Run,
+which `show` and `compare` say; the committed proxy rows import and are judged.
 
 The Runs replay `tests/fixtures/recordings/helpdesk.jsonl`, captured once through the login
 (`uv run python scripts/record_fixtures.py --capture --helpdesk`) and committed: a missing

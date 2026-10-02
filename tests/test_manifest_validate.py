@@ -17,6 +17,7 @@ from typing import Any
 
 import pytest
 import yaml
+from click.testing import Result
 from typer.testing import CliRunner
 
 from agentdiag.cli import app
@@ -60,7 +61,7 @@ ERRORS = {
     "schema-version": ("schema_version", "agentdiag reads Manifest schema_version 1, not 7"),
     "adapter-kind-unknown": (
         "adapter.kind",
-        "no Adapter of kind 'bogus' is installed (installed: http, inprocess)",
+        "no Adapter of kind 'bogus' is installed (installed: http, inprocess, pending)",
     ),
     "connector-kind-unknown": (
         "connector.kind",
@@ -119,7 +120,7 @@ def root_with(tmp_path: Path, fixture: str) -> Path:
     return root
 
 
-def validate(root: Path) -> object:
+def validate(root: Path) -> Result:
     return runner.invoke(app, ["validate", "--root", str(root)])
 
 
@@ -157,7 +158,17 @@ def test_the_passing_manifest_of_every_rule_says_nothing(rule: str, tmp_path: Pa
 
     assert result.exit_code == 0, result.stdout
     assert "error:" not in result.stdout
-    assert "warning:" not in result.stdout
+    assert unsettled_warnings(result) == [], result.stdout
+
+
+def unsettled_warnings(result: Result) -> list[str]:
+    """Every warning but `no runnable Suite`, which a fixture whose only Suite is a draft or
+    retired earns by design (the ticket 46 amendment): the rule under test says nothing."""
+    return [
+        line
+        for line in result.stdout.splitlines()
+        if line.startswith("warning:") and ": suites: no runnable Suite: " not in line
+    ]
 
 
 def test_an_unknown_suite_status_is_an_error_naming_the_entry(tmp_path: Path) -> None:
@@ -188,10 +199,17 @@ def test_a_retired_suite_is_named_as_skipped_and_never_read(tmp_path: Path) -> N
 
 
 def test_a_draft_suite_is_validated(tmp_path: Path) -> None:
+    """A draft Suite is read and checked; as the only Suite, it leaves nothing runnable,
+    which is the one warning (the ticket 46 amendment)."""
     result = validate(root_with(tmp_path, "suite-status-unknown.pass"))
 
+    (warning,) = [line for line in result.stdout.splitlines() if line.startswith("warning:")]
+    assert warning.endswith(
+        "manifest.yaml: suites: no runnable Suite: suites/orders.yaml is draft; settle its "
+        "Scenarios and drop status: draft from its entry to run them"
+    )
     assert result.stdout.splitlines()[-1] == (
-        "validated the Manifest and 1 Suite: 0 errors, 0 warnings"
+        "validated the Manifest and 1 Suite: 0 errors, 1 warning"
     )
 
 
@@ -609,7 +627,7 @@ def test_every_pointer_that_is_absolute_or_escapes_is_one_error_and_no_warning(
     assert [line for line in errors_of(result) if f": {where}: " in line] == [
         f"error: {root / TARGET_DIRECTORY / 'manifest.yaml'}: {where}: {message}"
     ], result.stdout
-    assert "warning:" not in result.stdout
+    assert unsettled_warnings(result) == [], result.stdout
 
 
 @pytest.mark.parametrize(

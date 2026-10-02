@@ -10,9 +10,17 @@ instead of a shape they have to look up.
 the Manifest, the sample Suite, and the Judge's calibration-notes starter (ticket 05). The
 checked-in `examples/toy/.agentdiag/targets/toy-order-desk/` is what this module renders from
 `EXAMPLE_SCAFFOLD`, byte for byte, and `examples/workspace/`'s `order-desk` is what `init
---target order-desk` renders (phase-6 decision 47); `tests/test_init_cli.py` asserts both — so
-the example directories stay the truth of what `init` writes, and a change here that they do
-not follow fails the suite rather than drifting quietly.
+--target order-desk --adapter toy` renders (phase-6 decision 47); `tests/test_init_cli.py`
+asserts both — so the example directories stay the truth of what `init` writes, and a change
+here that they do not follow fails the suite rather than drifting quietly.
+
+**Three scaffolds, one template** (ADR-0016 §4): the toy, a Target of one's own
+(`custom_scaffold`, driven by a factory), and a Target described before anything drives it
+(`pending_scaffold`), whose Adapter is `pending` and whose holes (the description, the
+persona, the kind, the environments, the prompts, the Connector) each sit under a
+`# REVIEW:` line in the shape `discover` writes. The Adapter block is rendered per kind, one
+renderer each (`ADAPTER_RENDERERS`), and the other holes only for a pending scaffold, so the
+toy and custom outputs stay what the examples gate.
 
 **Every interpolated value goes through `scalar()`.** A Manifest is YAML, and a `--model`
 or `--tools` a caller typed can hold a colon, a `#` or a quote. Pasting one in raw writes a
@@ -23,13 +31,15 @@ it and leaves plain words alone, so the common case still reads as prose.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 
 import yaml
 
 from agentdiag.eval.notes import JUDGE_NOTES_MAX_WORDS
+from agentdiag.run.manifest_checks import PENDING_KIND, REVIEW
 from agentdiag.types import ToolKind
-from agentdiag.workspace import DEFAULT_SLUG, JUDGE_NOTES_NAME, REDACTION_NAME
+from agentdiag.workspace import DEFAULT_SLUG, JUDGE_NOTES_NAME, MANIFEST_NAME, REDACTION_NAME
 
 TOY_FACTORY = "agentdiag.examples.toy:make_target"
 TOY_TOOLS = "agentdiag.examples.toy:make_tools"
@@ -90,6 +100,21 @@ class Scaffold:
     toy; a Target `init` has never run gets the `connector` block as a comment instead of a
     guess (decision 22)."""
 
+    adapter_kind: str = "inprocess"
+    """The Adapter kind the Manifest names: `inprocess` for the toy and a custom Target, or
+    `pending` for a Target nothing drives yet (ADR-0016 §4). It picks the Adapter block's
+    renderer (`ADAPTER_RENDERERS`); a pending Manifest also carries the REVIEW lines."""
+
+    environment: str = "local"
+    """The one environment the Adapter block (and the commented Connector block) names."""
+
+    suite_status: str | None = None
+    """The sample Suite's status in the Manifest: None, a bare path that runs; `draft` for a
+    pending Target, whose sample Scenario no one has written yet."""
+
+    scenario_review: str | None = None
+    """A REVIEW line above the sample Scenario, for a Suite that is a draft until settled."""
+
     slug: str = DEFAULT_SLUG
     """The Target's slug: the name of its Target directory under `.agentdiag/targets/`, and
     what `--target` selects it by (ADR-0013 §4). Not `target_name`, which is what a Report
@@ -100,6 +125,12 @@ class Scaffold:
     """The persona this Target is one channel of, and which channel (ADR-0013 §3): known for
     the toy, the chat channel of Northwind Bicycles; a Target `init` has never run gets both
     as a comment instead of a guess."""
+
+    @property
+    def pending(self) -> bool:
+        """Whether nothing drives this Target yet (ADR-0016 §4): its holes are written under
+        REVIEW lines."""
+        return self.adapter_kind == PENDING_KIND
 
     @property
     def directory_words(self) -> str:
@@ -125,8 +156,9 @@ TOY_SCAFFOLD = Scaffold(
     family="northwind",
     channel="chat",
 )
-"""The shipped toy Target: what `init` writes when no `--adapter` names another one, so a
-first `agentdiag run` works with nothing edited and no Adapter written."""
+"""The shipped toy Target: what the first `init` writes, naming no Target and no Adapter, and
+what `--adapter toy` writes under any slug, so a first `agentdiag run` works with nothing
+edited and no Adapter written."""
 
 EXAMPLE_SCAFFOLD = replace(
     TOY_SCAFFOLD,
@@ -202,6 +234,12 @@ PLACEHOLDER_DESCRIPTION = "Written by `agentdiag init`; say here what this Targe
 `discover` marks for review (walkthrough friction 10)."""
 
 
+FIRST_TURN_ID = "first-turn"
+FIRST_TURN_TITLE = "The Target answers a first message"
+FIRST_TURN = "Hello! What can you help me with today?"
+"""The sample Scenario of a Target agentdiag has never run: its id, title and one Turn."""
+
+
 def custom_scaffold(*, target_name: str, factory: str, tools: str | None, model: str) -> Scaffold:
     """The scaffold for a Target agentdiag has only been pointed at.
 
@@ -215,14 +253,94 @@ def custom_scaffold(*, target_name: str, factory: str, tools: str | None, model:
         factory=factory,
         tools=tools,
         model=model,
-        suite_description="The first Scenarios written for this Target.",
-        scenario_id="first-turn",
-        scenario_title="The Target answers a first message",
-        turn="Hello! What can you help me with today?",
+        suite_description=PENDING_SUITE_DESCRIPTION,
+        scenario_id=FIRST_TURN_ID,
+        scenario_title=FIRST_TURN_TITLE,
+        turn=FIRST_TURN,
         scenario_note=(
             "Replace this Scenario with one of your own: the Turns a real user sends, and "
             "what you want judged about the answer."
         ),
+    )
+
+
+REVIEW_DESCRIPTION = (
+    "say in a sentence what this Target does and who it serves "
+    "(agentdiag init --description writes it)"
+)
+"""Above `description` when `--description` was not given."""
+
+REVIEW_FAMILY = (
+    "name the persona this Target is one channel of and which channel it is (chat, voice), "
+    "or delete both lines when it stands alone"
+)
+"""Above the commented `family` and `channel` when neither flag was given (one line, both
+keys)."""
+
+REVIEW_KIND = (
+    "nothing drives this Target yet; replace pending with inprocess (a Python factory in this "
+    "process), http (a chat endpoint with a Dialect), or a plugin's kind, and give the "
+    "environment block that kind reads"
+)
+"""Above `kind: pending`: the kinds to choose from (decision 11)."""
+
+REVIEW_ENVIRONMENT = (
+    "one block per environment the Target runs in, protected: true on every one that reaches "
+    "real users"
+)
+"""Above the empty environment block (decision 11)."""
+
+REVIEW_PROMPTS = (
+    "name each prompt as a path under this Target directory (prompts/system.md) once the file "
+    "is here, or observed when only the running Target shows it"
+)
+"""Above the commented `prompts` section (decision 11)."""
+
+REVIEW_CONNECTOR = (
+    "no Connector yet: nothing reads or pushes the deployed set; a platform's Connector is a "
+    "plugin kind, inprocess reads a Python module"
+)
+"""Above the commented `connector` block (decision 11)."""
+
+REVIEW_SCENARIO = (
+    "replace this Scenario with one of your own (the Turns a real user sends, and what to "
+    f"judge of the answer), then drop status: draft from this Suite's entry in {MANIFEST_NAME}"
+)
+"""Above the sample Scenario in a pending Target's draft Suite (decision 11)."""
+
+PENDING_ENVIRONMENT = "dev"
+"""The one environment a pending Target's Adapter block names, empty under its REVIEW line:
+the environment a Target is first described in, before anyone says which reach users."""
+
+PENDING_SUITE_DESCRIPTION = "The first Scenarios written for this Target."
+"""The sample Suite's description, as a Target of one's own gets it."""
+
+
+def pending_scaffold(slug: str) -> Scaffold:
+    """The scaffold for a Target described before anything drives it (ADR-0016 §4).
+
+    `init --target <slug>` with no `--adapter` once wrote the toy under every slug, and a
+    Workspace of ten Targets came out as ten toy order desks. This writes who the Target is
+    (named after its slug until `--name` says otherwise), an Adapter of the `pending` kind
+    that validates with a warning and refuses to drive, and the first-turn sample Scenario a
+    Target of one's own gets, in a draft Suite: nothing here is a guess about a Target
+    agentdiag cannot reach.
+    """
+    return Scaffold(
+        target_name=slug,
+        target_description=PLACEHOLDER_DESCRIPTION,
+        factory="",
+        tools=None,
+        model=DEFAULT_MODEL,
+        suite_description=PENDING_SUITE_DESCRIPTION,
+        scenario_id=FIRST_TURN_ID,
+        scenario_title=FIRST_TURN_TITLE,
+        turn=FIRST_TURN,
+        scenario_review=REVIEW_SCENARIO,
+        adapter_kind=PENDING_KIND,
+        environment=PENDING_ENVIRONMENT,
+        suite_status="draft",
+        slug=slug,
     )
 
 
@@ -322,14 +440,17 @@ CONNECTOR_COMMENT = """\
 
 def render_connector(scaffold: Scaffold) -> str:
     """The `connector` block: the toy's, naming its deployed set; for a Target `init` has
-    never run, the same block as a comment, since its deployed set is not known."""
+    never run, the same block as a comment, since its deployed set is not known (under a
+    REVIEW line for a pending Target)."""
     if scaffold.deployed is None:
+        review = f"{REVIEW} {REVIEW_CONNECTOR}\n" if scaffold.pending else ""
         return (
             CONNECTOR_COMMENT
-            + """# connector:
+            + review
+            + f"""# connector:
 #   kind: inprocess
 #   environments:
-#     local:
+#     {scaffold.environment}:
 #       deployed: your_package.module:deployed_set
 
 """
@@ -358,7 +479,8 @@ def render_family(scaffold: Scaffold) -> str:
     """`family` and `channel`: the toy's, or, for a Target `init` has never run, the same two
     lines as a comment, since which persona it belongs to is its author's to say."""
     if scaffold.family is None and scaffold.channel is None:
-        return FAMILY_COMMENT + "# family: your-persona\n# channel: chat\n\n"
+        review = f"{REVIEW} {REVIEW_FAMILY}\n" if scaffold.pending else ""
+        return FAMILY_COMMENT + review + "# family: your-persona\n# channel: chat\n\n"
     lines = "".join(
         f"{key}: {scalar(value)}\n"
         for key, value in (("family", scaffold.family), ("channel", scaffold.channel))
@@ -385,17 +507,22 @@ def render_manifest(scaffold: Scaffold) -> str:
 
 """
     )
-    tools_lines = (
-        f"""      # `module:attr` returning the tool callables, resolved once per session so the
-      # Target's own state is never shared between Trials.
-      tools: {scalar(scaffold.tools)}
-"""
-        if scaffold.tools is not None
-        else """      # No tools were declared. Add `tools: module:attr` — a mapping of tool name to
-      # callable, or a callable returning one — and the Adapter wraps every one of them.
-"""
-    )
     more_suites = "".join(f"  - {scalar(path)}\n" for path in scaffold.more_suites)
+    first_suite = (
+        scalar(scaffold.suite_path)
+        if scaffold.suite_status is None
+        else yaml.safe_dump(
+            {"path": scaffold.suite_path, "status": scaffold.suite_status},
+            default_flow_style=True,
+            sort_keys=False,
+            width=10**6,
+        ).strip()
+    )
+    description_review = (
+        f"  {REVIEW} {REVIEW_DESCRIPTION}\n"
+        if scaffold.pending and scaffold.target_description == PLACEHOLDER_DESCRIPTION
+        else ""
+    )
     words = JUDGE_NOTES_MAX_WORDS
     notes_section = f"""\
 # The Judge's calibration notes, relative to {scaffold.directory_words}: known
@@ -415,35 +542,107 @@ schema_version: 1
 
 {TARGET_COMMENT}target:
   name: {scalar(scaffold.target_name)}
-  description: {scalar(scaffold.target_description)}
+{description_review}  description: {scalar(scaffold.target_description)}
 
-{render_family(scaffold)}{ADAPTER_COMMENT}adapter:
-  # `inprocess` drives a Python Target in this process and captures at its two boundaries.
-  kind: inprocess
-  # What a Run against this Target does to the world, one of three classes: `none`, nothing
-  # outside this process changes; `sandboxed`, it writes only to a test system; `live`, it
-  # reaches real users or data, and a Run is refused without a flag. A tool entry may carry
-  # its own `side_effects`, and `agentdiag validate` names the classes when one is wrong.
-  side_effects: none
-  environments:
-    # Which environment a Run opens when nothing else says.
-    default: local
+{render_family(scaffold)}{ADAPTER_COMMENT}{ADAPTER_RENDERERS[scaffold.adapter_kind](scaffold)}
+{prompts_comment(scaffold.directory_words)}{_render_prompts(scaffold)}
+
+{middle}{suites_comment(scaffold.directory_words)}suites:
+  - {first_suite}
+{more_suites}"""
+
+
+SIDE_EFFECTS_COMMENT = (
+    "  # What a Run against this Target does to the world, one of three classes: `none`, "
+    "nothing\n"
+    "  # outside this process changes; `sandboxed`, it writes only to a test system; `live`, "
+    "it\n"
+    "  # reaches real users or data, and a Run is refused without a flag. A tool entry may "
+    "carry\n"
+    "  # its own `side_effects`, and `agentdiag validate` names the classes when one is "
+    "wrong.\n"
+)
+"""The comment above `side_effects`, the same for every kind."""
+
+ENVIRONMENTS_COMMENT = """\
     # One block per environment. `protected: true` marks one that is never pushed to
     # without confirmation; prod, staging and eu_prod are protected unless their block says
     # `protected: false`. A block may raise the side-effect class for itself, never lower it.
-    local:
+"""
+"""The comment above the environment blocks, the same for every kind."""
+
+INPROCESS_KIND_COMMENT = (
+    "  # `inprocess` drives a Python Target in this process and captures at its two boundaries.\n"
+)
+"""What the in-process kind does, above `kind: inprocess`."""
+
+PENDING_KIND_COMMENT = (
+    "  # `pending` drives nothing: `run`, `run --dry-run` and `sync` refuse this Target "
+    "until\n  # the kind is set (ADR-0016 section 4).\n"
+)
+"""What the pending kind does, above its REVIEW line and `kind: pending`."""
+
+
+def _adapter_head(kind_lines: str, scaffold: Scaffold) -> str:
+    """`adapter:` through the default environment's line: the kind's own lines, then what
+    every kind shares."""
+    return f"""adapter:
+{kind_lines}{SIDE_EFFECTS_COMMENT}  side_effects: none
+  environments:
+    # Which environment a Run opens when nothing else says.
+    default: {scalar(scaffold.environment)}
+{ENVIRONMENTS_COMMENT}"""
+
+
+def render_inprocess_adapter(scaffold: Scaffold) -> str:
+    """The `inprocess` Adapter block: the factory, its tools and its model, each explained."""
+    tools_lines = (
+        f"""      # `module:attr` returning the tool callables, resolved once per session so the
+      # Target's own state is never shared between Trials.
+      tools: {scalar(scaffold.tools)}
+"""
+        if scaffold.tools is not None
+        else """      # No tools were declared. Add `tools: module:attr` — a mapping of tool name to
+      # callable, or a callable returning one — and the Adapter wraps every one of them.
+"""
+    )
+    return _adapter_head(f"{INPROCESS_KIND_COMMENT}  kind: inprocess\n", scaffold) + (
+        f"""    {scalar(scaffold.environment)}:
       # `module:attr`, called with (client, tools, **options). The Adapter hands in the
       # client, so it can record every exchange without the Target knowing (D6).
       factory: {scalar(scaffold.factory)}
 {tools_lines}      # Passed to the factory as an option. Not the Judge's model: a Target and a Judge
       # on the same model would trip the self-preference warning (D23).
       model: {scalar(scaffold.model)}
+"""
+    )
 
-{prompts_comment(scaffold.directory_words)}prompts: {{system: observed}}
 
-{middle}{suites_comment(scaffold.directory_words)}suites:
-  - {scalar(scaffold.suite_path)}
-{more_suites}"""
+def render_pending_adapter(scaffold: Scaffold) -> str:
+    """The `pending` Adapter block (decision 11): the kind and the one empty environment,
+    each under its REVIEW line, since nothing about what drives the Target is known."""
+    kind_lines = f"{PENDING_KIND_COMMENT}  {REVIEW} {REVIEW_KIND}\n  kind: {PENDING_KIND}\n"
+    return _adapter_head(kind_lines, scaffold) + (
+        f"    {REVIEW} {REVIEW_ENVIRONMENT}\n    {scalar(scaffold.environment)}: {{}}\n"
+    )
+
+
+ADAPTER_RENDERERS: Mapping[str, Callable[[Scaffold], str]] = {
+    "inprocess": render_inprocess_adapter,
+    PENDING_KIND: render_pending_adapter,
+}
+"""The Adapter block of each kind `init` scaffolds, by `Scaffold.adapter_kind`: a kind `init`
+learns to write is one renderer more here, and the rest of the Manifest is shared."""
+
+
+def _render_prompts(scaffold: Scaffold) -> str:
+    """`prompts`: the one pointer the in-process Adapter observes, or, for a pending Target,
+    the same section as a comment under REVIEW, since no prompt of it is known yet."""
+    if scaffold.pending:
+        return f"""{REVIEW} {REVIEW_PROMPTS}
+# prompts:
+#   system: prompts/system.md"""
+    return "prompts: {system: observed}"
 
 
 def render_suite(scaffold: Scaffold) -> str:
@@ -451,6 +650,7 @@ def render_suite(scaffold: Scaffold) -> str:
     note = (
         f"  # {_wrapped_comment(scaffold.scenario_note)}\n  #\n" if scaffold.scenario_note else ""
     )
+    review = f"  {REVIEW} {scaffold.scenario_review}\n" if scaffold.scenario_review else ""
     tags = (
         f"    # Tags select without naming ids (`--tag {scaffold.scenario_tags[0]}`), and appear "
         f"in the Run record.\n    tags: [{', '.join(scaffold.scenario_tags)}]\n"
@@ -467,7 +667,7 @@ description: {scalar(scaffold.suite_description)}
 scenarios:
 {note}  # The id is how `--scenario` selects this Scenario and how a comparison joins it across
   # Runs, so it is stable even when the title is reworded.
-  - id: {scalar(scaffold.scenario_id)}
+{review}  - id: {scalar(scaffold.scenario_id)}
     title: {scalar(scaffold.scenario_title)}
 {tags}    # Literal user messages, in order. One Turn is one user message and the Target's
     # complete response to it. A `- simulate: {{goal, stop_when}}` Turn, with `max_turns` on
@@ -503,6 +703,7 @@ def _wrapped_comment(text: str, width: int = 86) -> str:
 
 __all__ = [
     "ADAPTER_COMMENT",
+    "ADAPTER_RENDERERS",
     "CONNECTOR_COMMENT",
     "DEFAULT_MODEL",
     "EVAL_PARAMETERS_COMMENT",
@@ -510,8 +711,16 @@ __all__ = [
     "EXAMPLE_SCAFFOLD",
     "FAMILY_COMMENT",
     "JUDGE_NOTES_STARTER",
+    "PENDING_ENVIRONMENT",
     "PLACEHOLDER_DESCRIPTION",
     "REDACTION_STARTER",
+    "REVIEW_CONNECTOR",
+    "REVIEW_DESCRIPTION",
+    "REVIEW_ENVIRONMENT",
+    "REVIEW_FAMILY",
+    "REVIEW_KIND",
+    "REVIEW_PROMPTS",
+    "REVIEW_SCENARIO",
     "SAMPLE_SUITE_NAME",
     "TARGET_COMMENT",
     "TOOLS_COMMENT",
@@ -520,11 +729,14 @@ __all__ = [
     "Scaffold",
     "UnwritableValue",
     "custom_scaffold",
+    "pending_scaffold",
     "prompts_comment",
     "render_connector",
     "render_family",
+    "render_inprocess_adapter",
     "render_judge_notes",
     "render_manifest",
+    "render_pending_adapter",
     "render_redaction",
     "render_suite",
     "scalar",

@@ -709,8 +709,10 @@ def manifest_report(
     its `from` is an error, and one naming a mechanical Eval a warning, since mechanical
     Evals ignore Suppressions in v1 (decision 16). The redaction file (ADR-0015 §4) is
     read unless its pointer was refused: absent, a warning; of the wrong shape, an error;
-    names listed inline in the Manifest, an error naming the move. `path` checks another
-    file as the Target's Manifest (`validate --manifest`).
+    names listed inline in the Manifest, an error naming the move. A `pending` Adapter,
+    the `# REVIEW:` lines left in the file and a Suite list with nothing runnable are
+    warnings (ADR-0016 §4). `path` checks another file as the Target's Manifest
+    (`validate --manifest`).
     """
     report = ManifestReport(file=target.manifest if path is None else path)
     try:
@@ -724,12 +726,28 @@ def manifest_report(
         report.errors.append(ManifestProblem(path="", message=str(exc)))
         return report, None
 
-    from agentdiag.run.manifest_checks import manifest_problems  # it imports this module
+    from agentdiag.run.manifest_checks import (  # it imports this module
+        manifest_problems,
+        no_runnable_suite,
+        pending_problem,
+        review_problem,
+    )
 
     report.errors.extend(
         ManifestProblem(path=where, message=message)
         for where, message in manifest_problems(manifest)
     )
+    # Not settled yet (ADR-0016 §4): a `pending` Adapter, the REVIEW lines left in the file
+    # read (so a `--manifest` draft is counted as the Manifest is), and no runnable Suite.
+    text = report.file.read_text(encoding="utf-8")
+    unsettled_problems = (
+        pending_problem(manifest),
+        review_problem(text),
+        no_runnable_suite(manifest),
+    )
+    for unsettled in unsettled_problems:
+        if unsettled is not None:
+            report.warnings.append(ManifestProblem(path=unsettled[0], message=unsettled[1]))
     for pointed in _pointers(manifest):
         problem = pointer_refusal(target, pointed.what, pointed.path)
         if problem is not None:

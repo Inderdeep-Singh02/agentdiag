@@ -1,7 +1,7 @@
 """Seam 1: a Workspace of many Targets, and every command resolving the right one (ticket 24).
 
-The Workspace is built the way a developer builds one — `init --target a`, then `init
---target b --adapter …` (`tests/fakes/workspace.py`) — and every assertion is on what a
+The Workspace is built the way a developer builds one — `init --target a --adapter toy`,
+then `init --target b --adapter …` (`tests/fakes/workspace.py`) — and every assertion is on what a
 developer can observe: where a Run directory landed, what `run.json` names, what a command
 printed, how it exited. The Phase 4 spelling (a Manifest directly under `.agentdiag/`) is
 read as the Target `default`, and the checked-in example still runs from its own root.
@@ -141,7 +141,7 @@ def test_init_force_rewrites_one_targets_scaffold_and_leaves_the_other_alone(
     other = (target_dir(root, "b") / "manifest.yaml").read_text(encoding="utf-8")
     (target_dir(root, "a") / "manifest.yaml").write_text("mine: yes\n", encoding="utf-8")
 
-    result = invoke("init", "--root", str(root), "--target", "a", "--force")
+    result = invoke("init", "--root", str(root), "--target", "a", "--adapter", "toy", "--force")
 
     assert result.exit_code == 0, output(result)
     assert "toy-order-desk" in (target_dir(root, "a") / "manifest.yaml").read_text(encoding="utf-8")
@@ -160,11 +160,53 @@ def test_init_refuses_a_target_that_is_not_a_slug(tmp_path: Path, slug: str) -> 
 def test_init_after_a_second_target_says_which_target_the_next_commands_name(
     tmp_path: Path,
 ) -> None:
-    invoke("init", "--root", str(tmp_path), "--target", "a")
+    invoke("init", "--root", str(tmp_path), "--target", "a", "--adapter", "toy")
 
-    result = invoke("init", "--root", str(tmp_path), "--target", "b")
+    result = invoke("init", "--root", str(tmp_path), "--target", "b", "--adapter", "toy")
 
     assert f"agentdiag run --target b --scenario {TOY_SCENARIO}" in result.stdout
+
+
+def test_a_target_described_beside_others_names_itself_in_the_next_commands(
+    tmp_path: Path,
+) -> None:
+    """ADR-0016 §4: `init --target <slug>` with no `--adapter` is the identity scaffold, and
+    in a Workspace of several its next commands carry `--target`."""
+    root = two_target_workspace(tmp_path)
+
+    result = invoke("init", "--root", str(root), "--target", "c", "--name", "Returns desk")
+
+    assert result.exit_code == 0, output(result)
+    lines = result.stdout.splitlines()
+    assert "Target c (Returns desk); no Adapter yet (adapter.kind: pending)." in lines
+    assert "  agentdiag validate --target c" in lines
+    assert "  agentdiag run --target c --dry-run" in lines
+    assert "pending" in (target_dir(root, "c") / "manifest.yaml").read_text(encoding="utf-8")
+    listed = invoke("registry", "--root", str(root))
+    assert listed.exit_code == 0, output(listed)
+    assert "Returns desk" in listed.stdout
+
+
+def test_init_force_replaces_a_toy_target_with_a_pending_one_and_keeps_its_notes(
+    tmp_path: Path,
+) -> None:
+    """ADR-0016's consequence for a 0.1.1 Workspace: a toy Manifest is replaced, Target by
+    Target, with `init --target <slug> --force` and the name flags; the Judge notes and the
+    local redaction list are the author's and are kept."""
+    root = two_target_workspace(tmp_path)
+    notes = target_dir(root, TOY_SLUG) / "judge_notes.md"
+    notes.write_text("Mine.\n", encoding="utf-8")
+    redaction = target_dir(root, TOY_SLUG) / "redaction.yaml"
+    redaction.write_text("names: [Dana Whitfield]\n", encoding="utf-8")
+
+    result = invoke("init", "--root", str(root), "--target", TOY_SLUG, "--name", "Desk", "--force")
+
+    assert result.exit_code == 0, output(result)
+    text = (target_dir(root, TOY_SLUG) / "manifest.yaml").read_text(encoding="utf-8")
+    assert "toy-order-desk" not in text
+    assert "kind: pending" in text
+    assert notes.read_text(encoding="utf-8") == "Mine.\n"
+    assert redaction.read_text(encoding="utf-8") == "names: [Dana Whitfield]\n"
 
 
 def test_the_gitignore_covers_every_targets_runs_restore_points_and_the_index(

@@ -19,7 +19,9 @@ block names the environment, its read is the deployed side and no probe is made;
 Adapter's probe. A Connector read that fails — an unknown kind, a missing credential, a
 platform that refused — is `sync`'s exit 3 naming it, because a Sync that guessed would be
 worse than none; a Run instead falls back to the probe and warns (`run.preflight`), so a
-missing credential never blocks a local Run.
+missing credential never blocks a local Run. With no Connector read, a `pending` Adapter
+(the identity scaffold's, ADR-0016 §4) is `sync`'s exit 3 too, in `validate`'s words: the
+probe it would stand in for needs an Adapter nothing drives yet.
 
 **Both forms record a Sync break on `broken`** (decision 26, `sync.breaks`), unless a break
 already open names the same sections and directions, which is said on stderr instead. The
@@ -39,6 +41,7 @@ from pydantic import BaseModel
 
 from agentdiag.exits import USAGE_EXIT
 from agentdiag.run.manifest import Manifest, ManifestError, ManifestNotFound, load_manifest
+from agentdiag.run.manifest_checks import pending_problem, render_problem
 from agentdiag.sync.breaks import record_break
 from agentdiag.sync.compare import (
     SyncResult,
@@ -168,6 +171,11 @@ def sync_target(
     side = deployed_side(manifest, chosen)
     if side.connector_failed is not None:
         return SyncExit(code=USAGE_EXIT, message=f"error: {side.connector_failed}")
+    pending = pending_problem(manifest)
+    if side.deployed is None and pending is not None:
+        # No Connector read, and the probe would need an Adapter nothing drives yet
+        # (ADR-0016 §4): `validate`'s warning, word for word, and nothing written.
+        return SyncExit(code=USAGE_EXIT, message=f"error: {render_problem(pending)}")
     try:
         check = check_target(target, manifest, chosen, side)
     except (FingerprintError, ManifestError) as exc:
